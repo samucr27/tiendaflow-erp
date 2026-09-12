@@ -121,6 +121,8 @@ The proposed visual identity uses a color palette composed of a red-orange tone 
 
 The logo combines a shelf/inventory icon with a pulse (flow) line, symbolizing real-time data movement across stores.
 
+![TiendaFlow logo](assets/logo.png)
+
 ### D. System Scope
 
 - **Includes:** inventory, sales/billing, suppliers, basic HR, and CRM/loyalty modules, for a single convenience-store model replicable across multiple locations.
