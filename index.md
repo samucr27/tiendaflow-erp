@@ -81,3 +81,61 @@ Each team member researched at least one application similar to the one intended
 | Square for Retail (squareup.com) | Monthly subscription | Partial | No | Yes | Yes | Partial |
 
 ### B. Functional Requirements
+OXXO ERP System
+1.1 Inventory Management
+1.1.1 Stock control per store
+1.1.1.1 Minimum stock alerts
+1.1.2 Receiving of merchandise
+1.1.2.1 Batch and expiration date tracking
+1.2 Sales / Billing Management
+1.2.1 Point of Sale (POS)
+1.2.1.1 Checkout with multiple payment methods
+1.2.2 Electronic receipt issuance
+1.3 Supplier Management
+1.3.1 Purchase orders
+1.3.1.1 Delivery tracking
+1.3.2 Supplier evaluation
+1.4 Human Resources Management
+1.4.1 Shift scheduling
+1.4.1.1 Attendance control
+1.4.2 Basic payroll
+1.5 Customer Management (CRM)
+1.5.1 Loyalty / points program
+1.5.1.1 Promotion notifications
+1.5.2 Purchase history
+
+### C. Non-Functional Requirements
+
+- **Availability:** the system must be operational 24/7, since convenience stores operate continuously or on extended hours.
+- **Performance:** point-of-sale transactions must be processed in under 2 seconds, even with multiple registers active simultaneously.
+- **Scalability:** the architecture must support growth in the number of stores without degrading performance (multi-store/multi-tenant architecture).
+- **Security:** role-based access control (cashier, administrator, supplier, corporate) and protection of customer and transaction data.
+- **Usability:** a simple and intuitive point-of-sale interface to minimize staff training time.
+- **Interoperability:** ability to integrate with electronic payment gateways and current electronic invoicing regulations in Colombia (DIAN).
+
+### Product Identity: Name, Logo, and Color Palette
+
+The ERP system developed by the team has been named **TiendaFlow**, a name that reflects the continuous, real-time flow of operations (inventory, sales, and staff coordination) across a chain of convenience stores.
+
+The proposed visual identity uses a color palette composed of a red-orange tone (`#E8412C`), representing energy and the fast pace of retail operations; a charcoal gray (`#2B2B2B`), conveying reliability and technological solidity; and a light neutral background (`#F5F5F5`) for interface clarity and readability.
+
+The logo combines a shelf/inventory icon with a pulse (flow) line, symbolizing real-time data movement across stores.
+
+### D. System Scope
+
+- **Includes:** inventory, sales/billing, suppliers, basic HR, and CRM/loyalty modules, for a single convenience-store model replicable across multiple locations.
+- **Excludes:** full accounting/tax integration, distribution logistics between central warehouses, and advanced business intelligence (predictive analytics), which remain as future work.
+- Development is limited to the academic time available during the semester, prioritizing a functional minimum viable product (MVP) over full coverage of a commercial ERP.
+
+### E. Selected Technologies
+
+- **Backend:** Spring Boot (Java) — provides a robust, well-tested framework for handling concurrent transactions across multiple points of sale, with strong support for enterprise-grade security and modular service layers.
+- **Frontend:** Angular — an opinionated framework that offers a structured, maintainable architecture suitable for a multi-role administrative panel and point-of-sale interface.
+- **Database:** MySQL — a widely adopted relational engine in retail solutions, offering reliable transactional support and compatibility with replication strategies across stores.
+- **Version control:** Git and GitHub.
+- **Architecture documentation:** UML modeling with Enterprise Architect.
+- **Project management methodology:** Agile Scrum.
+
+### F. Information Storage
+
+All information developed in this document is published and kept up to date on this documentation page, along with the English presentation (10-15 minute format) summarizing points 1, 2, 3, and 4 of this guide.
