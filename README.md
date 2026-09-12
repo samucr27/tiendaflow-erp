@@ -65,7 +65,7 @@ Convenience stores such as OXXO operate under a high-transaction-volume model wi
 
 Detailed project documentation (advantages/disadvantages evaluation, background, functional and non-functional requirements) is published at:
 
-📄 **Documentation page:** [link to GitHub Pages / Notion]
+📄 **Documentation page:** https://samucr27.github.io/tiendaflow-erp/
 
 ## Team
 
