@@ -81,28 +81,33 @@ Each team member researched at least one application similar to the one intended
 | Square for Retail (squareup.com) | Monthly subscription | Partial | No | Yes | Yes | Partial |
 
 ### B. Functional Requirements
-OXXO ERP System
-1.1 Inventory Management
-1.1.1 Stock control per store
-1.1.1.1 Minimum stock alerts
-1.1.2 Receiving of merchandise
-1.1.2.1 Batch and expiration date tracking
-1.2 Sales / Billing Management
-1.2.1 Point of Sale (POS)
-1.2.1.1 Checkout with multiple payment methods
-1.2.2 Electronic receipt issuance
-1.3 Supplier Management
-1.3.1 Purchase orders
-1.3.1.1 Delivery tracking
-1.3.2 Supplier evaluation
-1.4 Human Resources Management
-1.4.1 Shift scheduling
-1.4.1.1 Attendance control
-1.4.2 Basic payroll
-1.5 Customer Management (CRM)
-1.5.1 Loyalty / points program
-1.5.1.1 Promotion notifications
-1.5.2 Purchase history
+
+Functional requirements are derived from the comparison above and add value compared to existing applications, particularly through specialization toward the operational model of convenience stores. They are presented through the following functional decomposition tree (maximum 4 levels of depth):
+
+```
+1. OXXO ERP System
+   1.1 Inventory Management
+       1.1.1 Stock control per store
+             1.1.1.1 Minimum stock alerts
+       1.1.2 Receiving of merchandise
+             1.1.2.1 Batch and expiration date tracking
+   1.2 Sales / Billing Management
+       1.2.1 Point of Sale (POS)
+             1.2.1.1 Checkout with multiple payment methods
+       1.2.2 Electronic receipt issuance
+   1.3 Supplier Management
+       1.3.1 Purchase orders
+             1.3.1.1 Delivery tracking
+       1.3.2 Supplier evaluation
+   1.4 Human Resources Management
+       1.4.1 Shift scheduling
+             1.4.1.1 Attendance control
+       1.4.2 Basic payroll
+   1.5 Customer Management (CRM)
+       1.5.1 Loyalty / points program
+             1.5.1.1 Promotion notifications
+       1.5.2 Purchase history
+```
 
 ### C. Non-Functional Requirements
 
@@ -131,11 +136,12 @@ The logo combines a shelf/inventory icon with a pulse (flow) line, symbolizing r
 
 ### E. Selected Technologies
 
-- **Backend:** Spring Boot (Java) — provides a robust, well-tested framework for handling concurrent transactions across multiple points of sale, with strong support for enterprise-grade security and modular service layers.
-- **Frontend:** Angular — an opinionated framework that offers a structured, maintainable architecture suitable for a multi-role administrative panel and point-of-sale interface.
-- **Database:** MySQL — a widely adopted relational engine in retail solutions, offering reliable transactional support and compatibility with replication strategies across stores.
+- **Backend:** ASP.NET Core (C#) — Microsoft's official framework for building robust, high-performance REST APIs, well suited for handling concurrent transactions across multiple points of sale.
+- **Frontend:** Blazor — Microsoft's web UI framework based on C#, allowing a structured, maintainable administrative panel and point-of-sale interface fully within the Microsoft ecosystem.
+- **Database:** SQL Server — Microsoft's relational database engine, offering reliable transactional support, native integration with .NET, and replication strategies across stores.
+- **IDE:** Visual Studio.
 - **Version control:** Git and GitHub.
-- **Architecture documentation:** UML modeling with Enterprise Architect.
+- **Architecture documentation:** UML modeling with Visual Studio and Microsoft Visio.
 - **Project management methodology:** Agile Scrum.
 
 ### F. Information Storage
