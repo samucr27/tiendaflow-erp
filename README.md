@@ -48,12 +48,13 @@ Convenience stores such as OXXO operate under a high-transaction-volume model wi
 
 ## Technologies
 
-- **Backend:** Spring Boot (Java)
-- **Frontend:** Angular
-- **Database:** MySQL
+- **Backend:** ASP.NET Core (C#)
+- **Frontend:** Blazor
+- **Database:** SQL Server
+- **IDE:** Visual Studio
 - **Version control:** Git and GitHub
-- **Architecture documentation:** UML (Enterprise Architect)
-- **Methodology:** Scrum (Agile)
+- **Architecture documentation:** UML (Visual Studio and Microsoft Visio)
+- **Methodology:** Agile Scrum
 
 ## Scope
 
