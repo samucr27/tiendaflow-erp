@@ -109,6 +109,10 @@ Functional requirements are derived from the comparison above and add value comp
        1.5.2 Purchase history
 ```
 
+![Functional decomposition tree](assets/functional-decomposition-tree.png)
+
+*Figure 2. Functional decomposition tree (PlantUML WBS diagram).*
+
 ### C. Non-Functional Requirements
 
 - **Availability:** the system must be operational 24/7, since convenience stores operate continuously or on extended hours.
