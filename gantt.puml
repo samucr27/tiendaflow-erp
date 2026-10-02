@@ -1,0 +1,31 @@
+@startgantt
+skinparam monochrome true
+skinparam shadowing false
+skinparam dpi 150
+<style>
+ganttDiagram {
+  task { FontSize 15 }
+  milestone { FontSize 15 }
+  timeline { FontSize 14 }
+}
+</style>
+language en
+printscale weekly zoom 1.4
+Label on first column and left aligned
+[Sprint 0: Project definition and planning] as [S0] lasts 2 weeks
+[Sprint 1: Requirements, UML and prototype] as [S1] lasts 2 weeks
+[S1] starts at [S0]'s end
+[Sprint 2: Database and Inventory module] as [S2] lasts 3 weeks
+[S2] starts at [S1]'s end
+[Sprint 3: Sales / Billing module] as [S3] lasts 3 weeks
+[S3] starts at [S2]'s end
+[Sprint 4: Supplier module] as [S4] lasts 2 weeks
+[S4] starts at [S3]'s end
+[Sprint 5: HR and CRM modules] as [S5] lasts 2 weeks
+[S5] starts at [S4]'s end
+[Sprint 6: Integration, testing and delivery] as [S6] lasts 2 weeks
+[S6] starts at [S5]'s end
+[Project definition approved] happens at [S0]'s end
+[MVP demonstration] happens at [S3]'s end
+[Final delivery] happens at [S6]'s end
+@endgantt

@@ -1,0 +1,44 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam dpi 150
+skinparam packageStyle rectangle
+skinparam usecaseBackgroundColor white
+skinparam actorBackgroundColor white
+skinparam rectangleBackgroundColor white
+skinparam packageBackgroundColor white
+left to right direction
+actor "HR Officer" as HO
+actor "Store Manager" as SM
+actor "Employee" as EM
+
+rectangle "Human Resources Management Module" {
+  usecase "UC-RH-01\nManage employees\n(register, consult)" as U1
+  usecase "UC-RH-02\nPlan shifts" as U2
+  usecase "UC-RH-03\nConsult assigned shifts" as U3
+  usecase "UC-RH-04\nRequest shift swap" as U4
+  usecase "Approve shift swap" as U4a
+  usecase "UC-RH-05\nRegister attendance" as U5
+  usecase "UC-RH-06\nGenerate attendance report" as U6
+  usecase "UC-RH-07\nCalculate payroll\npre-settlement" as U7
+  usecase "Calculate overtime\nand surcharges" as U7b
+  usecase "UC-RH-08\nUpdate contract" as U8
+  usecase "UC-RH-09\nTerminate employee" as U9
+  usecase "Generate final\nsettlement report" as U9a
+}
+
+HO --> U1
+SM --> U2
+EM --> U3
+EM --> U4
+U4 ..> U4a : <<include>>
+SM --> U4a
+EM --> U5
+SM --> U6
+HO --> U7
+U7 ..> U7b : <<include>>
+HO --> U8
+HO --> U9
+U9 ..> U9a : <<include>>
+@enduml

@@ -1,0 +1,52 @@
+@startuml
+!include <C4/C4_Component>
+UpdateElementStyle("container", $bgColor="white", $fontColor="black", $borderColor="black")
+UpdateElementStyle("component", $bgColor="white", $fontColor="black", $borderColor="black")
+UpdateElementStyle("external_system", $bgColor="white", $fontColor="black", $borderColor="black", $borderStyle=DashedLine())
+UpdateBoundaryStyle($bgColor="white", $fontColor="black", $borderColor="black")
+UpdateRelStyle($textColor="black", $lineColor="black")
+skinparam dpi 150
+skinparam defaultFontSize 16
+skinparam shadowing false
+LAYOUT_TOP_DOWN()
+
+Container(clients, "Web clients", "Blazor", "POS, back office and supplier portal")
+
+Container_Boundary(api, "TiendaFlow API (ASP.NET Core Web API)") {
+  Component(audit, "Audit logger", "Middleware", "Logs create, update and delete operations")
+  Component(ctrl, "REST controllers", "ASP.NET Core", "Endpoints of the six modules (OpenAPI)")
+  Component(auth, "Authentication", "ASP.NET Core Identity", "Login, second factor and roles")
+  Component(inv, "Inventory service", "C#", "Stock, receipts and counts")
+  Component(ven, "Sales and Billing service", "C#", "Sales, payments and DIAN documents")
+  Component(sup, "Purchasing service", "C#", "Suppliers and purchase orders")
+  Component(rh, "HR service", "C#", "Employees, shifts and payroll")
+  Component(crm, "CRM service", "C#", "Customers, points and PQRS")
+  Component(rep, "Reporting service", "C#", "Consolidated reports")
+  Component(data, "Data access layer", "Entity Framework Core", "DbContext and repositories")
+  Component(pay, "Payment client", "HttpClient", "Payment gateway calls")
+}
+
+ContainerDb(db, "TiendaFlow database", "SQL Server 2022", "Data and audit log")
+Container(worker, "Background worker", "Worker Service", "DIAN queue and alerts")
+System_Ext(gw, "Payment gateway", "Card and wallet payments")
+
+Rel(clients, ctrl, "Calls", "HTTPS / JSON")
+Rel_R(ctrl, auth, "Validates")
+Rel_L(ctrl, audit, "Logs")
+Rel(ctrl, inv, "")
+Rel(ctrl, ven, "")
+Rel(ctrl, sup, "")
+Rel(ctrl, rh, "")
+Rel(ctrl, crm, "")
+Rel(ctrl, rep, "")
+Rel(inv, data, "")
+Rel(ven, data, "")
+Rel(sup, data, "")
+Rel(rh, data, "")
+Rel(crm, data, "")
+Rel(rep, data, "")
+Rel(ven, pay, "")
+Rel(pay, gw, "REST")
+Rel(data, db, "Reads and writes")
+Rel(worker, db, "Reads queues")
+@enduml

@@ -1,0 +1,43 @@
+@startuml
+!include <C4/C4_Container>
+UpdateElementStyle("person", $bgColor="white", $fontColor="black", $borderColor="black")
+UpdateElementStyle("system", $bgColor="white", $fontColor="black", $borderColor="black")
+UpdateElementStyle("external_system", $bgColor="white", $fontColor="black", $borderColor="black", $borderStyle=DashedLine())
+UpdateElementStyle("container", $bgColor="white", $fontColor="black", $borderColor="black")
+UpdateElementStyle("external_container", $bgColor="white", $fontColor="black", $borderColor="black", $borderStyle=DashedLine())
+UpdateBoundaryStyle($bgColor="white", $fontColor="black", $borderColor="black")
+UpdateRelStyle($textColor="black", $lineColor="black")
+skinparam dpi 150
+skinparam defaultFontSize 15
+skinparam shadowing false
+LAYOUT_TOP_DOWN()
+
+Person(cashier, "Cashier", "Registers sales at the checkout")
+Person(staff, "Back-office users", "Managers, logistics, HR, corporate and administrator")
+Person(sup, "Supplier", "External user of the portal")
+
+System_Boundary(tf, "TiendaFlow ERP") {
+  Container(pos, "POS client", "Blazor WebAssembly (PWA)", "Fast checkout; keeps an offline queue of cash sales")
+  Container(back, "Back-office web app", "Blazor Server", "Inventory, purchasing, HR, CRM, reports and administration")
+  Container(portal, "Supplier portal", "Blazor Server", "Order consultation and confirmation")
+  Container(api, "TiendaFlow API", "ASP.NET Core Web API (C#)", "Business logic of the six modules; REST and JSON; OpenAPI")
+  Container(worker, "Background worker", "ASP.NET Core Worker Service", "DIAN queue, stock and expiration alerts, notifications")
+  ContainerDb(db, "TiendaFlow database", "SQL Server 2022", "Transactional data and immutable audit log")
+}
+
+System_Ext(dian, "DIAN electronic invoicing", "Document validation")
+System_Ext(pay, "Payment gateway", "Card and wallet payments")
+System_Ext(notif, "Email and SMS service", "Message delivery")
+
+Rel(cashier, pos, "Uses", "Browser")
+Rel(staff, back, "Uses", "HTTPS")
+Rel(sup, portal, "Uses", "HTTPS")
+Rel(pos, api, "Sends sales and synchronizes", "HTTPS / JSON")
+Rel(back, api, "Calls", "HTTPS / JSON")
+Rel(portal, api, "Calls", "HTTPS / JSON")
+Rel(api, db, "Reads and writes", "EF Core / TDS")
+Rel(worker, db, "Reads queues and writes results", "EF Core / TDS")
+Rel(api, pay, "Authorizes payments", "REST")
+Rel(worker, dian, "Sends electronic documents", "Web service")
+Rel(worker, notif, "Sends invoices, alerts and promotions", "REST")
+@enduml

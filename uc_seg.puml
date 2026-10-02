@@ -1,0 +1,35 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam dpi 150
+skinparam packageStyle rectangle
+skinparam usecaseBackgroundColor white
+skinparam actorBackgroundColor white
+skinparam rectangleBackgroundColor white
+skinparam packageBackgroundColor white
+left to right direction
+actor "System User\n(any role)" as US
+actor "System Administrator" as AD
+actor "Corporate Manager" as CM
+
+rectangle "Security and Reporting Module" {
+  usecase "UC-SEG-01\nLog in" as U1
+  usecase "Verify second factor" as U1a
+  usecase "UC-SEG-02\nManage users\n(create, consult, update,\ndeactivate)" as U2
+  usecase "UC-SEG-03\nManage roles and permissions" as U3
+  usecase "UC-SEG-04\nConsult audit log" as U4
+  usecase "UC-SEG-05\nConfigure system parameters" as U5
+  usecase "UC-SEG-06\nConsult consolidated reports" as U6
+  usecase "Export report" as U6a
+}
+
+US --> U1
+U1a ..> U1 : <<extend>>
+AD --> U2
+AD --> U3
+AD --> U4
+AD --> U5
+CM --> U6
+U6a ..> U6 : <<extend>>
+@enduml

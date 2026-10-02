@@ -1,0 +1,49 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam dpi 150
+skinparam packageStyle rectangle
+skinparam usecaseBackgroundColor white
+skinparam actorBackgroundColor white
+skinparam rectangleBackgroundColor white
+skinparam packageBackgroundColor white
+left to right direction
+actor "Cashier" as CA
+actor "Customer" as CU
+actor "Store Manager" as SM
+actor "Corporate Manager" as CM
+actor "Notification Service\n<<external system>>" as NS
+
+rectangle "Customer Management (CRM) Module" {
+  usecase "UC-CRM-01\nRegister customer" as U1
+  usecase "Record data-processing\nconsent" as U1a
+  usecase "UC-CRM-02\nAccumulate points" as U2
+  usecase "UC-CRM-03\nRedeem points" as U3
+  usecase "UC-CRM-04\nConsult points balance" as U4
+  usecase "UC-CRM-05\nCreate promotion campaign" as U5
+  usecase "Segment customers" as U5a
+  usecase "Send notifications" as U5b
+  usecase "UC-CRM-06\nConsult purchase history" as U6
+  usecase "UC-CRM-07\nRegister PQRS" as U7
+  usecase "UC-CRM-08\nRespond PQRS" as U8
+  usecase "UC-CRM-09\nUpdate customer data" as U9
+  usecase "UC-CRM-10\nAnonymize customer data" as U10
+}
+
+CA --> U1
+U1 ..> U1a : <<include>>
+CA --> U2
+CA --> U3
+CU --> U3
+CU --> U4
+CU --> U9
+CM --> U5
+U5 ..> U5a : <<include>>
+U5 ..> U5b : <<include>>
+U5b --> NS
+CM --> U6
+CU --> U7
+SM --> U8
+SM --> U10
+@enduml

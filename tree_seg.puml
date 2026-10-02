@@ -1,0 +1,31 @@
+@startwbs
+<style>
+wbsDiagram {
+  node { BackgroundColor white; LineColor black; FontColor black; FontSize 16; Padding 5; Margin 4; RoundCorner 0; MaximumWidth 150 }
+  arrow { LineColor black }
+  :depth(0) { FontStyle bold }
+}
+</style>
+skinparam monochrome true
+skinparam shadowing false
+skinparam dpi 150
+* 1.6 Security and Reporting
+** 1.6.1 User management
+*** 1.6.1.1 Create and update users
+*** 1.6.1.2 Deactivate users
+** 1.6.2 Roles and permissions
+*** 1.6.2.1 Assign roles per store
+*** 1.6.2.2 Update role permissions
+** 1.6.3 Authentication
+*** 1.6.3.1 Login and password policy
+*** 1.6.3.2 Two-factor authentication
+** 1.6.4 Audit log
+*** 1.6.4.1 Record create, update and delete operations
+*** 1.6.4.2 Consult audit log
+** 1.6.5 Consolidated reports
+*** 1.6.5.1 Corporate dashboard
+*** 1.6.5.2 Export to PDF and Excel
+** 1.6.6 System parameters
+*** 1.6.6.1 Taxes and approval thresholds
+*** 1.6.6.2 Loyalty and labor rules
+@endwbs

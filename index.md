@@ -1,153 +1,275 @@
-# TiendaFlow — ERP System for OXXO (Convenience Stores)
-
-**Course:** CADI Software Engineering II — Laboratory Guide 1: Software Architecture and Quality Attributes
-**Professor:** Carlos Eduardo Mujica Reyes
-**Institution:** Universidad de Cundinamarca, Chía Campus — Sixth Semester
-
-**Team:** Juan Sebastián Rodríguez Blanco, Samuel Castellanos Rivera, Sergio Steeven Moreno Forero, Jonathan Alejandro Yacuma Rivera
-
-🔗 **Repository:** [tiendaflow-erp](https://github.com/samucr27/tiendaflow-erp)
-
+---
+title: "TiendaFlow: ERP System for Convenience-Store Chains"
 ---
 
-## 1. Evaluation of Advantages and Disadvantages
+# TiendaFlow: ERP System for Convenience-Store Chains
 
-### 1.1 Advantages
+![TiendaFlow logo](docs/img/logo.png)
 
-- **High inventory turnover:** convenience stores handle hundreds of SKUs with daily restocking, which clearly demonstrates the value of a real-time inventory module.
-- **Relevant and current problem:** the decentralized management of multiple points of sale is a real challenge for retail chains in Colombia and Latin America.
-- **Value delivered to the end user:** a specialized ERP reduces losses from stockouts or overstock and speeds up the daily operation of each store.
-- **Scalability of the case study:** OXXO operates under a franchise/standard-store model, which allows defining replicable processes and reusable modules across stores.
-- **Availability of references:** consolidated ERP and POS solutions already exist in the market (SAP Business One, Odoo, Square), serving as a benchmark and technical comparison point.
+**Project Definition (Sprint 0) and Requirements, Product Backlog, UML Models and Prototype (Sprint 1)**
 
-### 1.2 Disadvantages
+CADI: Software Engineering II, Systems and Computer Engineering Program, Faculty of Engineering, University of Cundinamarca. Instructor: Carlos Eduardo Mujica Reyes.
 
-- **Integration complexity:** a retail ERP requires coherently integrating inventory, sales, suppliers, HR, and CRM modules, which exceeds the depth achievable within the course timeframe.
-- **Limited access to real OXXO data:** since this is not an official development for the company, data and processes will be based on public information and reasonable inferences about the sector.
-- **Demanding non-functional requirements:** high transaction concurrency (multiple registers, multiple stores) requires special attention to performance and availability, quality attributes that must be designed from the architecture stage.
+| Team member | Role |
+|---|---|
+| Sergio Steeven Moreno Forero | Project Manager and Scrum Master |
+| Samuel Castellanos Rivera | Software Architect and Backend Developer |
+| Juan Sebastian Rodriguez Blanco | Frontend Developer and UI/UX Designer |
+| Jonathan Alejandro Yacuma Rivera | Database Administrator and QA Tester |
 
-### 1.3 Justification of the Project's Validity
+## Project resources
 
-Considering the technical aspects (the need for a distributed, multi-store system with real-time transaction processing), the relevance of the problem (efficient inventory and sales management in convenience-store chains), and the value delivered to the end user (reduced losses, operational agility, and a better shopping experience), the group considers it valid and appropriate to develop an ERP inspired by OXXO's business model as the project for this course.
+| Resource | Link |
+|---|---|
+| Complete project document (PDF, APA 7) | [TiendaFlow_Project_Definition_Sprint1.pdf](docs/TiendaFlow_Project_Definition_Sprint1.pdf) |
+| Figma design file (design system, mockups and interactive prototype) | [ERP_Mockups_TiendaFlow](https://www.figma.com/design/3LW57RjiNETxaukic2S6JE) |
+| Prototype generated with Figma Make | [early-hope-36544320.figma.site](https://early-hope-36544320.figma.site/) |
+| Google Colab notebook with all the PlantUML diagrams | [ERP_PlantUML_TiendaFlow](https://colab.research.google.com/drive/1VtObCkwC1xnCBrrpza1oSu0oOpki-RqI?usp=sharing) |
+| PlantUML source files | [docs/uml](docs/uml) |
+| Repository | [samucr27/tiendaflow-erp](https://github.com/samucr27/tiendaflow-erp) |
 
----
+## Contents
 
-## 2. General Project Definition
+1. [Sprint 0: Project definition](#sprint-0-project-definition)
+2. [Sprint 1: Requirements, Product Backlog, UML models and prototype](#sprint-1-requirements-product-backlog-uml-models-and-prototype)
+3. [Repository structure](#repository-structure)
 
-### A. Problem Definition
+# Sprint 0: Project definition
 
-Convenience stores such as OXXO operate under a high-transaction-volume model with multiple geographically distributed points of sale. The lack of an integrated system makes it difficult to control inventory in real time, coordinate with suppliers, schedule staff shifts, and track customer preferences, resulting in losses from stockouts, overstock, long service times, and low customer loyalty.
+## Problem and proposed solution
 
-### B. Proposed Solution
+Convenience-store chains operate many distributed points of sale with extended or 24/7 hours, high product turnover and perishable goods. In small and medium chains, inventory, sales, purchasing, staff and customer information are usually managed in separate tools, which causes stockouts, overstock, expired products, long queues and low customer loyalty.
 
-A modular ERP (Enterprise Resource Planning) system is proposed, aimed at the comprehensive management of convenience stores such as OXXO. The system centralizes information on inventory, sales/billing, suppliers, human resources, and customer relationship management (CRM), allowing each store to operate in sync on a single platform. The expected product is a web application (and optionally a mobile app for the point of sale) that automates the daily operational processes of a convenience-store chain.
+**TiendaFlow** is a modular web ERP built only with Microsoft technologies (ASP.NET Core, Blazor and SQL Server). It integrates six modules on a single platform: five business modules (Inventory, Sales and Billing, Supplier and Purchasing, Human Resources, and Customer Management) and a cross-cutting Security and Reporting module, with DIAN electronic invoicing, an offline-capable POS and real-time consolidated reports.
 
-### C. Justification
+## Project management
 
-The project generates value by solving a real, high-impact operational problem for high-turnover retail businesses. Automating inventory and sales control reduces losses, improves managerial decision-making through real-time reporting, and standardizes processes across stores, which is especially valuable in franchise models such as OXXO's.
+The project follows Scrum during the 16 weeks of the semester (12 hours per week per member, 768 hours in total).
 
-### D. End Users
+| Sprint | Weeks | Objective |
+|:---:|:---:|---|
+| 0 | 1 to 2 | Project definition and planning |
+| 1 | 3 to 4 | Requirements, UML modeling and prototype |
+| 2 | 5 to 7 | Security base and Inventory module |
+| 3 | 8 to 10 | Sales and Billing module |
+| 4 | 11 to 12 | Supplier and Purchasing module |
+| 5 | 13 to 14 | Human Resources and CRM modules |
+| 6 | 15 to 16 | Reporting, integration and delivery |
 
-- **Store managers/administrators:** oversee inventory, sales, and staff.
-- **Cashiers/operational staff:** use the point-of-sale (POS) module for daily transactions.
-- **Logistics and supplier coordinators:** manage purchase orders and restocking.
-- **Corporate management:** reviews consolidated reports across all stores.
-- **End customers:** benefit indirectly through the loyalty program and product availability.
+![Project schedule](docs/img/gantt.png)
 
-### E. Usefulness (Return on Investment)
+| Cost concept | COP |
+|---|---:|
+| Personnel (768 hours) | 25,536,000 |
+| Microsoft licensing for commercial development and pilot | 19,295,850 |
+| Other costs (internet and electricity) | 1,600,000 |
+| Contingency reserve (10%) | 4,643,185 |
+| **Total project cost** | **51,075,035** (about USD 16,426.54) |
 
-The return on investment is estimated based on reduced losses from expired or out-of-stock products, decreased operational time (shifts, billing, supplier orders), and increased sales through better-managed loyalty programs. In the medium term, standardizing processes across stores reduces training and operational support costs.
+Commercial model: subscription of **COP 190,000 per store per month** (up to five users, no transaction fees). Break-even point: about **269 store-months**.
 
----
+## Competitor analysis
 
-## 3. Workspace
+| Application | Cost | Main gap for convenience stores |
+|---|---|---|
+| SAP Business One | USD 110 to 219 per user per month (cloud) | High cost per user and implementation; basic HR |
+| Odoo | About USD 24.90 to 61 per user per month | Cost grows with each cashier; partner dependency |
+| Square for Retail | USD 0 to 149 per location plus processing fees | Not available in Colombia; no DIAN invoicing, suppliers or payroll |
+| Alegra | COP 74,900 to 319,900 per month | Accounting orientation; no FEFO, 24/7 shifts or supplier portal |
+| **TiendaFlow** | **COP 190,000 per store per month** | Preconfigured for convenience stores |
 
-- **Repository:** [https://github.com/samucr27/tiendaflow-erp](https://github.com/samucr27/tiendaflow-erp)
-- **Documentation page:** [https://samucr27.github.io/tiendaflow-erp/](https://samucr27.github.io/tiendaflow-erp/)
-- All group members have collaborator access to the repository.
+## Product identity and technologies
 
----
+Palette: red-orange **#E8412C** (primary), charcoal **#2B2B2B** (secondary) and light gray **#F5F5F5** (background).
 
-## 4. Initial Requirements Specification
+| Category | Technology |
+|---|---|
+| Backend | ASP.NET Core (C#) Web API and Worker Service |
+| Frontend | Blazor WebAssembly (POS) and Blazor Server (back office and supplier portal) |
+| Database | SQL Server 2022 with Entity Framework Core |
+| IDE and testing | Visual Studio; xUnit with coverlet, Postman and Accessibility Insights |
+| Version control, CI and documentation | Git, GitHub, GitHub Actions and GitHub Pages |
+| Modeling | PlantUML (Visual Studio Code and Google Colab) |
+| Prototyping | Figma and Figma Make (prescribed by the Sprint 1 guide) |
 
-### A. Background
+# Sprint 1: Requirements, Product Backlog, UML models and prototype
 
-Each team member researched at least one application similar to the one intended for development. The following comparative table presents the applications reviewed and the functionalities they offer.
+## Modules of the guide and modules of TiendaFlow
 
-| Application | Cost | Supplier Module | HR Module | Inventory/Warehouse Module | Billing/Sales Module | CRM/Customers Module |
-|---|---|---|---|---|---|---|
-| SAP Business One (sap.com) | License (quote-based) | Yes | Partial (via add-on) | Yes | Yes | Yes |
-| Odoo ERP (odoo.com) | Freemium / subscription | Yes | Yes | Yes | Yes | Yes |
-| Square for Retail (squareup.com) | Monthly subscription | Partial | No | Yes | Yes | Partial |
+| Module of the guide | Module of TiendaFlow |
+|---|---|
+| Purchasing (Compras) | Supplier and Purchasing Management |
+| Inventory (Inventarios) | Inventory Management |
+| Suppliers (Proveedores) | Supplier and Purchasing Management |
+| Human resources (Talento Humano) | Human Resources Management |
+| CRM (Clientes) | Customer Management (CRM) |
+| Billing and sales (Facturación y Ventas) | Sales and Billing Management |
+| (not in the guide) | Security and Reporting |
 
-### B. Functional Requirements
+Every module covers the four CRUD operations (create, read, update and delete). Functional requirements follow IEEE 830 with an acceptance criterion; non-functional requirements follow ISO/IEC 25010 with a verification metric.
 
-Functional requirements are derived from the comparison above and add value compared to existing applications, particularly through specialization toward the operational model of convenience stores. They are presented through the following functional decomposition tree (maximum 4 levels of depth):
+## Functional decomposition tree and general use cases
 
-```
-1. OXXO ERP System
-   1.1 Inventory Management
-       1.1.1 Stock control per store
-             1.1.1.1 Minimum stock alerts
-       1.1.2 Receiving of merchandise
-             1.1.2.1 Batch and expiration date tracking
-   1.2 Sales / Billing Management
-       1.2.1 Point of Sale (POS)
-             1.2.1.1 Checkout with multiple payment methods
-       1.2.2 Electronic receipt issuance
-   1.3 Supplier Management
-       1.3.1 Purchase orders
-             1.3.1.1 Delivery tracking
-       1.3.2 Supplier evaluation
-   1.4 Human Resources Management
-       1.4.1 Shift scheduling
-             1.4.1.1 Attendance control
-       1.4.2 Basic payroll
-   1.5 Customer Management (CRM)
-       1.5.1 Loyalty / points program
-             1.5.1.1 Promotion notifications
-       1.5.2 Purchase history
-```
+![Functional decomposition tree of TiendaFlow](docs/img/tree_overall.png)
 
-![Functional decomposition tree](assets/functional-decomposition-tree.png)
+![General use case diagram of TiendaFlow](docs/img/uc_overall.png)
 
-*Figure 2. Functional decomposition tree (PlantUML WBS diagram).*
+## Requirements and Product Backlog summary
 
-### C. Non-Functional Requirements
+| Epic | Module | RF | RNF | User stories | Story points | Must story points | Planned sprint |
+|---|---|:---:|:---:|:---:|:---:|:---:|---|
+| E-01 | Inventory Management | 11 | 3 | 11 | 51 | 29 | Sprint 2 |
+| E-02 | Sales and Billing Management | 10 | 5 | 10 | 55 | 39 | Sprint 3 |
+| E-03 | Supplier and Purchasing Management | 10 | 2 | 10 | 44 | 16 | Sprint 4 |
+| E-04 | Human Resources Management | 8 | 3 | 8 | 46 | 16 | Sprint 5 |
+| E-05 | Customer Management (CRM) | 10 | 2 | 10 | 35 | 11 | Sprint 5 |
+| E-06 | Security and Reporting | 8 | 2 | 8 | 35 | 12 | Sprints 2 and 6 |
+| **Total** | | **57** | **17 + 15 system-wide** | **57** | **266** | **123** | |
 
-- **Availability:** the system must be operational 24/7, since convenience stores operate continuously or on extended hours.
-- **Performance:** point-of-sale transactions must be processed in under 2 seconds, even with multiple registers active simultaneously.
-- **Scalability:** the architecture must support growth in the number of stores without degrading performance (multi-store/multi-tenant architecture).
-- **Security:** role-based access control (cashier, administrator, supplier, corporate) and protection of customer and transaction data.
-- **Usability:** a simple and intuitive point-of-sale interface to minimize staff training time.
-- **Interoperability:** ability to integrate with electronic payment gateways and current electronic invoicing regulations in Colombia (DIAN).
+User stories are prioritized with MoSCoW and estimated with Planning Poker (Fibonacci scale). The 123 story points of the *Must* stories form the minimum viable product. The 32 non-functional requirements cover the eight ISO/IEC 25010 categories with at least two requirements each.
 
-### Product Identity: Name, Logo, and Color Palette
+### Definition of Done
 
-The ERP system developed by the team has been named **TiendaFlow**, a name that reflects the continuous, real-time flow of operations (inventory, sales, and staff coordination) across a chain of convenience stores.
+1. Code reviewed by at least one teammate through a pull request on GitHub.
+2. Unit tests with xUnit and coverage of the business logic of 80% or more.
+3. Integration tests of the API endpoints executed (Postman collection).
+4. API documentation updated in Swagger (OpenAPI).
+5. Architecture documentation (arc42) and PlantUML diagrams updated on this site.
+6. Database changes versioned with Entity Framework Core migrations.
+7. Deployment pipeline (GitHub Actions) reviewed and versioned in GitHub.
+8. Create, update and delete operations recorded in the audit log.
+9. Feature deployed in the test environment and accepted by the Product Owner.
 
-The proposed visual identity uses a color palette composed of a red-orange tone (`#E8412C`), representing energy and the fast pace of retail operations; a charcoal gray (`#2B2B2B`), conveying reliability and technological solidity; and a light neutral background (`#F5F5F5`) for interface clarity and readability.
+## Modules
 
-The logo combines a shelf/inventory icon with a pulse (flow) line, symbolizing real-time data movement across stores.
+### 1. Inventory Management (epic E-01)
 
-![TiendaFlow logo](assets/logo.png)
+Product catalog, real-time stock per store (each store is its warehouse), receipts with batch and expiration date, minimum stock and FEFO alerts, transfers between stores, physical counts and inventory reports.
 
-### D. System Scope
+| Functional requirements | Non-functional requirements | User stories | Story points | Must story points | Planned sprint |
+|:---:|:---:|:---:|:---:|:---:|:---|
+| 11 | 3 | 11 | 51 | 29 | Sprint 2 |
 
-- **Includes:** inventory, sales/billing, suppliers, basic HR, and CRM/loyalty modules, for a single convenience-store model replicable across multiple locations.
-- **Excludes:** full accounting/tax integration, distribution logistics between central warehouses, and advanced business intelligence (predictive analytics), which remain as future work.
-- Development is limited to the academic time available during the semester, prioritizing a functional minimum viable product (MVP) over full coverage of a commercial ERP.
+![Functional decomposition tree of the Inventory Management module](docs/img/tree_inv.png)
 
-### E. Selected Technologies
+![Use case diagram of the Inventory Management module](docs/img/uc_inv.png)
 
-- **Backend:** ASP.NET Core (C#) — Microsoft's official framework for building robust, high-performance REST APIs, well suited for handling concurrent transactions across multiple points of sale.
-- **Frontend:** Blazor — Microsoft's web UI framework based on C#, allowing a structured, maintainable administrative panel and point-of-sale interface fully within the Microsoft ecosystem.
-- **Database:** SQL Server — Microsoft's relational database engine, offering reliable transactional support, native integration with .NET, and replication strategies across stores.
-- **IDE:** Visual Studio.
-- **Version control:** Git and GitHub.
-- **Architecture documentation:** UML modeling with Visual Studio and Microsoft Visio.
-- **Project management methodology:** Agile Scrum.
+### 2. Sales and Billing Management (epic E-02)
 
-### F. Information Storage
+Point of sale with barcode scanning, split payments, promotions and offline mode; DIAN electronic invoices and POS documents with status tracking; returns and voided sales with credit notes; cash register opening, closing and reconciliation.
 
-All information developed in this document is published and kept up to date on this documentation page, along with the English presentation (10-15 minute format) summarizing points 1, 2, 3, and 4 of this guide.
+| Functional requirements | Non-functional requirements | User stories | Story points | Must story points | Planned sprint |
+|:---:|:---:|:---:|:---:|:---:|:---|
+| 10 | 5 | 10 | 55 | 39 | Sprint 3 |
+
+![Functional decomposition tree of the Sales and Billing Management module](docs/img/tree_ven.png)
+
+![Use case diagram of the Sales and Billing Management module](docs/img/uc_ven.png)
+
+### 3. Supplier and Purchasing Management (epic E-03)
+
+Supplier registry and price lists, reorder suggestions, purchase orders with approval, sending and cancellation, supplier portal for order confirmation, purchase history and supplier evaluation.
+
+| Functional requirements | Non-functional requirements | User stories | Story points | Must story points | Planned sprint |
+|:---:|:---:|:---:|:---:|:---:|:---|
+| 10 | 2 | 10 | 44 | 16 | Sprint 4 |
+
+![Functional decomposition tree of the Supplier and Purchasing Management module](docs/img/tree_sup.png)
+
+![Use case diagram of the Supplier and Purchasing Management module](docs/img/uc_sup.png)
+
+### 4. Human Resources Management (epic E-04)
+
+Employee records and contracts managed by the HR officer, terminations with a final settlement report, 24/7 shift planning and swaps, clock-in and clock-out attendance, and the basic payroll pre-settlement.
+
+| Functional requirements | Non-functional requirements | User stories | Story points | Must story points | Planned sprint |
+|:---:|:---:|:---:|:---:|:---:|:---|
+| 8 | 3 | 8 | 46 | 16 | Sprint 5 |
+
+![Functional decomposition tree of the Human Resources Management module](docs/img/tree_rh.png)
+
+![Use case diagram of the Human Resources Management module](docs/img/uc_rh.png)
+
+### 5. Customer Management (CRM) (epic E-05)
+
+Customers with data-processing consent (Law 1581 of 2012), data update and anonymization, loyalty points and tiers, segmented campaigns by email and SMS, purchase history, recommendations and PQRS.
+
+| Functional requirements | Non-functional requirements | User stories | Story points | Must story points | Planned sprint |
+|:---:|:---:|:---:|:---:|:---:|:---|
+| 10 | 2 | 10 | 35 | 11 | Sprint 5 |
+
+![Functional decomposition tree of the Customer Management (CRM) module](docs/img/tree_crm.png)
+
+![Use case diagram of the Customer Management (CRM) module](docs/img/uc_crm.png)
+
+### 6. Security and Reporting (epic E-06)
+
+Users and roles per store, two-factor authentication for administrative roles, immutable audit log, system parameters, and consolidated reports for the corporate management.
+
+| Functional requirements | Non-functional requirements | User stories | Story points | Must story points | Planned sprint |
+|:---:|:---:|:---:|:---:|:---:|:---|
+| 8 | 2 | 8 | 35 | 12 | Sprints 2 and 6 |
+
+![Functional decomposition tree of the Security and Reporting module](docs/img/tree_seg.png)
+
+![Use case diagram of the Security and Reporting module](docs/img/uc_seg.png)
+
+## Architecture and data models
+
+### Class diagram of the Inventory module
+
+![Class diagram of the Inventory module](docs/img/class_inventory.png)
+
+### Entity-relationship diagram (19 entities)
+
+![Entity-relationship diagram](docs/img/er_tiendaflow.png)
+
+### C4 model
+
+![C4 context diagram](docs/img/c4_context.png)
+
+![C4 container diagram](docs/img/c4_container.png)
+
+![C4 component diagram of the API](docs/img/c4_component.png)
+
+## Mockups and interactive prototype
+
+The Figma file [ERP_Mockups_TiendaFlow](https://www.figma.com/design/3LW57RjiNETxaukic2S6JE) contains the design system, the three mockups requested in the guide and a navigable prototype of the six modules with 31 screens and 38 dialogs. Open it and press **Present** to start from the login screen.
+
+![Design system](docs/img/figma_design_system.png)
+
+![Purchases dashboard](docs/img/figma_purchases.png)
+
+![Inventory dashboard](docs/img/figma_inventory.png)
+
+![Payroll dashboard](docs/img/figma_hr_payroll.png)
+
+Flow requested in the guide (create an order, see the result and save it):
+
+1. Sign in, verify the second factor and open **Purchases**.
+2. Press **Create order**, complete the order and press **Review order**.
+3. Check the result and press **Save order**.
+4. Verify that order PO-2026-052 appears at the top of the list with the status Sent.
+
+![Screens 1 to 16 of the prototype](docs/img/figma_map_a.png)
+
+![Screens 17 to 31 of the prototype](docs/img/figma_map_b.png)
+
+The first functional prototype, generated with [Figma Make](https://early-hope-36544320.figma.site/), includes Inventory, Sales (POS), Suppliers and Employees screens that share the same product catalog.
+
+![Figma Make prototype: POS](docs/img/screen_pos.png)
+
+## Reflection questions
+
+1. **Why define acceptance criteria before developing a user story?** They turn the story into something testable and give the team, the Product Owner and the testers the same definition of done. For example, HU-VEN-02 requires the product and the total to appear in 2 seconds or less and the stock to decrease when the sale is confirmed, which drives the design of the POS endpoint and its load test.
+2. **How does PlantUML help keep the architecture documentation up to date?** Diagrams are plain text versioned in Git and reviewed in pull requests; editing one line regenerates the diagram with a consistent style; and it integrates with Visual Studio Code, Google Colab, GitHub Pages and continuous integration.
+3. **What advantages does Figma Make offer for rapid ERP prototyping?** It generates interactive screens from natural-language prompts, so flows can be validated with users in minutes, while the designer keeps control of the design system, accessibility and consistency.
+
+# Repository structure
+
+| Path | Content |
+|---|---|
+| `index.md` | This documentation page (GitHub Pages) |
+| `docs/TiendaFlow_Project_Definition_Sprint1.pdf` | Complete project document |
+| `docs/uml/` | PlantUML sources of all the diagrams (`.puml`) |
+| `docs/img/` | Rendered diagrams, mockups and prototype screens |

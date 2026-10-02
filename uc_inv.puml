@@ -1,0 +1,43 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam dpi 150
+skinparam packageStyle rectangle
+skinparam usecaseBackgroundColor white
+skinparam actorBackgroundColor white
+skinparam rectangleBackgroundColor white
+skinparam packageBackgroundColor white
+left to right direction
+actor "Stock Clerk" as SC
+actor "Store Manager" as SM
+
+rectangle "Inventory Management Module" {
+  usecase "UC-INV-01\nManage product catalog" as U1
+  usecase "UC-INV-02\nConsult stock per store" as U2
+  usecase "UC-INV-03\nReceive merchandise" as U3
+  usecase "Register batch and\nexpiration date" as U3a
+  usecase "Report discrepancy" as U3b
+  usecase "UC-INV-04\nTransfer stock between stores" as U4
+  usecase "UC-INV-05\nRegister shrinkage" as U5
+  usecase "UC-INV-06\nPerform physical count" as U6
+  usecase "Approve stock adjustment" as U6a
+  usecase "UC-INV-07\nReceive stock and\nexpiration alerts" as U7
+  usecase "UC-INV-08\nGenerate inventory reports" as U8
+}
+
+SM --> U1
+SM --> U2
+SC --> U2
+SC --> U3
+U3 ..> U3a : <<include>>
+U3b ..> U3 : <<extend>>
+SM --> U4
+SC --> U5
+SC --> U6
+U6a ..> U6 : <<extend>>
+SM --> U6a
+SM --> U7
+SC --> U7
+SM --> U8
+@enduml

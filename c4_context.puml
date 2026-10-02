@@ -1,0 +1,35 @@
+@startuml
+!include <C4/C4_Context>
+UpdateElementStyle("person", $bgColor="white", $fontColor="black", $borderColor="black")
+UpdateElementStyle("system", $bgColor="white", $fontColor="black", $borderColor="black")
+UpdateElementStyle("external_system", $bgColor="white", $fontColor="black", $borderColor="black", $borderStyle=DashedLine())
+UpdateElementStyle("container", $bgColor="white", $fontColor="black", $borderColor="black")
+UpdateElementStyle("external_container", $bgColor="white", $fontColor="black", $borderColor="black", $borderStyle=DashedLine())
+UpdateBoundaryStyle($bgColor="white", $fontColor="black", $borderColor="black")
+UpdateRelStyle($textColor="black", $lineColor="black")
+skinparam dpi 150
+skinparam defaultFontSize 15
+skinparam shadowing false
+LAYOUT_TOP_DOWN()
+
+Person(staff, "Store staff", "Cashiers, stock clerks and employees of each store")
+Person(mgr, "Store Manager", "Supervises stock, sales, staff and approvals")
+Person(corp, "Corporate staff", "Logistics coordinator, HR officer, corporate manager and administrator")
+Person(cus, "Customer", "Loyalty program, invoices and PQRS")
+Person(sup, "Supplier", "Consults and confirms purchase orders in the portal")
+
+System(erp, "TiendaFlow ERP", "Inventory, sales and billing, purchasing, HR, CRM, security and reporting for a convenience-store chain")
+
+System_Ext(dian, "DIAN electronic invoicing", "Validates electronic invoices, POS documents and credit notes")
+System_Ext(pay, "Payment gateway", "Authorizes card and digital wallet payments")
+System_Ext(notif, "Email and SMS service", "Delivers invoices, alerts and promotions")
+
+Rel(staff, erp, "Registers sales, receipts and attendance", "HTTPS")
+Rel(mgr, erp, "Manages the store", "HTTPS")
+Rel(corp, erp, "Manages purchasing, payroll, campaigns and users", "HTTPS")
+Rel(sup, erp, "Confirms purchase orders", "HTTPS portal")
+Rel(erp, cus, "Sends invoices and promotions", "Email / SMS")
+Rel(erp, dian, "Sends electronic documents", "Web service")
+Rel(erp, pay, "Requests payment authorization", "REST API")
+Rel(erp, notif, "Sends messages", "REST API")
+@enduml

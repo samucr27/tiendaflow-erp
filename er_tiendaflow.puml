@@ -1,0 +1,201 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam dpi 150
+skinparam defaultFontSize 14
+skinparam linetype ortho
+skinparam entityBackgroundColor white
+skinparam classBackgroundColor white
+skinparam nodesep 30
+skinparam ranksep 40
+hide circle
+
+entity "store" as store {
+  * id : int <<PK>>
+  --
+  name : varchar
+  address : varchar
+  active : bit
+}
+entity "category" as category {
+  * id : int <<PK>>
+  --
+  name : varchar
+}
+entity "product" as product {
+  * id : int <<PK>>
+  --
+  category_id : int <<FK>>
+  sku : varchar <<UK>>
+  barcode : varchar <<UK>>
+  name : varchar
+  sale_price : decimal
+  tax_rate : decimal
+  active : bit
+}
+entity "stock" as stock {
+  * store_id : int <<PK, FK>>
+  * product_id : int <<PK, FK>>
+  --
+  quantity : int
+  min_stock : int
+  max_stock : int
+  location : varchar
+}
+entity "batch" as batch {
+  * id : int <<PK>>
+  --
+  store_id : int <<FK>>
+  product_id : int <<FK>>
+  batch_code : varchar
+  expiration_date : date
+  quantity : int
+}
+entity "inventory_movement" as mov {
+  * id : int <<PK>>
+  --
+  store_id : int <<FK>>
+  product_id : int <<FK>>
+  user_id : int <<FK>>
+  type : varchar
+  quantity : int
+  moved_at : datetime
+  reason : varchar
+}
+entity "supplier" as supplier {
+  * id : int <<PK>>
+  --
+  nit : varchar <<UK>>
+  business_name : varchar
+  address : varchar
+  rating : decimal
+  active : bit
+}
+entity "purchase_order" as po {
+  * id : int <<PK>>
+  --
+  supplier_id : int <<FK>>
+  store_id : int <<FK>>
+  order_date : date
+  status : varchar
+  total : decimal
+}
+entity "purchase_order_line" as pol {
+  * order_id : int <<PK, FK>>
+  * product_id : int <<PK, FK>>
+  --
+  quantity : int
+  unit_cost : decimal
+  received_qty : int
+}
+entity "employee" as emp {
+  * id : int <<PK>>
+  --
+  store_id : int <<FK>>
+  id_number : varchar <<UK>>
+  name : varchar
+  position : varchar
+  contract_type : varchar
+  salary : decimal
+  active : bit
+}
+entity "shift" as shift {
+  * id : int <<PK>>
+  --
+  employee_id : int <<FK>>
+  start_time : datetime
+  end_time : datetime
+  clock_in : datetime
+  clock_out : datetime
+}
+entity "customer" as cust {
+  * id : int <<PK>>
+  --
+  id_number : varchar <<UK>>
+  name : varchar
+  email : varchar
+  consent_date : datetime
+  points : int
+  tier : varchar
+}
+entity "sale" as sale {
+  * id : int <<PK>>
+  --
+  store_id : int <<FK>>
+  cashier_id : int <<FK>>
+  customer_id : int <<FK>>
+  sale_date : datetime
+  total : decimal
+  status : varchar
+}
+entity "sale_line" as sl {
+  * sale_id : int <<PK, FK>>
+  * product_id : int <<PK, FK>>
+  --
+  quantity : int
+  unit_price : decimal
+  discount : decimal
+}
+entity "payment" as pay {
+  * id : int <<PK>>
+  --
+  sale_id : int <<FK>>
+  method : varchar
+  amount : decimal
+}
+entity "electronic_document" as edoc {
+  * id : int <<PK>>
+  --
+  sale_id : int <<FK>>
+  doc_type : varchar
+  cufe : varchar <<UK>>
+  dian_status : varchar
+}
+entity "app_user" as usr {
+  * id : int <<PK>>
+  --
+  employee_id : int <<FK>>
+  role_id : int <<FK>>
+  email : varchar <<UK>>
+  password_hash : varchar
+  two_factor : bit
+  active : bit
+}
+entity "role" as role {
+  * id : int <<PK>>
+  --
+  name : varchar
+}
+entity "audit_log" as audit {
+  * id : bigint <<PK>>
+  --
+  user_id : int <<FK>>
+  action : varchar
+  module : varchar
+  ip : varchar
+  logged_at : datetime
+}
+
+category ||--o{ product
+store ||--o{ stock
+product ||--o{ stock
+stock ||--o{ batch
+stock ||--o{ mov
+supplier ||--o{ po
+store ||--o{ po
+po ||--|{ pol
+product ||--o{ pol
+store ||--o{ emp
+emp ||--o{ shift
+store ||--o{ sale
+emp ||--o{ sale
+cust |o--o{ sale
+sale ||--|{ sl
+product ||--o{ sl
+sale ||--|{ pay
+sale ||--o{ edoc
+emp |o--o| usr
+role ||--o{ usr
+usr ||--o{ audit
+usr ||--o{ mov
+@enduml

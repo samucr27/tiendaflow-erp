@@ -1,0 +1,68 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam dpi 150
+skinparam packageStyle rectangle
+skinparam usecaseBackgroundColor white
+skinparam actorBackgroundColor white
+skinparam rectangleBackgroundColor white
+skinparam packageBackgroundColor white
+left to right direction
+skinparam defaultFontSize 22
+actor "Cashier" as CA
+actor "Stock Clerk" as SC
+actor "Store Manager" as SM
+actor "Logistics Coordinator" as LC
+actor "HR Officer" as HO
+actor "Employee" as EM
+actor "Corporate Manager" as CM
+actor "System Administrator" as AD
+actor "Supplier" as SU
+actor "Customer" as CU
+actor "DIAN\n<<external system>>" as DIAN
+actor "Payment Gateway\n<<external system>>" as PG
+
+rectangle "TiendaFlow ERP System" {
+  package "Inventory Management" {
+    usecase "Control stock per store" as I1
+    usecase "Receive merchandise" as I2
+  }
+  package "Sales and Billing Management" {
+    usecase "Register sale (POS)" as S1
+    usecase "Issue electronic invoice" as S2
+  }
+  package "Supplier and Purchasing Management" {
+    usecase "Manage purchase orders" as P1
+    usecase "Confirm purchase order" as P2
+  }
+  package "Human Resources Management" {
+    usecase "Manage employees and payroll" as H1
+    usecase "Register attendance" as H2
+  }
+  package "Customer Management (CRM)" {
+    usecase "Manage loyalty points" as C1
+    usecase "Send promotions" as C2
+  }
+  package "Security and Reporting" {
+    usecase "Manage users and roles" as G1
+    usecase "Consult consolidated reports" as G2
+  }
+}
+
+SC --> I2
+SM --> I1
+CA --> S1
+S1 ..> S2 : <<include>>
+S2 --> DIAN
+S1 --> PG
+LC --> P1
+SU --> P2
+HO --> H1
+EM --> H2
+CA --> C1
+CU --> C1
+CM --> C2
+AD --> G1
+CM --> G2
+@enduml

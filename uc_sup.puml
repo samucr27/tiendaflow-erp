@@ -1,0 +1,41 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam dpi 150
+skinparam packageStyle rectangle
+skinparam usecaseBackgroundColor white
+skinparam actorBackgroundColor white
+skinparam rectangleBackgroundColor white
+skinparam packageBackgroundColor white
+left to right direction
+actor "Logistics Coordinator" as LC
+actor "Store Manager" as SM
+actor "Supplier" as SU
+
+rectangle "Supplier and Purchasing Management Module" {
+  usecase "UC-SUP-01\nManage suppliers\n(register, update, deactivate)" as U1
+  usecase "UC-SUP-02\nGenerate reorder suggestion" as U2
+  usecase "UC-SUP-03\nCreate purchase order" as U3
+  usecase "UC-SUP-04\nApprove purchase order" as U4
+  usecase "Send order to supplier" as U4a
+  usecase "UC-SUP-05\nConsult and confirm\npurchase orders" as U5
+  usecase "UC-SUP-06\nTrack deliveries" as U6
+  usecase "UC-SUP-07\nEvaluate supplier" as U7
+  usecase "Consult supplier ranking" as U7a
+  usecase "UC-SUP-08\nCancel purchase order" as U8
+}
+
+LC --> U1
+LC --> U2
+LC --> U3
+U2 ..> U3 : <<extend>>
+SM --> U4
+U4 ..> U4a : <<include>>
+SU --> U5
+LC --> U6
+LC --> U7
+U7a ..> U7 : <<extend>>
+SM --> U7a
+LC --> U8
+@enduml

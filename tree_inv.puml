@@ -1,0 +1,34 @@
+@startwbs
+<style>
+wbsDiagram {
+  node { BackgroundColor white; LineColor black; FontColor black; FontSize 16; Padding 5; Margin 4; RoundCorner 0; MaximumWidth 150 }
+  arrow { LineColor black }
+  :depth(0) { FontStyle bold }
+}
+</style>
+skinparam monochrome true
+skinparam shadowing false
+skinparam dpi 150
+* 1.1 Inventory Management
+** 1.1.1 Product catalog management
+*** 1.1.1.1 Register products (SKU, barcode, price)
+*** 1.1.1.2 Update prices, levels and location
+*** 1.1.1.3 Deactivate obsolete products
+** 1.1.2 Stock control per store
+*** 1.1.2.1 Real-time stock query
+*** 1.1.2.2 Minimum stock alerts
+*** 1.1.2.3 Inter-store stock transfers
+** 1.1.3 Merchandise receiving
+*** 1.1.3.1 Receipt against purchase order
+*** 1.1.3.2 Batch and expiration date registration
+*** 1.1.3.3 Discrepancy reporting
+** 1.1.4 Expiration and loss control
+*** 1.1.4.1 FEFO expiration alerts
+*** 1.1.4.2 Shrinkage registration (damage, theft, expiry)
+** 1.1.5 Physical inventory counts
+*** 1.1.5.1 Cycle counts
+*** 1.1.5.2 Stock adjustments with approval
+** 1.1.6 Inventory reports
+*** 1.1.6.1 Stock valuation and kardex
+*** 1.1.6.2 Low-rotation products report
+@endwbs

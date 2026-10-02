@@ -1,0 +1,50 @@
+@startwbs
+<style>
+wbsDiagram {
+  node { BackgroundColor white; LineColor black; FontColor black; FontSize 16; Padding 5; Margin 4; RoundCorner 0; MaximumWidth 150 }
+  arrow { LineColor black }
+  :depth(0) { FontStyle bold }
+}
+</style>
+skinparam monochrome true
+skinparam shadowing false
+skinparam dpi 150
+* 1 TiendaFlow ERP System
+** 1.1 Inventory Management
+*** 1.1.1 Product catalog management
+*** 1.1.2 Stock control per store
+*** 1.1.3 Merchandise receiving
+*** 1.1.4 Expiration and loss control
+*** 1.1.5 Physical inventory counts
+*** 1.1.6 Inventory reports
+** 1.2 Sales and Billing Management
+*** 1.2.1 Point of sale (POS)
+*** 1.2.2 Electronic invoicing (DIAN)
+*** 1.2.3 Returns and voided sales
+*** 1.2.4 Cash register management
+*** 1.2.5 Sales queries and reports
+** 1.3 Supplier and Purchasing Management
+*** 1.3.1 Supplier registry
+*** 1.3.2 Purchase orders
+*** 1.3.3 Delivery tracking
+*** 1.3.4 Supplier evaluation
+** 1.4 Human Resources Management
+*** 1.4.1 Employee records
+*** 1.4.2 Contract management
+*** 1.4.3 Shift scheduling
+*** 1.4.4 Attendance control
+*** 1.4.5 Basic payroll
+** 1.5 Customer Management (CRM)
+*** 1.5.1 Customer registry
+*** 1.5.2 Loyalty program
+*** 1.5.3 Promotions and notifications
+*** 1.5.4 Purchase history
+*** 1.5.5 Customer requests (PQRS)
+** 1.6 Security and Reporting
+*** 1.6.1 User management
+*** 1.6.2 Roles and permissions
+*** 1.6.3 Authentication
+*** 1.6.4 Audit log
+*** 1.6.5 Consolidated reports
+*** 1.6.6 System parameters
+@endwbs

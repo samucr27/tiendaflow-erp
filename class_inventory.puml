@@ -1,0 +1,111 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam dpi 150
+skinparam defaultFontSize 15
+skinparam classAttributeIconSize 0
+skinparam classBackgroundColor white
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+
+class Category {
+  - id: int
+  - name: string
+}
+class Product {
+  - id: int
+  - sku: string
+  - barcode: string
+  - name: string
+  - unit: string
+  - cost: decimal
+  - salePrice: decimal
+  - taxRate: decimal
+  - active: bool
+  + register(): void
+  + update(): void
+  + deactivate(): void
+}
+class Store <<warehouse>> {
+  - id: int
+  - name: string
+  - address: string
+  - active: bool
+  + getStock(product: Product): StockItem
+}
+class StockItem {
+  - quantityAvailable: int
+  - minStock: int
+  - maxStock: int
+  - location: string
+  + increase(quantity: int): void
+  + decrease(quantity: int): void
+  + isBelowMinimum(): bool
+  + updateLocation(location: string): void
+}
+class Batch {
+  - id: int
+  - batchCode: string
+  - expirationDate: Date
+  - quantity: int
+  + isExpired(): bool
+  + daysToExpire(): int
+}
+class InventoryMovement {
+  - id: int
+  - type: MovementType
+  - quantity: int
+  - date: DateTime
+  - userId: int
+  - reason: string
+  + register(): void
+}
+enum MovementType {
+  RECEIPT
+  SALE
+  RETURN
+  TRANSFER_OUT
+  TRANSFER_IN
+  ADJUSTMENT
+  SHRINKAGE
+}
+class StockTransfer {
+  - id: int
+  - status: string
+  - date: DateTime
+  + send(): void
+  + confirmReception(): void
+}
+class PhysicalCount {
+  - id: int
+  - date: DateTime
+  - status: string
+  + compare(): void
+  + approve(managerId: int): void
+}
+class StockAlert {
+  - id: int
+  - type: AlertType
+  - date: DateTime
+  - resolved: bool
+  + notify(): void
+}
+enum AlertType {
+  MINIMUM_STOCK
+  EXPIRATION
+}
+
+Category "1" -- "*" Product : classifies
+Store "1" *-- "*" StockItem : holds
+Product "1" -- "*" StockItem : is stocked as
+StockItem "1" *-- "*" Batch : contains
+StockItem "1" -- "*" InventoryMovement : records
+InventoryMovement --> MovementType
+Store "1" -- "*" StockTransfer : origin / destination
+StockTransfer "1" -- "2..*" InventoryMovement : generates
+Store "1" -- "*" PhysicalCount : performs
+PhysicalCount "1" -- "*" InventoryMovement : adjusts with
+StockItem "1" -- "*" StockAlert : triggers
+StockAlert --> AlertType
+@enduml

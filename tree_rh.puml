@@ -1,0 +1,29 @@
+@startwbs
+<style>
+wbsDiagram {
+  node { BackgroundColor white; LineColor black; FontColor black; FontSize 16; Padding 5; Margin 4; RoundCorner 0; MaximumWidth 150 }
+  arrow { LineColor black }
+  :depth(0) { FontStyle bold }
+}
+</style>
+skinparam monochrome true
+skinparam shadowing false
+skinparam dpi 150
+* 1.4 Human Resources Management
+** 1.4.1 Employee records
+*** 1.4.1.1 Register employees
+*** 1.4.1.2 Consult employees by store
+** 1.4.2 Contract management
+*** 1.4.2.1 Update contract data
+*** 1.4.2.2 Termination and final settlement report
+** 1.4.3 Shift scheduling
+*** 1.4.3.1 24/7 rotating shift planning
+*** 1.4.3.2 Shift swap requests and approval
+** 1.4.4 Attendance control
+*** 1.4.4.1 Clock-in / clock-out registration
+*** 1.4.4.2 Late arrivals and absences report
+** 1.4.5 Basic payroll
+*** 1.4.5.1 Worked hours and overtime
+*** 1.4.5.2 Night, Sunday and holiday surcharges
+*** 1.4.5.3 Payroll pre-settlement report
+@endwbs

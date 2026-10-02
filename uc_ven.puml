@@ -1,0 +1,52 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam dpi 150
+skinparam packageStyle rectangle
+skinparam usecaseBackgroundColor white
+skinparam actorBackgroundColor white
+skinparam rectangleBackgroundColor white
+skinparam packageBackgroundColor white
+left to right direction
+actor "Cashier" as CA
+actor "Store Manager" as SM
+actor "Payment Gateway\n<<external system>>" as PG
+actor "DIAN\n<<external system>>" as DIAN
+
+rectangle "Sales and Billing Management Module" {
+  usecase "UC-VEN-01\nOpen cash register" as U1
+  usecase "UC-VEN-02\nRegister sale" as U2
+  usecase "Scan products" as U2a
+  usecase "Process payment" as U2b
+  usecase "Apply promotion" as U2c
+  usecase "Redeem loyalty points" as U2d
+  usecase "UC-VEN-03\nIssue electronic invoice" as U3
+  usecase "Send invoice by email" as U3a
+  usecase "UC-VEN-04\nProcess return or void sale" as U4
+  usecase "Authorize return or void" as U4a
+  usecase "Issue credit note" as U4b
+  usecase "UC-VEN-05\nClose cash register" as U5
+  usecase "Reconcile cash" as U5a
+  usecase "UC-VEN-06\nConsult sales history\nand reports" as U6
+}
+
+CA --> U1
+CA --> U2
+U2 ..> U2a : <<include>>
+U2 ..> U2b : <<include>>
+U2 ..> U3 : <<include>>
+U2c ..> U2 : <<extend>>
+U2d ..> U2 : <<extend>>
+U3a ..> U3 : <<extend>>
+CA --> U4
+U4 ..> U4a : <<include>>
+U4 ..> U4b : <<include>>
+SM --> U4a
+CA --> U5
+U5 ..> U5a : <<include>>
+SM --> U6
+U2b --> PG
+U3 --> DIAN
+U4b --> DIAN
+@enduml
