@@ -3,5 +3,5 @@
 public class DuplicateSkuException : Exception
 {
     public DuplicateSkuException(string sku)
-        : base($"El SKU {sku} ya esta registrado.") { }
+        : base($"SKU {sku} is already registered.") { }
 }
