@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TiendaFlow.Domain\TiendaFlow.Domain.csproj" />
     <ProjectReference Include="..\..\src\TiendaFlow.Application\TiendaFlow.Application.csproj" />
+    <ProjectReference Include="..\..\src\TiendaFlow.Infrastructure\TiendaFlow.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

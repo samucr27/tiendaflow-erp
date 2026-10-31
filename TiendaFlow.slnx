@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/TiendaFlow.Application/TiendaFlow.Application.csproj" />
     <Project Path="src/TiendaFlow.Domain/TiendaFlow.Domain.csproj" />
+    <Project Path="src/TiendaFlow.Infrastructure/TiendaFlow.Infrastructure.csproj" />
     <Project Path="src/TiendaFlow.Web/TiendaFlow.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
