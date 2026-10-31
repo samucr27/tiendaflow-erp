@@ -18,5 +18,11 @@ public class InMemoryProductRepository : IProductRepository
         _byBarcode[product.Barcode] = product;
     }
 
+    public void Update(Product product)
+    {
+        _bySku[product.Sku] = product;
+        _byBarcode[product.Barcode] = product;
+    }
+
     public Product? GetBySku(string sku) => _bySku.GetValueOrDefault(sku);
 }

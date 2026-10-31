@@ -15,7 +15,9 @@ public class Product
     public string Sku { get; }
     public string Barcode { get; }
     public string Name { get; }
-    public decimal SalePrice { get; }
+    public decimal SalePrice { get; private set; }
+
+    public void ChangePrice(decimal newPrice) { }
 
     private static void Validate(string sku, string barcode, string name, decimal salePrice)
     {
