@@ -10,5 +10,9 @@ public class InventoryService
 
     public void CreateProduct(Product product)
     {
+        if (_repository.ExistsBySku(product.Sku))
+            throw new DuplicateSkuException(product.Sku);
+
+        _repository.Add(product);
     }
 }
