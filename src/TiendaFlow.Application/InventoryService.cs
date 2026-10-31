@@ -13,6 +13,9 @@ public class InventoryService
         if (_repository.ExistsBySku(product.Sku))
             throw new DuplicateSkuException(product.Sku);
 
+        if (_repository.ExistsByBarcode(product.Barcode))
+            throw new DuplicateBarcodeException(product.Barcode);
+
         _repository.Add(product);
     }
 }
