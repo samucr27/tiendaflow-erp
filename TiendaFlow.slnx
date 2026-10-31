@@ -6,6 +6,7 @@
     <Project Path="src/TiendaFlow.Web/TiendaFlow.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/TiendaFlow.AcceptanceTests/TiendaFlow.AcceptanceTests.csproj" />
     <Project Path="tests/TiendaFlow.UnitTests/TiendaFlow.UnitTests.csproj" />
   </Folder>
 </Solution>
