@@ -4,14 +4,7 @@ public class Product
 {
     public Product(string sku, string barcode, string name, decimal salePrice)
     {
-        if (string.IsNullOrWhiteSpace(sku))
-            throw new InvalidProductException("SKU is required.");
-        if (string.IsNullOrWhiteSpace(barcode))
-            throw new InvalidProductException("Barcode is required.");
-        if (string.IsNullOrWhiteSpace(name))
-            throw new InvalidProductException("Name is required.");
-        if (salePrice <= 0)
-            throw new InvalidProductException("Sale price must be greater than zero.");
+        Validate(sku, barcode, name, salePrice);
 
         Sku = sku;
         Barcode = barcode;
@@ -23,4 +16,20 @@ public class Product
     public string Barcode { get; }
     public string Name { get; }
     public decimal SalePrice { get; }
+
+    private static void Validate(string sku, string barcode, string name, decimal salePrice)
+    {
+        RequireText(sku, "SKU");
+        RequireText(barcode, "Barcode");
+        RequireText(name, "Name");
+
+        if (salePrice <= 0)
+            throw new InvalidProductException("Sale price must be greater than zero.");
+    }
+
+    private static void RequireText(string value, string field)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidProductException($"{field} is required.");
+    }
 }
