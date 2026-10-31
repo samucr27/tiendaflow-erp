@@ -4,6 +4,9 @@ public class StockItem
 {
     public StockItem(string sku, int storeId, int quantityAvailable, string location, int minStock = 0)
     {
+        if (minStock < 0)
+            throw new ArgumentOutOfRangeException(nameof(minStock), "Minimum stock cannot be negative.");
+
         Sku = sku;
         StoreId = storeId;
         QuantityAvailable = quantityAvailable;
@@ -18,7 +21,7 @@ public class StockItem
     public int MinStock { get; }
     public InventoryMovement? LastMovement { get; private set; }
 
-    public bool IsBelowMinimum() => false;
+    public bool IsBelowMinimum() => QuantityAvailable <= MinStock;
 
     public void RegisterSale(int quantity, DateTime date)
     {
