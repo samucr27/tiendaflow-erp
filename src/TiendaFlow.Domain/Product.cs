@@ -4,7 +4,10 @@ public class Product
 {
     public Product(string sku, string barcode, string name, decimal salePrice)
     {
-        Validate(sku, barcode, name, salePrice);
+        RequireText(sku, "SKU");
+        RequireText(barcode, "Barcode");
+        RequireText(name, "Name");
+        RequirePositivePrice(salePrice);
 
         Sku = sku;
         Barcode = barcode;
@@ -17,15 +20,16 @@ public class Product
     public string Name { get; }
     public decimal SalePrice { get; private set; }
 
-    public void ChangePrice(decimal newPrice) { }
-
-    private static void Validate(string sku, string barcode, string name, decimal salePrice)
+    public void ChangePrice(decimal newPrice)
     {
-        RequireText(sku, "SKU");
-        RequireText(barcode, "Barcode");
-        RequireText(name, "Name");
+        RequirePositivePrice(newPrice);
 
-        if (salePrice <= 0)
+        SalePrice = newPrice;
+    }
+
+    private static void RequirePositivePrice(decimal price)
+    {
+        if (price <= 0)
             throw new InvalidProductException("Sale price must be greater than zero.");
     }
 
