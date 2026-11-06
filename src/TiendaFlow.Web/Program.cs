@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using TiendaFlow.Application;
+using TiendaFlow.Infrastructure.Persistence;
 using TiendaFlow.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
