@@ -11,6 +11,7 @@ public class TiendaFlowDbContext : DbContext
     }
 
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<StockItem> StockItems => Set<StockItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

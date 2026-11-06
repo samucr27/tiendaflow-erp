@@ -4,7 +4,7 @@ services:
     container_name: tiendaflow-sql
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_SA_PASSWORD: "TiendaFlow_Dev#2026"
     ports:
       - "1433:1433"
     volumes:

@@ -4,33 +4,30 @@ using TiendaFlow.Domain;
 
 namespace TiendaFlow.Infrastructure.Persistence;
 
-public class EfProductRepository : IProductRepository
+public class EfStockRepository : IStockRepository
 {
-    private readonly TiendaFlowDbContext _db;
+    private readonly TiendaFlowDbContext _context;
 
-    public EfProductRepository(TiendaFlowDbContext db)
+    public EfStockRepository(TiendaFlowDbContext context)
     {
-        _db = db;
+        _context = context;
     }
 
-    public bool ExistsBySku(string sku) =>
-        _db.Products.AsNoTracking().Any(p => p.Sku == sku);
-
-    public bool ExistsByBarcode(string barcode) =>
-        _db.Products.AsNoTracking().Any(p => p.Barcode == barcode);
-
-    public void Add(Product product)
+    public StockItem? Get(int storeId, string sku)
     {
-        _db.Products.Add(product);
-        _db.SaveChanges();
+        return _context.StockItems
+            .FirstOrDefault(s => s.StoreId == storeId && s.Sku == sku);
     }
 
-    public void Update(Product product)
+    public void Add(StockItem item)
     {
-        _db.Products.Update(product);
-        _db.SaveChanges();
+        _context.StockItems.Add(item);
+        _context.SaveChanges();
     }
 
-    public Product? GetBySku(string sku) =>
-        _db.Products.FirstOrDefault(p => p.Sku == sku);
+    public void Update(StockItem item)
+    {
+        _context.StockItems.Update(item);
+        _context.SaveChanges();
+    }
 }

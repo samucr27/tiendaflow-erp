@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TiendaFlow.Application\TiendaFlow.Application.csproj" />
+    <ProjectReference Include="..\TiendaFlow.Infrastructure\TiendaFlow.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -9,6 +10,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
   </ItemGroup>
 
   <PropertyGroup>
