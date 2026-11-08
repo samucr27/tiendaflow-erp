@@ -1,10 +1,32 @@
+using Microsoft.EntityFrameworkCore;
+using TiendaFlow.Application;
+using TiendaFlow.Infrastructure.Persistence;
 using TiendaFlow.Web.Components;
+using TiendaFlow.Web.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException(
+        "Connection string 'ConnectionStrings:DefaultConnection' is not configured. " +
+        "Set it with dotnet user-secrets on the Web project.");
+
+builder.Services.AddDbContext<TiendaFlowDbContext>(options => options.UseSqlServer(connectionString));
+
+builder.Services.AddScoped<IProductRepository, EfProductRepository>();
+builder.Services.AddScoped<IStockRepository, EfStockRepository>();
+builder.Services.AddScoped<IAuditLog, EfAuditLog>();
+
+builder.Services.AddScoped<InventoryService>();
+builder.Services.AddScoped<StockService>();
+builder.Services.AddScoped<ProductPriceService>();
+
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddHostedService<DevDataSeeder>();
 
 var app = builder.Build();
 
