@@ -226,4 +226,32 @@ public class EfPersistenceTests : IClassFixture<SqlServerDatabaseFixture>
             Assert.Equal("user-7", entry.UserId);
         }
     }
+
+    [SqlServerFact]
+    public void UpdatePrice_WhenAuditWriteFails_KeepsThePreviousPrice()
+    {
+        var sku = NewSku();
+
+        using (var context = _database.CreateContext())
+            new EfProductRepository(context).Add(new Product(sku, NewBarcode(), "Tea x20", 6000m));
+
+        using (var context = _database.CreateContext())
+        {
+            var service = new ProductPriceService(
+                new EfProductRepository(context),
+                new ThrowingAuditLog());
+
+            Assert.Throws<InvalidOperationException>(
+                () => service.UpdatePrice(sku, 6500m, "user-7", MovementDate));
+        }
+
+        using (var context = _database.CreateContext())
+            Assert.Equal(6000m, new EfProductRepository(context).GetBySku(sku)!.SalePrice);
+    }
+
+    private sealed class ThrowingAuditLog : IAuditLog
+    {
+        public void Record(AuditEntry entry) =>
+            throw new InvalidOperationException("Simulated audit failure.");
+    }
 }
