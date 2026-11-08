@@ -19,7 +19,7 @@ public class ProductPriceService
         _unitOfWork = unitOfWork ?? NoOpUnitOfWork.Instance;
     }
 
-    public void UpdatePrice(string sku, decimal newPrice, string userId, DateTime date)
+    public void UpdatePrice(string sku, decimal newPrice, int? userId, DateTime date)
     {
         _unitOfWork.ExecuteInTransaction(() =>
         {

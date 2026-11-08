@@ -1,3 +1,17 @@
 ﻿namespace TiendaFlow.Domain;
 
-public record InventoryMovement(MovementType Type, int Quantity, DateTime Date);
+public sealed record InventoryMovement
+{
+    public InventoryMovement(MovementType type, int quantity, DateTime date)
+    {
+        Type = type;
+        Quantity = quantity;
+        Date = UtcTimestamp.Normalize(date);
+    }
+
+    public MovementType Type { get; }
+
+    public int Quantity { get; }
+
+    public DateTime Date { get; }
+}

@@ -194,7 +194,7 @@ else
 
         try
         {
-            PriceService.UpdatePrice(_product!.Sku, _priceForm.NewPrice, DemoSession.UserId, DateTime.UtcNow);
+            PriceService.UpdatePrice(_product!.Sku, _priceForm.NewPrice, null, DateTime.UtcNow);
             LoadProduct();
             _success = $"Precio actualizado a {Formatters.Money(_product!.SalePrice)}.";
         }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using TiendaFlow.Application;
 
 namespace TiendaFlow.Web.Formatting;
 
@@ -15,11 +16,13 @@ public static class Formatters
     public static string Number(decimal value) => value.ToString("N0", Culture);
 
     public static string LongDate(DateTime value) => Capitalize(
-        value.ToString("dddd, d 'de' MMMM 'de' yyyy", Culture));
+        LocalTime.ToLocal(value).ToString("dddd, d 'de' MMMM 'de' yyyy", Culture));
 
-    public static string ShortDate(DateTime value) => value.ToString("dd/MM/yyyy", Culture);
+    public static string ShortDate(DateTime value) =>
+        LocalTime.ToLocal(value).ToString("dd/MM/yyyy", Culture);
 
-    public static string ShortDateTime(DateTime value) => value.ToString("dd/MM/yyyy HH:mm", Culture);
+    public static string ShortDateTime(DateTime value) =>
+        LocalTime.ToLocal(value).ToString("dd/MM/yyyy HH:mm", Culture);
 
     public static string Quantity(int value) => value.ToString("N0", Culture);
 

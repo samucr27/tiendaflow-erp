@@ -1,7 +1,6 @@
 @page "/inventario/ventas"
 @rendermode InteractiveServer
 @using System.ComponentModel.DataAnnotations
-@using System.Globalization
 @inject IProductCatalogQuery ProductQuery
 @inject IStockQuery StockQuery
 @inject StockService StockService
@@ -176,14 +175,15 @@
 
             LoadStock();
 
+            var soldAt = DateTime.UtcNow;
             _receipt = new SaleReceipt(
-                $"VTA-{DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture)}",
+                SaleCode.Create(soldAt),
                 product.Name,
                 product.Sku,
                 _form.Quantity,
                 product.SalePrice,
                 Total,
-                DateTime.Now,
+                soldAt,
                 Available);
 
             _form.Quantity = 1;

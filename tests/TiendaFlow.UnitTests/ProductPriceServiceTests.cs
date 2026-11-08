@@ -27,14 +27,14 @@ public class ProductPriceServiceTests
     {
         var product = GivenProduct();
 
-        _service.UpdatePrice("SKU-001", 3900m, "user-1", Now);
+        _service.UpdatePrice("SKU-001", 3900m, 7, Now);
 
         Assert.Equal(3900m, product.SalePrice);
         _repo.Verify(r => r.Update(product), Times.Once);
         _audit.Verify(a => a.Record(It.Is<AuditEntry>(e =>
             e.Action == "PriceChanged"
             && e.EntityId == "SKU-001"
-            && e.UserId == "user-1"
+            && e.UserId == 7
             && e.Date == Now
             && e.Detail.Contains("3500")
             && e.Detail.Contains("3900"))), Times.Once);
@@ -45,7 +45,7 @@ public class ProductPriceServiceTests
     {
         _repo.Setup(r => r.GetBySku("SKU-404")).Returns((Product?)null);
 
-        Assert.Throws<ProductNotFoundException>(() => _service.UpdatePrice("SKU-404", 1000m, "user-1", Now));
+        Assert.Throws<ProductNotFoundException>(() => _service.UpdatePrice("SKU-404", 1000m, 7, Now));
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class ProductPriceServiceTests
     {
         GivenProduct();
 
-        Assert.Throws<InvalidProductException>(() => _service.UpdatePrice("SKU-001", 0m, "user-1", Now));
+        Assert.Throws<InvalidProductException>(() => _service.UpdatePrice("SKU-001", 0m, 7, Now));
         _audit.Verify(a => a.Record(It.IsAny<AuditEntry>()), Times.Never);
     }
 }

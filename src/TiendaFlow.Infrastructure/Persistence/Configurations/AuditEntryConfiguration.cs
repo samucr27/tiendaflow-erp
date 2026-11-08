@@ -10,11 +10,11 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
     {
         builder.ToTable("audit_log");
 
-        // AuditEntry has no identifier; the database supplies a surrogate key.
-        builder.Property<long>("Id")
+        builder.HasKey(entry => entry.Id);
+
+        builder.Property(entry => entry.Id)
             .HasColumnName("id")
             .ValueGeneratedOnAdd();
-        builder.HasKey("Id");
 
         builder.Property(entry => entry.Action)
             .HasColumnName("action")
@@ -32,9 +32,16 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
             .IsRequired();
 
         builder.Property(entry => entry.UserId)
-            .HasColumnName("user_id")
-            .HasMaxLength(100)
+            .HasColumnName("user_id");
+
+        builder.Property(entry => entry.Module)
+            .HasColumnName("module")
+            .HasMaxLength(50)
             .IsRequired();
+
+        builder.Property(entry => entry.Ip)
+            .HasColumnName("ip")
+            .HasMaxLength(64);
 
         builder.Property(entry => entry.Date)
             .HasColumnName("logged_at")
@@ -47,12 +54,7 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
 
 internal static class UtcDateTimeConverter
 {
-    public static DateTime ToUtc(DateTime value) => value.Kind switch
-    {
-        DateTimeKind.Utc => value,
-        DateTimeKind.Local => value.ToUniversalTime(),
-        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
-    };
+    public static DateTime ToUtc(DateTime value) => Domain.UtcTimestamp.Normalize(value);
 
     public static DateTime FromUtc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
 }

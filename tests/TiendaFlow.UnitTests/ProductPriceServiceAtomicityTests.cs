@@ -27,7 +27,7 @@ public class ProductPriceServiceAtomicityTests
     {
         GivenProduct();
 
-        CreateService().UpdatePrice("SKU-001", 3900m, "user-1", Now);
+        CreateService().UpdatePrice("SKU-001", 3900m, 7, Now);
 
         Assert.True(_unitOfWork.WasExecuted);
         Assert.False(_unitOfWork.RolledBack);
@@ -43,7 +43,7 @@ public class ProductPriceServiceAtomicityTests
             .Throws(new InvalidOperationException("Simulated audit failure."));
 
         Assert.Throws<InvalidOperationException>(
-            () => CreateService().UpdatePrice("SKU-001", 3900m, "user-1", Now));
+            () => CreateService().UpdatePrice("SKU-001", 3900m, 7, Now));
 
         Assert.True(_unitOfWork.WasExecuted);
         Assert.True(_unitOfWork.RolledBack);

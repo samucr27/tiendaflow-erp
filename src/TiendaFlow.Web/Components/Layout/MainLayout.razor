@@ -12,7 +12,7 @@
                 <span class="topbar-store">@DemoSession.StoreName</span>
             </div>
             <div class="topbar-meta">
-                <span class="topbar-date">@Formatters.LongDate(DateTime.Now)</span>
+                <span class="topbar-date">@Formatters.LongDate(DateTime.UtcNow)</span>
                 <span class="topbar-user">@DemoSession.UserName</span>
             </div>
         </header>

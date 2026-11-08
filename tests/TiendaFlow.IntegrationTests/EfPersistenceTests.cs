@@ -189,7 +189,7 @@ public class EfPersistenceTests : IClassFixture<SqlServerDatabaseFixture>
 
         using (var context = _database.CreateContext())
             new EfAuditLog(context).Record(
-                new AuditEntry("PriceChanged", entityId, detail, "user-1", MovementDate));
+                new AuditEntry("PriceChanged", entityId, detail, 1, MovementDate));
 
         using (var context = _database.CreateContext())
         {
@@ -197,7 +197,7 @@ public class EfPersistenceTests : IClassFixture<SqlServerDatabaseFixture>
 
             Assert.Equal("PriceChanged", entry.Action);
             Assert.Equal(detail, entry.Detail);
-            Assert.Equal("user-1", entry.UserId);
+            Assert.Equal(1, entry.UserId);
             Assert.Equal(MovementDate, entry.Date);
             Assert.Equal(DateTimeKind.Utc, entry.Date.Kind);
         }
@@ -217,7 +217,7 @@ public class EfPersistenceTests : IClassFixture<SqlServerDatabaseFixture>
                 new EfProductRepository(context),
                 new EfAuditLog(context),
                 new EfUnitOfWork(context));
-            service.UpdatePrice(sku, 6500m, "user-7", MovementDate);
+            service.UpdatePrice(sku, 6500m, 7, MovementDate);
         }
 
         using (var context = _database.CreateContext())
@@ -226,7 +226,7 @@ public class EfPersistenceTests : IClassFixture<SqlServerDatabaseFixture>
 
             var entry = context.AuditEntries.Single(candidate => candidate.EntityId == sku);
             Assert.Equal("PriceChanged", entry.Action);
-            Assert.Equal("user-7", entry.UserId);
+            Assert.Equal(7, entry.UserId);
         }
     }
 
@@ -246,7 +246,7 @@ public class EfPersistenceTests : IClassFixture<SqlServerDatabaseFixture>
                 new EfUnitOfWork(context));
 
             Assert.Throws<InvalidOperationException>(
-                () => service.UpdatePrice(sku, 6500m, "user-7", MovementDate));
+                () => service.UpdatePrice(sku, 6500m, 7, MovementDate));
         }
 
         using (var context = _database.CreateContext())
