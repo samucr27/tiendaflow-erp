@@ -20,6 +20,7 @@ builder.Services.AddDbContext<TiendaFlowDbContext>(options => options.UseSqlServ
 builder.Services.AddScoped<IProductRepository, EfProductRepository>();
 builder.Services.AddScoped<IStockRepository, EfStockRepository>();
 builder.Services.AddScoped<IAuditLog, EfAuditLog>();
+builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<StockService>();

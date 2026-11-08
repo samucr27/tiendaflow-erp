@@ -213,7 +213,10 @@ public class EfPersistenceTests : IClassFixture<SqlServerDatabaseFixture>
 
         using (var context = _database.CreateContext())
         {
-            var service = new ProductPriceService(new EfProductRepository(context), new EfAuditLog(context));
+            var service = new ProductPriceService(
+                new EfProductRepository(context),
+                new EfAuditLog(context),
+                new EfUnitOfWork(context));
             service.UpdatePrice(sku, 6500m, "user-7", MovementDate);
         }
 
@@ -239,7 +242,8 @@ public class EfPersistenceTests : IClassFixture<SqlServerDatabaseFixture>
         {
             var service = new ProductPriceService(
                 new EfProductRepository(context),
-                new ThrowingAuditLog());
+                new ThrowingAuditLog(),
+                new EfUnitOfWork(context));
 
             Assert.Throws<InvalidOperationException>(
                 () => service.UpdatePrice(sku, 6500m, "user-7", MovementDate));
