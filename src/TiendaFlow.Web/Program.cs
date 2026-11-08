@@ -1,3 +1,5 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using TiendaFlow.Application;
 using TiendaFlow.Infrastructure.Persistence;
@@ -22,6 +24,10 @@ builder.Services.AddScoped<IStockRepository, EfStockRepository>();
 builder.Services.AddScoped<IAuditLog, EfAuditLog>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
+builder.Services.AddScoped<IProductCatalogQuery, EfProductCatalogQuery>();
+builder.Services.AddScoped<IStockQuery, EfStockQuery>();
+builder.Services.AddScoped<InventoryDashboardService>();
+
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<StockService>();
 builder.Services.AddScoped<ProductPriceService>();
@@ -30,6 +36,15 @@ if (builder.Environment.IsDevelopment())
     builder.Services.AddHostedService<DevDataSeeder>();
 
 var app = builder.Build();
+
+// The store employees work in Colombian Spanish and pesos.
+var supportedCultures = new[] { new CultureInfo("es-CO") };
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("es-CO"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures
+});
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

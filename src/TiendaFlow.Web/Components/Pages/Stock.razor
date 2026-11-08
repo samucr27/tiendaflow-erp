@@ -1,0 +1,187 @@
+@page "/inventario/stock"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@inject IProductCatalogQuery ProductQuery
+@inject IStockQuery StockQuery
+@inject StockService StockService
+
+<PageTitle>Consultar stock · TiendaFlow</PageTitle>
+
+<PageHeader
+    Eyebrow="Inventario"
+    Title="Consultar stock"
+    Subtitle="Existencias por producto y tienda, con su último movimiento" />
+
+<div class="two-column">
+    <section class="card">
+        <h2>Consulta</h2>
+
+        <EditForm Model="_form" OnValidSubmit="Consult" FormName="consultar-stock">
+            <DataAnnotationsValidator />
+
+            <div class="field">
+                <label for="stock-sku">Producto</label>
+                <InputSelect id="stock-sku" class="input" @bind-Value="_form.Sku">
+                    @foreach (var product in _products)
+                    {
+                        <option value="@product.Sku">@product.Sku · @product.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => _form.Sku" />
+            </div>
+
+            <div class="field">
+                <label for="stock-store">Tienda</label>
+                <InputNumber id="stock-store" class="input" @bind-Value="_form.StoreId" />
+                <ValidationMessage For="() => _form.StoreId" />
+            </div>
+
+            <button type="submit" class="button button-primary">Consultar stock</button>
+        </EditForm>
+    </section>
+
+    <section class="card">
+        <h2>Resultado</h2>
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">@_error</div>
+        }
+        else if (_info is null)
+        {
+            <p class="muted">Elige un producto y una tienda para consultar sus existencias.</p>
+        }
+        else
+        {
+            <dl class="definition-grid">
+                <div>
+                    <dt>Producto</dt>
+                    <dd>@(_product?.Name ?? _info.Sku)</dd>
+                </div>
+                <div>
+                    <dt>Tienda</dt>
+                    <dd>@(_info.StoreId == DemoSession.StoreId ? DemoSession.StoreName : $"Tienda {_info.StoreId}")</dd>
+                </div>
+                <div>
+                    <dt>Disponible</dt>
+                    <dd>@Formatters.Quantity(_info.QuantityAvailable) unidades</dd>
+                </div>
+                <div>
+                    <dt>Ubicación</dt>
+                    <dd>@_info.Location</dd>
+                </div>
+                <div class="field-span">
+                    <dt>Último movimiento</dt>
+                    <dd>@MovementText(_info.LastMovement)</dd>
+                </div>
+            </dl>
+        }
+    </section>
+</div>
+
+@if (_rows.Any())
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Stock por tienda</h2>
+                <p class="card-subtitle">Todas las tiendas con existencias de @_form.Sku</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tienda</th>
+                        <th>Ubicación</th>
+                        <th class="num">Disponible</th>
+                        <th class="num">Mínimo</th>
+                        <th>Estado</th>
+                        <th class="num">Precio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>@(row.StoreId == DemoSession.StoreId ? DemoSession.StoreName : $"Tienda {row.StoreId}")</td>
+                            <td>@row.Location</td>
+                            <td class="num">@Formatters.Quantity(row.QuantityAvailable)</td>
+                            <td class="num">@Formatters.Quantity(row.MinStock)</td>
+                            <td><StatusBadge Text="@StatusText(row)" Tone="@StatusTone(row)" /></td>
+                            <td class="num">@Formatters.Money(row.SalePrice)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<ProductListItem> _products = [];
+    private IReadOnlyList<StockRow> _rows = [];
+    private ProductListItem? _product;
+    private StockInfo? _info;
+    private StockForm _form = new();
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _products = ProductQuery.Search(term: null);
+            _form.Sku = _products.FirstOrDefault()?.Sku ?? string.Empty;
+            _form.StoreId = DemoSession.StoreId;
+            Consult();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Consult()
+    {
+        _error = null;
+        _info = null;
+        _rows = [];
+        _product = null;
+
+        try
+        {
+            _product = ProductQuery.GetBySku(_form.Sku);
+            _info = StockService.GetStock(_form.StoreId, _form.Sku);
+            _rows = StockQuery.ListBySku(_form.Sku);
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static string MovementText(InventoryMovement? movement) =>
+        movement is null
+            ? "Sin movimientos"
+            : $"{(movement.Type == MovementType.Sale ? "Venta" : "Recepción")} de {movement.Quantity} · {Formatters.ShortDateTime(movement.Date)}";
+
+    private static string StatusText(StockRow row) =>
+        row.QuantityAvailable == 0 ? "Sin stock"
+        : row.IsBelowMinimum ? "Bajo mínimo"
+        : "Disponible";
+
+    private static string StatusTone(StockRow row) =>
+        row.QuantityAvailable == 0 ? "danger"
+        : row.IsBelowMinimum ? "warning"
+        : "ok";
+
+    private sealed class StockForm
+    {
+        [Required(ErrorMessage = "Elige un producto.")]
+        public string Sku { get; set; } = string.Empty;
+
+        [Range(1, 9_999, ErrorMessage = "La tienda debe ser un número entre 1 y 9999.")]
+        public int StoreId { get; set; }
+    }
+}

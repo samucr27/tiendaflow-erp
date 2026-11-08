@@ -23,6 +23,33 @@ public class StockService
         _repository.Update(item);
     }
 
+    /// <summary>
+    /// Adds units received at the store. When the SKU has no stock row yet
+    /// (for example, a product just registered), it creates one at the
+    /// requested location so the first receipt can be recorded.
+    /// </summary>
+    public void ReceiveStock(
+        int storeId,
+        string sku,
+        int quantity,
+        string location,
+        int minStock,
+        DateTime date)
+    {
+        var item = _repository.Get(storeId, sku);
+
+        if (item is null)
+        {
+            var created = new StockItem(sku, storeId, 0, location, minStock);
+            created.RegisterReceipt(quantity, date);
+            _repository.Add(created);
+            return;
+        }
+
+        item.RegisterReceipt(quantity, date);
+        _repository.Update(item);
+    }
+
     private StockItem FindOrThrow(int storeId, string sku) =>
         _repository.Get(storeId, sku) ?? throw new StockNotFoundException(storeId, sku);
 }

@@ -1,0 +1,219 @@
+@page "/inventario/ventas"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@inject IProductCatalogQuery ProductQuery
+@inject IStockQuery StockQuery
+@inject StockService StockService
+
+<PageTitle>Registrar venta · TiendaFlow</PageTitle>
+
+<PageHeader
+    Eyebrow="Inventario"
+    Title="Registrar venta"
+    Subtitle="Descuenta unidades del stock y genera un comprobante de la operación" />
+
+<div class="two-column">
+    <section class="card">
+        <h2>Datos de la venta</h2>
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">@_error</div>
+        }
+
+        <EditForm Model="_form" OnValidSubmit="RegisterSale" FormName="registrar-venta">
+            <DataAnnotationsValidator />
+
+            <div class="field">
+                <label for="sale-sku">Producto</label>
+                <InputSelect id="sale-sku" class="input" @bind-Value="_form.Sku" @bind-Value:after="OnProductChanged">
+                    @foreach (var product in _products)
+                    {
+                        <option value="@product.Sku">@product.Sku · @product.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => _form.Sku" />
+            </div>
+
+            <div class="field">
+                <label for="sale-quantity">Cantidad</label>
+                <InputNumber id="sale-quantity" class="input" @bind-Value="_form.Quantity" />
+                <ValidationMessage For="() => _form.Quantity" />
+            </div>
+
+            <dl class="summary-list">
+                <div>
+                    <dt>Precio unitario</dt>
+                    <dd>@Formatters.Money(UnitPrice)</dd>
+                </div>
+                <div>
+                    <dt>Disponible en @DemoSession.StoreName</dt>
+                    <dd>@Formatters.Quantity(Available) unidades</dd>
+                </div>
+                <div class="summary-total">
+                    <dt>Total</dt>
+                    <dd>@Formatters.Money(Total)</dd>
+                </div>
+            </dl>
+
+            @if (Available <= 0)
+            {
+                <div class="alert alert-warning" role="status">
+                    Este producto no tiene stock disponible en la tienda.
+                </div>
+            }
+
+            <button type="submit" class="button button-primary" disabled="@(Available <= 0)">
+                Confirmar venta
+            </button>
+        </EditForm>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Comprobante</h2>
+                <p class="card-subtitle">Última venta registrada en esta sesión</p>
+            </div>
+        </div>
+
+        @if (_receipt is null)
+        {
+            <EmptyState Title="Aún no hay ventas"
+                        Message="Confirma una venta para ver aquí su comprobante y el stock restante." />
+        }
+        else
+        {
+            <div class="receipt">
+                <div class="receipt-head">
+                    <div>
+                        <span class="receipt-code">@_receipt.Code</span>
+                        <h3>@_receipt.ProductName</h3>
+                        <span class="table-meta">@_receipt.Sku · @Formatters.ShortDateTime(_receipt.Date)</span>
+                    </div>
+                    <StatusBadge Text="Venta registrada" Tone="ok" />
+                </div>
+
+                <dl class="receipt-lines">
+                    <div>
+                        <dt>Cantidad</dt>
+                        <dd>@Formatters.Quantity(_receipt.Quantity)</dd>
+                    </div>
+                    <div>
+                        <dt>Precio unitario</dt>
+                        <dd>@Formatters.Money(_receipt.UnitPrice)</dd>
+                    </div>
+                </dl>
+
+                <div class="receipt-total">
+                    <span>Total</span>
+                    <strong>@Formatters.Money(_receipt.Total)</strong>
+                </div>
+
+                <p class="receipt-footer">
+                    Stock restante: <strong>@Formatters.Quantity(_receipt.RemainingStock) unidades</strong>
+                </p>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private IReadOnlyList<ProductListItem> _products = [];
+    private IReadOnlyDictionary<string, StockRow> _stock = new Dictionary<string, StockRow>();
+    private SaleForm _form = new();
+    private SaleReceipt? _receipt;
+    private string? _error;
+
+    private ProductListItem? CurrentProduct => _products.FirstOrDefault(product => product.Sku == _form.Sku);
+
+    private decimal UnitPrice => CurrentProduct?.SalePrice ?? 0m;
+
+    private int Available => _stock.GetValueOrDefault(_form.Sku)?.QuantityAvailable ?? 0;
+
+    private decimal Total => UnitPrice * _form.Quantity;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _products = ProductQuery.Search(term: null);
+            _form.Sku = _products.FirstOrDefault()?.Sku ?? string.Empty;
+            _form.Quantity = 1;
+            LoadStock();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void OnProductChanged()
+    {
+        _error = null;
+
+        if (_form.Quantity <= 0)
+        {
+            _form.Quantity = 1;
+        }
+    }
+
+    private void RegisterSale()
+    {
+        _error = null;
+
+        try
+        {
+            var product = CurrentProduct
+                ?? throw new ProductNotFoundException(_form.Sku);
+
+            StockService.RegisterSale(
+                DemoSession.StoreId,
+                _form.Sku,
+                _form.Quantity,
+                DateTime.UtcNow);
+
+            LoadStock();
+
+            _receipt = new SaleReceipt(
+                $"VTA-{DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture)}",
+                product.Name,
+                product.Sku,
+                _form.Quantity,
+                product.SalePrice,
+                Total,
+                DateTime.Now,
+                Available);
+
+            _form.Quantity = 1;
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void LoadStock() =>
+        _stock = StockQuery.ListByStore(DemoSession.StoreId)
+            .ToDictionary(row => row.Sku, StringComparer.OrdinalIgnoreCase);
+
+    private sealed class SaleForm
+    {
+        [Required(ErrorMessage = "Elige un producto.")]
+        public string Sku { get; set; } = string.Empty;
+
+        [Range(1, 1_000_000, ErrorMessage = "La cantidad debe ser mayor que cero.")]
+        public int Quantity { get; set; } = 1;
+    }
+
+    private sealed record SaleReceipt(
+        string Code,
+        string ProductName,
+        string Sku,
+        int Quantity,
+        decimal UnitPrice,
+        decimal Total,
+        DateTime Date,
+        int RemainingStock);
+}

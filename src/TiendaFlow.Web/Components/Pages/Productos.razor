@@ -1,0 +1,131 @@
+@page "/inventario/productos"
+@rendermode InteractiveServer
+@inject IProductCatalogQuery ProductQuery
+@inject IStockQuery StockQuery
+
+<PageTitle>Productos · TiendaFlow</PageTitle>
+
+<PageHeader
+    Eyebrow="Inventario"
+    Title="Productos"
+    Subtitle="@($"Catálogo de la tienda {DemoSession.StoreName}")">
+    <Actions>
+        <a class="button button-primary" href="inventario/productos/nuevo">+ Registrar producto</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Catálogo</h2>
+                <p class="card-subtitle">@FilteredProducts.Count() de @_products.Count productos</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   placeholder="Buscar por nombre, SKU o código de barras"
+                   aria-label="Buscar productos"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (!FilteredProducts.Any())
+        {
+            <EmptyState Title="Sin resultados"
+                        Message="No encontramos productos con ese nombre, SKU o código de barras.">
+                <Action>
+                    <a class="button button-secondary" href="inventario/productos/nuevo">Registrar producto</a>
+                </Action>
+            </EmptyState>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Código de barras</th>
+                            <th class="num">Precio</th>
+                            <th class="num">Stock</th>
+                            <th>Estado</th>
+                            <th class="actions"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var product in FilteredProducts)
+                        {
+                            var row = FindStock(product.Sku);
+                            <tr>
+                                <td>
+                                    <a class="table-link" href="inventario/productos/@Uri.EscapeDataString(product.Sku)">
+                                        @product.Name
+                                    </a>
+                                    <span class="table-meta">@product.Sku</span>
+                                </td>
+                                <td class="mono">@product.Barcode</td>
+                                <td class="num">@Formatters.Money(product.SalePrice)</td>
+                                <td class="num">@(row is null ? "—" : Formatters.Quantity(row.QuantityAvailable))</td>
+                                <td>
+                                    <StatusBadge Text="@StatusText(row)" Tone="@StatusTone(row)" />
+                                </td>
+                                <td class="actions">
+                                    <a class="table-action" href="inventario/productos/@Uri.EscapeDataString(product.Sku)">Ver</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private IReadOnlyList<ProductListItem> _products = [];
+    private IReadOnlyDictionary<string, StockRow> _stock = new Dictionary<string, StockRow>();
+    private string _search = string.Empty;
+    private string? _error;
+
+    private IEnumerable<ProductListItem> FilteredProducts =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _products
+            : _products.Where(product =>
+                product.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || product.Sku.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || product.Barcode.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _products = ProductQuery.Search(term: null);
+            _stock = StockQuery.ListByStore(DemoSession.StoreId)
+                .ToDictionary(row => row.Sku, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private StockRow? FindStock(string sku) =>
+        _stock.GetValueOrDefault(sku);
+
+    private static string StatusText(StockRow? row) =>
+        row is null ? "Sin stock"
+        : row.QuantityAvailable == 0 ? "Sin stock"
+        : row.IsBelowMinimum ? "Bajo mínimo"
+        : "Disponible";
+
+    private static string StatusTone(StockRow? row) =>
+        row is null ? "neutral"
+        : row.QuantityAvailable == 0 ? "danger"
+        : row.IsBelowMinimum ? "warning"
+        : "ok";
+}
