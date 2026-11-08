@@ -12,11 +12,11 @@ public class ProductPriceService
     public ProductPriceService(
         IProductRepository repository,
         IAuditLog auditLog,
-        IUnitOfWork? unitOfWork = null)
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _auditLog = auditLog;
-        _unitOfWork = unitOfWork ?? NoOpUnitOfWork.Instance;
+        _unitOfWork = unitOfWork;
     }
 
     public void UpdatePrice(string sku, decimal newPrice, int? userId, DateTime date)

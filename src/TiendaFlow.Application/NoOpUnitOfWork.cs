@@ -4,7 +4,7 @@ namespace TiendaFlow.Application;
 /// Default unit of work for in-memory repositories and tests: it only runs
 /// the action, preserving the behaviour existing callers already expect.
 /// </summary>
-internal sealed class NoOpUnitOfWork : IUnitOfWork
+public sealed class NoOpUnitOfWork : IUnitOfWork
 {
     public static readonly NoOpUnitOfWork Instance = new();
 

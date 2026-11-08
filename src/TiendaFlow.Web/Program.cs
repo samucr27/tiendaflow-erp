@@ -1,8 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Localization;
-using Microsoft.EntityFrameworkCore;
-using TiendaFlow.Application;
-using TiendaFlow.Infrastructure.Persistence;
+using TiendaFlow.Infrastructure;
 using TiendaFlow.Web.Components;
 using TiendaFlow.Web.Persistence;
 
@@ -17,20 +15,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
         "Connection string 'ConnectionStrings:DefaultConnection' is not configured. " +
         "Set it with dotnet user-secrets on the Web project.");
 
-builder.Services.AddDbContext<TiendaFlowDbContext>(options => options.UseSqlServer(connectionString));
-
-builder.Services.AddScoped<IProductRepository, EfProductRepository>();
-builder.Services.AddScoped<IStockRepository, EfStockRepository>();
-builder.Services.AddScoped<IAuditLog, EfAuditLog>();
-builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
-
-builder.Services.AddScoped<IProductCatalogQuery, EfProductCatalogQuery>();
-builder.Services.AddScoped<IStockQuery, EfStockQuery>();
-builder.Services.AddScoped<InventoryDashboardService>();
-
-builder.Services.AddScoped<InventoryService>();
-builder.Services.AddScoped<StockService>();
-builder.Services.AddScoped<ProductPriceService>();
+builder.Services.AddTiendaFlowPersistence(connectionString);
 
 if (builder.Environment.IsDevelopment())
     builder.Services.AddHostedService<DevDataSeeder>();

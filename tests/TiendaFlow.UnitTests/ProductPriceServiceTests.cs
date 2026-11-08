@@ -13,7 +13,8 @@ public class ProductPriceServiceTests
     private readonly Mock<IAuditLog> _audit = new();
     private readonly ProductPriceService _service;
 
-    public ProductPriceServiceTests() => _service = new ProductPriceService(_repo.Object, _audit.Object);
+    public ProductPriceServiceTests() =>
+        _service = new ProductPriceService(_repo.Object, _audit.Object, NoOpUnitOfWork.Instance);
 
     private Product GivenProduct()
     {

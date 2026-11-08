@@ -6,6 +6,9 @@ namespace TiendaFlow.IntegrationTests;
 public sealed class SqlServerDatabaseFixture : IAsyncLifetime
 {
     private DbContextOptions<TiendaFlowDbContext>? _options;
+    private string? _connectionString;
+
+    public string? ConnectionString => _connectionString;
 
     public async Task InitializeAsync()
     {
@@ -18,6 +21,7 @@ public sealed class SqlServerDatabaseFixture : IAsyncLifetime
         }
 
         var connectionString = TestDatabase.CreateUniqueDatabaseConnectionString(configuredConnectionString);
+        _connectionString = connectionString;
 
         _options = new DbContextOptionsBuilder<TiendaFlowDbContext>()
             .UseSqlServer(connectionString)
