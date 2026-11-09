@@ -482,3 +482,9 @@ $RECYCLE.BIN/
 *.swp
 
 coveragereport/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
