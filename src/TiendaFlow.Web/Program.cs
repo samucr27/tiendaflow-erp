@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using TiendaFlow.Application;
+using TiendaFlow.Application.Payroll;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure;
 using TiendaFlow.Web.Components;
@@ -24,6 +25,14 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
         "Set it with dotnet user-secrets on the Web project.");
 
 builder.Services.AddTiendaFlowPersistence(connectionString);
+
+// Payroll module (HU-04): the engine depends only on abstractions (DIP) and
+// each strategy owns the rules of one family of contract types (SRP).
+builder.Services.AddSingleton<IPayrollParametersProvider, DefaultPayrollParametersProvider>();
+builder.Services.AddSingleton<IWithholdingCalculator, WithholdingCalculator>();
+builder.Services.AddSingleton<IPayrollStrategy, EmploymentPayrollStrategy>();
+builder.Services.AddSingleton<IPayrollStrategy, ServiceProvisionPayrollStrategy>();
+builder.Services.AddScoped<IPayrollEngine, PayrollEngine>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
@@ -122,6 +131,22 @@ app.MapPost("/logout", async (HttpContext context, [FromForm] string? returnUrl)
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
 }).RequireAuthorization();
+
+// HU-04: monthly payroll calculation for one employee. Protected by the HR
+// payroll permission; the request and the result carry no personal data
+// beyond the employee id, and nothing is logged here.
+app.MapPost("/api/nomina/calculate", (PayrollInput input, IPayrollEngine engine) =>
+{
+    try
+    {
+        return Results.Ok(engine.Calculate(input));
+    }
+    catch (Exception ex) when (ex is InvalidPayrollInputException
+                                   or UnsupportedContractTypeException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+}).RequireAuthorization(Permissions.HrPayrollManage);
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
