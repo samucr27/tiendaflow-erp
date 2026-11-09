@@ -1,4 +1,7 @@
-﻿<div class="brand">
+﻿@inject ICurrentUser CurrentUser
+@inject IAccessControl AccessControl
+
+<div class="brand">
     <div class="brand-mark" aria-hidden="true">TF</div>
     <div class="brand-copy">
         <span class="brand-name">TiendaFlow</span>
@@ -8,42 +11,103 @@
 
 <div class="sidebar-store">
     <span class="store-dot" aria-hidden="true"></span>
-    <span>Tienda @DemoSession.StoreName</span>
+    <span>Tienda @CurrentUser.StoreName</span>
 </div>
 
 <nav class="sidebar-nav" aria-label="Navegación principal">
-    <p class="nav-section">Inventario</p>
+    @if (AccessControl.Has(Permissions.InventoryStockView)
+         || AccessControl.Has(Permissions.InventoryProductsView))
+    {
+        <p class="nav-section">Inventario</p>
 
-    <NavLink class="nav-item" href="inventario" Match="NavLinkMatch.All">
-        Panel de inventario
-    </NavLink>
-    <NavLink class="nav-item" href="inventario/productos" Match="NavLinkMatch.Prefix">
-        Productos
-    </NavLink>
-    <NavLink class="nav-item" href="inventario/stock" Match="NavLinkMatch.Prefix">
-        Consultar stock
-    </NavLink>
-    <NavLink class="nav-item" href="inventario/recibir" Match="NavLinkMatch.Prefix">
-        Recibir mercancía
-    </NavLink>
-    <NavLink class="nav-item" href="inventario/ventas" Match="NavLinkMatch.Prefix">
-        Registrar venta
-    </NavLink>
-    <NavLink class="nav-item" href="inventario/alertas" Match="NavLinkMatch.Prefix">
-        Alertas de stock
-    </NavLink>
+        @if (AccessControl.Has(Permissions.InventoryStockView))
+        {
+            <NavLink class="nav-item" href="inventario" Match="NavLinkMatch.All">
+                Panel de inventario
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.InventoryProductsView))
+        {
+            <NavLink class="nav-item" href="inventario/productos" Match="NavLinkMatch.Prefix">
+                Productos
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.InventoryStockView))
+        {
+            <NavLink class="nav-item" href="inventario/stock" Match="NavLinkMatch.Prefix">
+                Consultar stock
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.InventoryStockReceive))
+        {
+            <NavLink class="nav-item" href="inventario/recibir" Match="NavLinkMatch.Prefix">
+                Recibir mercancía
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SalesPosUse))
+        {
+            <NavLink class="nav-item" href="inventario/ventas" Match="NavLinkMatch.Prefix">
+                Registrar venta
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.InventoryAlertsView))
+        {
+            <NavLink class="nav-item" href="inventario/alertas" Match="NavLinkMatch.Prefix">
+                Alertas de stock
+            </NavLink>
+        }
+    }
+
+    @if (AccessControl.Has(Permissions.SecurityUsersView)
+         || AccessControl.Has(Permissions.SecurityRolesView)
+         || AccessControl.Has(Permissions.SecurityAuditView))
+    {
+        <p class="nav-section">Seguridad</p>
+
+        @if (AccessControl.Has(Permissions.SecurityUsersView))
+        {
+            <NavLink class="nav-item" href="seguridad/usuarios" Match="NavLinkMatch.Prefix">
+                Usuarios
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SecurityRolesView))
+        {
+            <NavLink class="nav-item" href="seguridad/roles" Match="NavLinkMatch.Prefix">
+                Roles y permisos
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SecurityAuditView))
+        {
+            <NavLink class="nav-item" href="seguridad/auditoria" Match="NavLinkMatch.Prefix">
+                Auditoría
+            </NavLink>
+        }
+    }
 
     <p class="nav-section">Módulos</p>
-    <span class="nav-item nav-item-disabled">Compras <small>Próximamente</small></span>
+    <span class="nav-item nav-item-disabled">Compras <small>Fase 3</small></span>
     <span class="nav-item nav-item-disabled">Talento humano <small>Próximamente</small></span>
     <span class="nav-item nav-item-disabled">Clientes <small>Próximamente</small></span>
-    <span class="nav-item nav-item-disabled">Administración <small>Próximamente</small></span>
 </nav>
 
 <div class="sidebar-user">
-    <div class="avatar" aria-hidden="true">MR</div>
+    <div class="avatar" aria-hidden="true">@Initials(CurrentUser.Name)</div>
     <div class="sidebar-user-copy">
-        <span class="sidebar-user-name">@DemoSession.UserName</span>
-        <span class="sidebar-user-role">@DemoSession.UserRole</span>
+        <span class="sidebar-user-name">@CurrentUser.Name</span>
+        <span class="sidebar-user-role">@CurrentUser.RoleLabel</span>
     </div>
+    <form method="post" action="/logout" class="sidebar-logout">
+        <AntiforgeryToken />
+        <button type="submit" class="nav-item nav-item-button" title="Cerrar sesión">Salir</button>
+    </form>
 </div>
+
+@code {
+    private static string Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0
+            ? "TF"
+            : string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
+    }
+}

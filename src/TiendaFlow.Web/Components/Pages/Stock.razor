@@ -1,9 +1,11 @@
 @page "/inventario/stock"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryStockView)]
 @using System.ComponentModel.DataAnnotations
 @inject IProductCatalogQuery ProductQuery
 @inject IStockQuery StockQuery
 @inject StockService StockService
+@inject ICurrentUser CurrentUser
 
 <PageTitle>Consultar stock · TiendaFlow</PageTitle>
 
@@ -60,7 +62,7 @@
                 </div>
                 <div>
                     <dt>Tienda</dt>
-                    <dd>@(_info.StoreId == DemoSession.StoreId ? DemoSession.StoreName : $"Tienda {_info.StoreId}")</dd>
+                    <dd>@(_info.StoreId == (CurrentUser.StoreId ?? 0) ? CurrentUser.StoreName : $"Tienda {_info.StoreId}")</dd>
                 </div>
                 <div>
                     <dt>Disponible</dt>
@@ -105,7 +107,7 @@
                     @foreach (var row in _rows)
                     {
                         <tr>
-                            <td>@(row.StoreId == DemoSession.StoreId ? DemoSession.StoreName : $"Tienda {row.StoreId}")</td>
+                            <td>@(row.StoreId == (CurrentUser.StoreId ?? 0) ? CurrentUser.StoreName : $"Tienda {row.StoreId}")</td>
                             <td>@row.Location</td>
                             <td class="num">@Formatters.Quantity(row.QuantityAvailable)</td>
                             <td class="num">@Formatters.Quantity(row.MinStock)</td>
@@ -133,7 +135,7 @@
         {
             _products = ProductQuery.Search(term: null);
             _form.Sku = _products.FirstOrDefault()?.Sku ?? string.Empty;
-            _form.StoreId = DemoSession.StoreId;
+            _form.StoreId = CurrentUser.StoreId ?? 0;
             Consult();
         }
         catch (Exception exception)

@@ -1,9 +1,12 @@
 @page "/inventario/productos/{Sku}"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryProductsView)]
 @using System.ComponentModel.DataAnnotations
 @inject IProductCatalogQuery ProductQuery
 @inject IStockQuery StockQuery
 @inject ProductPriceService PriceService
+@inject ICurrentUser CurrentUser
+@inject IAccessControl AccessControl
 
 <PageTitle>@(_product?.Name ?? "Producto") · TiendaFlow</PageTitle>
 
@@ -22,12 +25,15 @@ else
 {
     <PageHeader Eyebrow="@($"Producto · {_product.Sku}")"
                 Title="@_product.Name"
-                Subtitle="@($"Precio de venta {Formatters.Money(_product.SalePrice)} · {TotalUnits()} unidades en {DemoSession.StoreName}")">
+                Subtitle="@($"Precio de venta {Formatters.Money(_product.SalePrice)} · {TotalUnits()} unidades en {CurrentUser.StoreName}")">
         <Actions>
             <a class="button button-secondary" href="inventario/productos">Volver</a>
-            <a class="button button-primary" href="@($"inventario/recibir?sku={Uri.EscapeDataString(_product.Sku)}")">
-                Recibir mercancía
-            </a>
+            @if (AccessControl.Has(Permissions.InventoryStockReceive))
+            {
+                <a class="button button-primary" href="@($"inventario/recibir?sku={Uri.EscapeDataString(_product.Sku)}")">
+                    Recibir mercancía
+                </a>
+            }
         </Actions>
     </PageHeader>
 
@@ -63,24 +69,27 @@ else
             </dl>
         </section>
 
-        <section class="card">
-            <h2>Cambiar precio</h2>
-            <p class="card-subtitle">
-                El cambio y su registro de auditoría se guardan en la misma transacción.
-            </p>
+        @if (AccessControl.Has(Permissions.InventoryPriceChange))
+        {
+            <section class="card">
+                <h2>Cambiar precio</h2>
+                <p class="card-subtitle">
+                    El cambio y su registro de auditoría se guardan en la misma transacción.
+                </p>
 
-            <EditForm Model="_priceForm" OnValidSubmit="ChangePrice" FormName="cambiar-precio">
-                <DataAnnotationsValidator />
+                <EditForm Model="_priceForm" OnValidSubmit="ChangePrice" FormName="cambiar-precio">
+                    <DataAnnotationsValidator />
 
-                <div class="field">
-                    <label for="new-price">Nuevo precio de venta (COP)</label>
-                    <InputNumber id="new-price" class="input" @bind-Value="_priceForm.NewPrice" />
-                    <ValidationMessage For="() => _priceForm.NewPrice" />
-                </div>
+                    <div class="field">
+                        <label for="new-price">Nuevo precio de venta (COP)</label>
+                        <InputNumber id="new-price" class="input" @bind-Value="_priceForm.NewPrice" />
+                        <ValidationMessage For="() => _priceForm.NewPrice" />
+                    </div>
 
-                <button type="submit" class="button button-primary">Actualizar precio</button>
-            </EditForm>
-        </section>
+                    <button type="submit" class="button button-primary">Actualizar precio</button>
+                </EditForm>
+            </section>
+        }
     </div>
 
     <section class="card">
@@ -120,7 +129,7 @@ else
                         @foreach (var row in _stock)
                         {
                             <tr>
-                                <td>@(row.StoreId == DemoSession.StoreId ? DemoSession.StoreName : $"Tienda {row.StoreId}")</td>
+                                <td>@(row.StoreId == (CurrentUser.StoreId ?? 0) ? CurrentUser.StoreName : $"Tienda {row.StoreId}")</td>
                                 <td>@row.Location</td>
                                 <td class="num">@Formatters.Quantity(row.QuantityAvailable)</td>
                                 <td class="num">@Formatters.Quantity(row.MinStock)</td>
@@ -194,7 +203,11 @@ else
 
         try
         {
-            PriceService.UpdatePrice(_product!.Sku, _priceForm.NewPrice, null, DateTime.UtcNow);
+            PriceService.UpdatePrice(
+                _product!.Sku,
+                _priceForm.NewPrice,
+                CurrentUser.UserId,
+                DateTime.UtcNow);
             LoadProduct();
             _success = $"Precio actualizado a {Formatters.Money(_product!.SalePrice)}.";
         }

@@ -1,9 +1,11 @@
 @page "/inventario/ventas"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SalesPosUse)]
 @using System.ComponentModel.DataAnnotations
 @inject IProductCatalogQuery ProductQuery
 @inject IStockQuery StockQuery
 @inject StockService StockService
+@inject ICurrentUser CurrentUser
 
 <PageTitle>Registrar venta · TiendaFlow</PageTitle>
 
@@ -47,7 +49,7 @@
                     <dd>@Formatters.Money(UnitPrice)</dd>
                 </div>
                 <div>
-                    <dt>Disponible en @DemoSession.StoreName</dt>
+                    <dt>Disponible en @CurrentUser.StoreName</dt>
                     <dd>@Formatters.Quantity(Available) unidades</dd>
                 </div>
                 <div class="summary-total">
@@ -168,7 +170,7 @@
                 ?? throw new ProductNotFoundException(_form.Sku);
 
             StockService.RegisterSale(
-                DemoSession.StoreId,
+                CurrentUser.StoreId ?? 0,
                 _form.Sku,
                 _form.Quantity,
                 DateTime.UtcNow);
@@ -195,7 +197,7 @@
     }
 
     private void LoadStock() =>
-        _stock = StockQuery.ListByStore(DemoSession.StoreId)
+        _stock = StockQuery.ListByStore(CurrentUser.StoreId ?? 0)
             .ToDictionary(row => row.Sku, StringComparer.OrdinalIgnoreCase);
 
     private sealed class SaleForm

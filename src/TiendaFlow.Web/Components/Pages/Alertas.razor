@@ -1,15 +1,21 @@
 @page "/inventario/alertas"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryAlertsView)]
 @inject InventoryDashboardService DashboardService
+@inject ICurrentUser CurrentUser
+@inject IAccessControl AccessControl
 
 <PageTitle>Alertas de stock · TiendaFlow</PageTitle>
 
 <PageHeader
     Eyebrow="Inventario"
     Title="Alertas de stock"
-    Subtitle="@($"Productos de {DemoSession.StoreName} en o por debajo de su mínimo")">
+    Subtitle="@($"Productos de {CurrentUser.StoreName} en o por debajo de su mínimo")">
     <Actions>
-        <a class="button button-primary" href="inventario/recibir">+ Recibir mercancía</a>
+        @if (AccessControl.Has(Permissions.InventoryStockReceive))
+        {
+            <a class="button button-primary" href="inventario/recibir">+ Recibir mercancía</a>
+        }
     </Actions>
 </PageHeader>
 
@@ -115,7 +121,7 @@ else
     {
         try
         {
-            _dashboard = DashboardService.Get(DemoSession.StoreId);
+            _dashboard = DashboardService.Get(CurrentUser.StoreId ?? 0);
         }
         catch (Exception exception)
         {

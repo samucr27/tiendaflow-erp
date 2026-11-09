@@ -1,16 +1,18 @@
 @page "/inventario/recibir"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryStockReceive)]
 @using System.ComponentModel.DataAnnotations
 @inject IProductCatalogQuery ProductQuery
 @inject IStockQuery StockQuery
 @inject StockService StockService
+@inject ICurrentUser CurrentUser
 
 <PageTitle>Recibir mercancía · TiendaFlow</PageTitle>
 
 <PageHeader
     Eyebrow="Inventario"
     Title="Recibir mercancía"
-    Subtitle="@($"Registra unidades que llegan a la tienda {DemoSession.StoreName}")" />
+    Subtitle="@($"Registra unidades que llegan a la tienda {CurrentUser.StoreName}")" />
 
 @if (_success is not null)
 {
@@ -94,7 +96,7 @@
                         <div class="stock-row">
                             <div class="alert-copy">
                                 <span class="alert-name">
-                                    @(row.StoreId == DemoSession.StoreId ? DemoSession.StoreName : $"Tienda {row.StoreId}")
+                                    @(row.StoreId == (CurrentUser.StoreId ?? 0) ? CurrentUser.StoreName : $"Tienda {row.StoreId}")
                                 </span>
                                 <span class="alert-meta">@row.Location · mínimo @Formatters.Quantity(row.MinStock)</span>
                             </div>
@@ -170,7 +172,7 @@
             var quantity = _form.Quantity;
 
             StockService.ReceiveStock(
-                DemoSession.StoreId,
+                CurrentUser.StoreId ?? 0,
                 _form.Sku,
                 quantity,
                 _form.Location.Trim(),
@@ -180,7 +182,7 @@
             LoadStock();
 
             var available = _stock
-                .FirstOrDefault(row => row.StoreId == DemoSession.StoreId)?.QuantityAvailable ?? 0;
+                .FirstOrDefault(row => row.StoreId == (CurrentUser.StoreId ?? 0))?.QuantityAvailable ?? 0;
 
             _success = $"Recibidas {Formatters.Quantity(quantity)} unidades de {product.Name}. " +
                        $"Stock disponible: {Formatters.Quantity(available)} unidades.";
@@ -198,7 +200,7 @@
         _stock = StockQuery.ListBySku(_form.Sku);
         _product = ProductQuery.GetBySku(_form.Sku);
 
-        var current = _stock.FirstOrDefault(row => row.StoreId == DemoSession.StoreId);
+        var current = _stock.FirstOrDefault(row => row.StoreId == (CurrentUser.StoreId ?? 0));
         if (current is not null)
         {
             _form.Location = current.Location;

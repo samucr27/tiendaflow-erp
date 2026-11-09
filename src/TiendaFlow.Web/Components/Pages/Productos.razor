@@ -1,16 +1,22 @@
 @page "/inventario/productos"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryProductsView)]
 @inject IProductCatalogQuery ProductQuery
 @inject IStockQuery StockQuery
+@inject ICurrentUser CurrentUser
+@inject IAccessControl AccessControl
 
 <PageTitle>Productos · TiendaFlow</PageTitle>
 
 <PageHeader
     Eyebrow="Inventario"
     Title="Productos"
-    Subtitle="@($"Catálogo de la tienda {DemoSession.StoreName}")">
+    Subtitle="@($"Catálogo de la tienda {CurrentUser.StoreName}")">
     <Actions>
-        <a class="button button-primary" href="inventario/productos/nuevo">+ Registrar producto</a>
+        @if (AccessControl.Has(Permissions.InventoryProductsManage))
+        {
+            <a class="button button-primary" href="inventario/productos/nuevo">+ Registrar producto</a>
+        }
     </Actions>
 </PageHeader>
 
@@ -105,7 +111,7 @@ else
         try
         {
             _products = ProductQuery.Search(term: null);
-            _stock = StockQuery.ListByStore(DemoSession.StoreId)
+            _stock = StockQuery.ListByStore(CurrentUser.StoreId ?? 0)
                 .ToDictionary(row => row.Sku, StringComparer.OrdinalIgnoreCase);
         }
         catch (Exception exception)

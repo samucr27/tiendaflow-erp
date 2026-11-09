@@ -1,17 +1,26 @@
 @page "/"
 @page "/inventario"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryStockView)]
 @inject InventoryDashboardService DashboardService
+@inject ICurrentUser CurrentUser
+@inject IAccessControl AccessControl
 
 <PageTitle>Panel de inventario · TiendaFlow</PageTitle>
 
 <PageHeader
     Eyebrow="Inventario"
     Title="Panel de inventario"
-    Subtitle="@($"Stock de la tienda {DemoSession.StoreName} en tiempo real")">
+    Subtitle="@($"Stock de la tienda {CurrentUser.StoreName} en tiempo real")">
     <Actions>
-        <a class="button button-secondary" href="inventario/alertas">Ver alertas</a>
-        <a class="button button-primary" href="inventario/recibir">+ Recibir mercancía</a>
+        @if (AccessControl.Has(Permissions.InventoryAlertsView))
+        {
+            <a class="button button-secondary" href="inventario/alertas">Ver alertas</a>
+        }
+        @if (AccessControl.Has(Permissions.InventoryStockReceive))
+        {
+            <a class="button button-primary" href="inventario/recibir">+ Recibir mercancía</a>
+        }
     </Actions>
 </PageHeader>
 
@@ -180,7 +189,7 @@ else
     {
         try
         {
-            _dashboard = DashboardService.Get(DemoSession.StoreId);
+            _dashboard = DashboardService.Get(CurrentUser.StoreId ?? 0);
         }
         catch (Exception exception)
         {

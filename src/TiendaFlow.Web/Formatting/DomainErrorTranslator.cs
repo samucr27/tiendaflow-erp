@@ -24,6 +24,16 @@ public static class DomainErrorTranslator
             "No hay unidades suficientes para completar la operación.",
         ArgumentOutOfRangeException =>
             "La cantidad debe ser mayor que cero.",
+        AccessDeniedException =>
+            "Tu rol no tiene permiso para realizar esta operación.",
+        InvalidUserException =>
+            "Revisa los datos del usuario. El correo, el documento y el rol son obligatorios.",
+        UserNotFoundException =>
+            "No encontramos el usuario solicitado.",
+        DuplicateEmailException =>
+            "Ya existe un usuario con ese correo electrónico.",
+        DuplicateIdNumberException =>
+            "Ya existe un empleado con ese número de documento.",
         _ => "Ocurrió un error inesperado. Intenta de nuevo."
     };
 }

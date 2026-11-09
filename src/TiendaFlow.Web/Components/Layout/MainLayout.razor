@@ -1,4 +1,5 @@
 ﻿@inherits LayoutComponentBase
+@inject ICurrentUser CurrentUser
 
 <div class="app-shell">
     <aside class="sidebar">
@@ -9,11 +10,12 @@
         <header class="topbar">
             <div class="topbar-context">
                 <span class="topbar-eyebrow">Tienda</span>
-                <span class="topbar-store">@DemoSession.StoreName</span>
+                <span class="topbar-store">@CurrentUser.StoreName</span>
             </div>
             <div class="topbar-meta">
                 <span class="topbar-date">@Formatters.LongDate(DateTime.UtcNow)</span>
-                <span class="topbar-user">@DemoSession.UserName</span>
+                <span class="topbar-user">@CurrentUser.Name</span>
+                <span class="topbar-role">@CurrentUser.RoleLabel</span>
             </div>
         </header>
 
