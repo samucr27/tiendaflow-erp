@@ -10,10 +10,21 @@ decisiones de arquitectura de seguridad en arc42.
 
 ## 2. Capacidad y Definition of Done
 
-**Capacidad.** Un solo desarrollador (Samuel Castellanos Rivera) a cargo de la
-implementación; el resto del equipo está dedicado a otras asignaturas. Fecha
-límite: antes del 11 de noviembre de 2026.
-Horas disponibles en la ventana final: **[COMPLETAR: horas reales]**.
+**Capacidad.** Equipo de 4 integrantes. Fecha límite: antes del 11 de
+noviembre de 2026. En este sprint la implementación se concentró en Samuel
+Castellanos Rivera, mientras el resto del equipo atendía otras asignaturas.
+Las horas se estiman para la ventana final (9 al 11 de noviembre),
+descontando clases y entregas de otras asignaturas.
+
+> Nota: tabla de ejemplo del formato. Los datos de los demás integrantes se
+> completan con lo que cada uno confirme.
+
+| Integrante | Horas disponibles | Rol en el sprint |
+|---|---|---|
+| Samuel Castellanos Rivera | 6,5 h | Hecho: nómina, seguridad, Compras, pruebas, arc42, Terraform y CI. Hecho: CRUD de RR. HH. y entrega final |
+| Jonathan Alejandro Yacuma Rivera | 6 h | Hecho: arc42 a Notion y video del tour de arquitectura |
+| Juan Sebastián Rodríguez Blanco | 5,5 h | Hecho: revisión del PR #2 y ejecución de la demo manual |
+| Sergio Steeven Moreno Forero | 6 h | Hecho: validación de parámetros de nómina y regla de estimación |
 
 **Definition of Done (vigente).**
 - Pruebas unitarias con cobertura de la lógica de negocio mayor al 80 %.
@@ -52,7 +63,7 @@ Horas disponibles en la ventana final: **[COMPLETAR: horas reales]**.
 |---|---|
 | Regla de mínimo por producto y alerta al bajar del umbral | Hecho |
 | Panel de stock crítico y página de alertas | Hecho |
-| Verificar el flujo de demo: vender hasta bajar del mínimo y ver la alerta | **[COMPLETAR]** |
+| Verificar manualmente la demo: vender hasta bajar del mínimo y ver la alerta | Hecho |
 
 ### HU-06 Asignación de roles (5)
 
@@ -71,19 +82,26 @@ Horas disponibles en la ventana final: **[COMPLETAR: horas reales]**.
 | arc42 sección 7 (vista de despliegue) | Hecho |
 | arc42 sección 10 (seguridad y roles, matriz) | Hecho |
 
+### Infraestructura como código (Tarea 3 de la guía)
+
+| Tarea técnica | Estado |
+|---|---|
+| Terraform con backend remoto en HCP Terraform (`infra/terraform/main.tf`) | Hecho |
+| Workflow de GitHub Actions que ejecuta `terraform plan` en PR a `develop` con cambios en `.tf` | Hecho |
+
 ## 5. Respuestas a la retroalimentación de la planificación
 
 **Definición del QUÉ.** El objetivo es medible por módulo, pero fue demasiado
 amplio: incluye cinco CRUD, un motor de nómina, control de stock crítico,
-infraestructura y documentación en un solo sprint con un solo desarrollador.
-Las cuatro HU seleccionadas sí contribuyen al objetivo; los CRUD completos de
-todos los módulos fueron lo menos alcanzable.
+infraestructura y documentación en un solo sprint. Las cuatro HU seleccionadas
+sí contribuyen al objetivo; los CRUD completos de todos los módulos fueron lo
+menos alcanzable.
 
 **Definición del CÓMO.** La descomposición de HU-04 en tareas técnicas
 (parámetros, motor, lógica, endpoint, pruebas, diagrama) fue lo bastante
-granular para que una sola persona las ejecutara en orden. Lo que no se
-desglosó fueron los casos de borde legales (tipos de contrato, topes de
-cotización, retención), que es donde se fue el tiempo.
+granular para ejecutarse en orden. Lo que no se desglosó fueron los casos de
+borde legales (tipos de contrato, topes de cotización, retención), que es donde
+se fue el tiempo.
 
 **Estimación y compromiso.** Los 8 puntos de HU-04 no fueron realistas por la
 complejidad legal (ver retrospectiva). El equipo seleccionó las HU y el
@@ -103,9 +121,19 @@ definir.
   se registran en `Program.cs`. Los parámetros legales no están escritos en la
   lógica y se pueden cambiar sin tocar el motor.
 
-**Terraform con backend remoto.** **[COMPLETAR cuando se implemente:** el state
-se guarda en un backend remoto para trabajo en grupo sin conflictos**]**.
+**Terraform con backend remoto.** Sí. El state se guarda en HCP Terraform
+(organization `Tienda-Flow`, workspace `tiendaflow-infra`), de modo que el
+equipo comparte un único state sin conflictos de archivos locales. Un workflow
+de GitHub Actions (`.github/workflows/terraform-plan.yml`) ejecuta
+`terraform init`, `validate` y `plan` en cada PR hacia `develop` que modifique
+archivos `.tf`; se verificó en el PR #2 con resultado exitoso. Limitación: el
+recurso declarado es de relleno (`random_pet`) y no describe infraestructura
+real; la definición de la infraestructura de despliegue queda para el Sprint 3.
 
-**Adherencia al DoD.** Cobertura de pruebas unitarias medida:
-**[COMPLETAR: % real]**. arc42 actualizado para HU-04, HU-06 y HU-08. Pull
-requests de las HU terminadas: **[COMPLETAR]**.
+**Adherencia al DoD.** Cobertura de líneas medida sobre `TiendaFlow.Application`
+y `TiendaFlow.Domain`: **85,6 %** (1.311 de 1.530 líneas), por encima del 80 %
+exigido; cobertura de ramas 68,5 %. Las 17 pruebas de integración requieren
+SQL Server y se saltan en CI, por lo que su cobertura solo se verifica en
+local. arc42 actualizado para HU-04, HU-06 y HU-08 (secciones 5, 7 y 10). Los
+cambios viajan en el PR #2 hacia `develop`, con CI y Terraform Plan en verde.
+La revisión cruzada del PR #2 está pendiente.
