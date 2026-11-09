@@ -488,3 +488,5 @@ coveragereport/
 *.tfstate
 *.tfstate.*
 *.tfvars
+
+coveragereport/
