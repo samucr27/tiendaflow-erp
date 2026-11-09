@@ -10,7 +10,8 @@ public class InventoryServiceWithRepositoryTests
     private readonly InMemoryProductRepository _repo = new();
     private readonly InventoryService _service;
 
-    public InventoryServiceWithRepositoryTests() => _service = new InventoryService(_repo);
+    public InventoryServiceWithRepositoryTests() =>
+        _service = new InventoryService(_repo, new AllowAllAccessControl());
 
     [Fact]
     public void CreateProduct_WithUniqueData_ProductIsAvailable()

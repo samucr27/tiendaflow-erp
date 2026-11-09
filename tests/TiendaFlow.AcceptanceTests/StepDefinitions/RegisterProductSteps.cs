@@ -13,7 +13,8 @@ public class RegisterProductSteps
     private readonly InventoryService _service;
     private Exception? _error;
 
-    public RegisterProductSteps() => _service = new InventoryService(_repository);
+    public RegisterProductSteps() =>
+        _service = new InventoryService(_repository, new AllowAllAccessControl());
 
     [Given("no product is registered with SKU {string}")]
     public void GivenNoProductIsRegisteredWithSku(string sku) =>

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TiendaFlow.Application;
+using TiendaFlow.Application.Security;
 using TiendaFlow.Domain;
 using TiendaFlow.Infrastructure;
 using TiendaFlow.Infrastructure.Persistence;
@@ -33,6 +34,8 @@ public class ProductPriceServiceDependencyInjectionTests : IClassFixture<SqlServ
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddTiendaFlowPersistence(connectionString!);
+        services.AddScoped<ICurrentUser, TestCurrentUser>();
+        services.AddScoped<IAccessControl, AllowAllAccessControl>();
         services.AddScoped<IAuditLog, ThrowingAuditLog>();
 
         using var provider = services.BuildServiceProvider();
@@ -61,6 +64,8 @@ public class ProductPriceServiceDependencyInjectionTests : IClassFixture<SqlServ
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddTiendaFlowPersistence(connectionString!);
+        services.AddScoped<ICurrentUser, TestCurrentUser>();
+        services.AddScoped<IAccessControl, AllowAllAccessControl>();
 
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();

@@ -10,7 +10,8 @@ public class InventoryServiceTests
     private readonly Mock<IProductRepository> _repo = new();
     private readonly InventoryService _service;
 
-    public InventoryServiceTests() => _service = new InventoryService(_repo.Object);
+    public InventoryServiceTests() =>
+        _service = new InventoryService(_repo.Object, new AllowAllAccessControl());
 
     [Fact]
     public void CreateProduct_WithDuplicateSku_ThrowsDuplicateSkuException()

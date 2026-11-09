@@ -12,7 +12,8 @@ public class StockServiceTests
     private readonly Mock<IStockRepository> _repo = new();
     private readonly StockService _service;
 
-    public StockServiceTests() => _service = new StockService(_repo.Object);
+    public StockServiceTests() =>
+        _service = new StockService(_repo.Object, new AllowAllAccessControl());
 
     private StockItem GivenStock(int quantity = 10)
     {

@@ -15,6 +15,14 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
+    public DbSet<Store> Stores => Set<Store>();
+
+    public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<Employee> Employees => Set<Employee>();
+
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

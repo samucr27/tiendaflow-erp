@@ -25,7 +25,7 @@ public class InventoryDashboardServiceTests
             new StockRow("SKU-003", "Jabón", 2, 15, 5, "Pasillo 3", 3000m, null)
         });
 
-        var dashboard = new InventoryDashboardService(products, stock).Get(storeId: 1);
+        var dashboard = new InventoryDashboardService(products, stock, new AllowAllAccessControl()).Get(storeId: 1);
 
         Assert.Equal(3, dashboard.ProductCount);
         Assert.Equal(44, dashboard.UnitsInStock);
@@ -43,7 +43,10 @@ public class InventoryDashboardServiceTests
             new ProductListItem("SKU-001", "7701", "Agua 600 ml", 2500m)
         });
 
-        var dashboard = new InventoryDashboardService(products, new FakeStockQuery(Array.Empty<StockRow>()))
+        var dashboard = new InventoryDashboardService(
+                products,
+                new FakeStockQuery(Array.Empty<StockRow>()),
+                new AllowAllAccessControl())
             .Get(storeId: 9);
 
         Assert.Equal(1, dashboard.ProductCount);

@@ -14,7 +14,7 @@ public class ProductPriceServiceAtomicityTests
     private readonly RecordingUnitOfWork _unitOfWork = new();
 
     private ProductPriceService CreateService() =>
-        new(_repository.Object, _auditLog.Object, _unitOfWork);
+        new(_repository.Object, _auditLog.Object, _unitOfWork, new AllowAllAccessControl());
 
     private void GivenProduct()
     {

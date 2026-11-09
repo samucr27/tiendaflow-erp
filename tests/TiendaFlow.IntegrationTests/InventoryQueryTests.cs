@@ -123,7 +123,8 @@ public class InventoryQueryTests : IClassFixture<SqlServerDatabaseFixture>
         {
             var service = new InventoryDashboardService(
                 new EfProductCatalogQuery(context),
-                new EfStockQuery(context));
+                new EfStockQuery(context),
+                new AllowAllAccessControl());
 
             var dashboard = service.Get(storeId);
 

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TiendaFlow.Application;
+using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure.Persistence;
 
 namespace TiendaFlow.Infrastructure;
@@ -26,12 +27,26 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProductCatalogQuery, EfProductCatalogQuery>();
         services.AddScoped<IStockQuery, EfStockQuery>();
 
+        services.AddScoped<IAppUserRepository, EfAppUserRepository>();
+        services.AddScoped<IEmployeeRepository, EfEmployeeRepository>();
+        services.AddScoped<IStoreRepository, EfStoreRepository>();
+        services.AddScoped<IRoleRepository, EfRoleRepository>();
+        services.AddScoped<IUserDirectoryQuery, EfUserDirectoryQuery>();
+        services.AddScoped<IAuditTrailQuery, EfAuditTrailQuery>();
+
+        services.AddScoped<IAccessControl, AccessControl>();
+
         services.AddSingleton<IClock, SystemClock>();
 
         services.AddScoped<InventoryDashboardService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<StockService>();
         services.AddScoped<ProductPriceService>();
+        services.AddScoped<UserService>();
+        services.AddScoped<UserDirectoryService>();
+        services.AddScoped<AuditTrailService>();
+        services.AddScoped<RoleCatalogService>();
+        services.AddScoped<AuthenticationService>();
 
         return services;
     }

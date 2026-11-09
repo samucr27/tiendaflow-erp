@@ -12,7 +12,8 @@ public class StockServiceReceiptTests
     private readonly Mock<IStockRepository> _repo = new();
     private readonly StockService _service;
 
-    public StockServiceReceiptTests() => _service = new StockService(_repo.Object);
+    public StockServiceReceiptTests() =>
+        _service = new StockService(_repo.Object, new AllowAllAccessControl());
 
     [Fact]
     public void ReceiveStock_WithExistingItem_AddsUnitsAndRecordsTheReceipt()

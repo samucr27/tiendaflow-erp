@@ -14,7 +14,11 @@ public class ProductPriceServiceTests
     private readonly ProductPriceService _service;
 
     public ProductPriceServiceTests() =>
-        _service = new ProductPriceService(_repo.Object, _audit.Object, NoOpUnitOfWork.Instance);
+        _service = new ProductPriceService(
+            _repo.Object,
+            _audit.Object,
+            NoOpUnitOfWork.Instance,
+            new AllowAllAccessControl());
 
     private Product GivenProduct()
     {

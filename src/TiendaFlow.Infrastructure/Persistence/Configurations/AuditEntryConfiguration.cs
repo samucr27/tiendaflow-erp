@@ -49,6 +49,11 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
             .HasConversion(
                 value => UtcDateTimeConverter.ToUtc(value),
                 value => UtcDateTimeConverter.FromUtc(value));
+
+        builder.HasOne<Domain.AppUser>()
+            .WithMany()
+            .HasForeignKey(entry => entry.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

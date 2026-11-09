@@ -15,7 +15,7 @@ public class ConsultStockSteps
     private StockInfo? _info;
     private Exception? _error;
 
-    public ConsultStockSteps() => _service = new StockService(_repository);
+    public ConsultStockSteps() => _service = new StockService(_repository, new AllowAllAccessControl());
 
     [Given("store {int} has {int} units of {string} in location {string}")]
     public void GivenStoreHasUnitsInLocation(int storeId, int quantity, string sku, string location) =>

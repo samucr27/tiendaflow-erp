@@ -1,15 +1,23 @@
-﻿using TiendaFlow.Domain;
+﻿using TiendaFlow.Application.Security;
+using TiendaFlow.Domain;
 
 namespace TiendaFlow.Application;
 
 public class StockService
 {
     private readonly IStockRepository _repository;
+    private readonly IAccessControl _accessControl;
 
-    public StockService(IStockRepository repository) => _repository = repository;
+    public StockService(IStockRepository repository, IAccessControl accessControl)
+    {
+        _repository = repository;
+        _accessControl = accessControl;
+    }
 
     public StockInfo GetStock(int storeId, string sku)
     {
+        _accessControl.Demand(Permissions.InventoryStockView);
+
         var item = FindOrThrow(storeId, sku);
 
         return new StockInfo(item.Sku, item.StoreId, item.QuantityAvailable, item.Location, item.LastMovement);
@@ -17,6 +25,8 @@ public class StockService
 
     public void RegisterSale(int storeId, string sku, int quantity, DateTime date)
     {
+        _accessControl.Demand(Permissions.SalesPosUse);
+
         var item = FindOrThrow(storeId, sku);
 
         item.RegisterSale(quantity, date);
@@ -36,6 +46,8 @@ public class StockService
         int minStock,
         DateTime date)
     {
+        _accessControl.Demand(Permissions.InventoryStockReceive);
+
         var item = _repository.Get(storeId, sku);
 
         if (item is null)
