@@ -2,8 +2,10 @@ using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
+using TiendaFlow.Application;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure;
 using TiendaFlow.Web.Components;
@@ -39,6 +41,15 @@ builder.Services
         options.Cookie.Name = "TiendaFlow.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToAccessDenied = context =>
+            {
+                RecordDeniedPageAccess(context.HttpContext);
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -122,3 +133,38 @@ static bool IsLocalUrl(string? value) =>
     && value.StartsWith('/')
     && !value.StartsWith("//")
     && !value.StartsWith("/\\");
+
+// A page protected by [Authorize] is rejected by the authorization middleware
+// before any application service runs, so record the denied attempt here too.
+// Only the authenticated user id, the permission and the path are stored.
+static void RecordDeniedPageAccess(HttpContext context)
+{
+    if (context.User.Identity?.IsAuthenticated != true)
+        return;
+
+    if (!int.TryParse(
+            context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+            out var userId))
+        return;
+
+    var policy = context.GetEndpoint()?.Metadata.GetMetadata<IAuthorizeData>()?.Policy;
+    var function = string.IsNullOrWhiteSpace(policy)
+        ? context.Request.Path.Value ?? "unknown"
+        : policy;
+
+    if (function.Length > 50)
+        function = function[..50];
+
+    var path = context.Request.Path.Value ?? "/";
+    if (path.Length > 200)
+        path = path[..200];
+
+    context.RequestServices.GetService<IAuditLog>()?.Record(new AuditEntry(
+        "AccessDenied",
+        function,
+        $"Intento de acceso denegado a {path}",
+        userId,
+        DateTime.UtcNow,
+        module: "security",
+        ip: context.Connection.RemoteIpAddress?.ToString()));
+}
