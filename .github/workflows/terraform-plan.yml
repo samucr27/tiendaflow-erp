@@ -1,31 +1,34 @@
-terraform {
-  required_version = ">= 1.6.0"
+name: Terraform Plan
 
-  # Remote state in HCP Terraform so the whole team shares one state
-  # and plans never conflict on a local file.
-  cloud {
-    organization = "REPLACE_WITH_YOUR_ORG"
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - '**/*.tf'
 
-    workspaces {
-      name = "tiendaflow-infra"
-    }
-  }
+permissions:
+  contents: read
 
-  required_providers {
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
-  }
-}
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-# Placeholder resource: it demonstrates the remote state and the automated
-# plan without needing cloud credentials. Replace it with the real
-# infrastructure (database, app hosting) when the deployment target is chosen.
-resource "random_pet" "environment" {
-  length = 2
-}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
-output "environment_name" {
-  value = "tiendaflow-${random_pet.environment.id}"
-}
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -input=false
