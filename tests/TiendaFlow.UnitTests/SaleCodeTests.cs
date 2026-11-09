@@ -18,7 +18,10 @@ public class SaleCodeTests
     [Fact]
     public void Create_NormalizesLocalTimestampsBeforeFormatting()
     {
-        var local = new DateTime(2026, 11, 7, 10, 30, 45, DateTimeKind.Local);
+        // Build the local value from a known UTC instant so the test does not
+        // depend on the time zone of the machine that runs it.
+        var utc = new DateTime(2026, 11, 7, 15, 30, 45, DateTimeKind.Utc);
+        var local = utc.ToLocalTime();
 
         var code = SaleCode.Create(local);
 
