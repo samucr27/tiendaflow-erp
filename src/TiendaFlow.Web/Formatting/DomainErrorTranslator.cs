@@ -34,6 +34,16 @@ public static class DomainErrorTranslator
             "Ya existe un usuario con ese correo electrónico.",
         DuplicateIdNumberException =>
             "Ya existe un empleado con ese número de documento.",
+        InvalidSupplierException =>
+            "Revisa los datos del proveedor. El NIT, la razón social y la dirección son obligatorios, y la calificación debe estar entre 0 y 100.",
+        SupplierNotFoundException =>
+            "No encontramos el proveedor solicitado.",
+        DuplicateNitException =>
+            "Ya existe un proveedor con ese NIT.",
+        InvalidPurchaseOrderException =>
+            "La orden de compra no se puede completar con esos datos. Revisa las líneas, las cantidades y el estado de la orden.",
+        PurchaseOrderNotFoundException =>
+            "No encontramos la orden de compra solicitada.",
         _ => "Ocurrió un error inesperado. Intenta de nuevo."
     };
 }
