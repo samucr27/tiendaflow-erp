@@ -53,6 +53,7 @@ public class AuthenticationServiceTests
         Assert.Equal("LoginSucceeded", entry.Action);
         Assert.Equal(user.Id, entry.UserId);
         Assert.Equal("security", entry.Module);
+        Assert.DoesNotContain("ana@tiendaflow.local", entry.Detail);
     }
 
     [Fact]

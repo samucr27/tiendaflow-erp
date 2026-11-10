@@ -103,7 +103,7 @@ public sealed class UserService
             _users.Add(user);
             userId = user.Id;
 
-            Audit("UserCreated", user.Id.ToString(), $"Usuario {user.Email} creado con rol {role.Name}");
+            Audit("UserCreated", user.Id.ToString(), $"Usuario {user.Id} creado con rol {role.Name}");
         });
 
         return userId;
@@ -170,7 +170,7 @@ public sealed class UserService
             _users.Update(user);
 
             Audit("UserUpdated", user.Id.ToString(),
-                $"Usuario {user.Email} actualizado; rol {role.Name}; activo {user.Active}");
+                $"Usuario {user.Id} actualizado; rol {role.Name}; activo {user.Active}");
         });
     }
 
@@ -187,7 +187,7 @@ public sealed class UserService
         {
             user.Deactivate();
             _users.Update(user);
-            Audit("UserDeactivated", user.Id.ToString(), $"Usuario {user.Email} desactivado");
+            Audit("UserDeactivated", user.Id.ToString(), $"Usuario {user.Id} desactivado");
         });
     }
 
@@ -204,7 +204,7 @@ public sealed class UserService
         {
             user.ChangePassword(_passwordHasher.Hash(newPassword));
             _users.Update(user);
-            Audit("PasswordReset", user.Id.ToString(), $"Contraseña restablecida para {user.Email}");
+            Audit("PasswordReset", user.Id.ToString(), $"Contraseña restablecida para el usuario {user.Id}");
         });
     }
 

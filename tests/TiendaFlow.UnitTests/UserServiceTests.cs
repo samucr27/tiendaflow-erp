@@ -62,6 +62,7 @@ public class UserServiceTests
         Assert.Equal("UserCreated", entry.Action);
         Assert.Equal("security", entry.Module);
         Assert.Equal(1, entry.UserId);
+        Assert.DoesNotContain("nuevo@tiendaflow.local", entry.Detail);
     }
 
     [Fact]

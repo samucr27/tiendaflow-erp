@@ -67,7 +67,7 @@ public sealed class AuthenticationService
         _auditLog.Record(new AuditEntry(
             "LoginSucceeded",
             user.Id.ToString(),
-            $"Inicio de sesión de {user.Email}",
+            "Inicio de sesión correcto",
             user.Id,
             DateTime.UtcNow,
             module: "security",
