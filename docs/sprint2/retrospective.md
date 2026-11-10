@@ -14,8 +14,8 @@
 
 ## Resultados verificables del Sprint 2
 
-- **Cobertura:** 85,6 % de líneas en Application + Domain, medida con coverlet y
-  ReportGenerator.
+- **Cobertura:** 87,6 % de líneas en Application + Domain al cierre (línea base:
+  85,6 %), medida con coverlet y ReportGenerator.
 - **Pruebas:** la línea base tenía 213 pruebas (190 unitarias y 6 de aceptación
   en verde, 17 de integración omitidas). La Fase 1 sumó 54 pruebas unitarias:
   al cierre hay 250 pruebas activas en verde (244 unitarias y 6 de aceptación)

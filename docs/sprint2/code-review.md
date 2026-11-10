@@ -32,7 +32,7 @@
 |---|---|
 | `dotnet build TiendaFlow.slnx` | 0 advertencias, 0 errores |
 | `dotnet test TiendaFlow.slnx` | 244 unitarias correctas, 6 de aceptación correctas, 17 de integración omitidas, 0 fallos |
-| Cobertura Application + Domain | 85,6 % (líneas) |
+| Cobertura Application + Domain | 87,6 % de líneas al cierre (85,6 % en la línea base) |
 
 ---
 
@@ -258,7 +258,7 @@ Cada corrección va en su propio commit, con compilación y pruebas verdes antes
 - No se ejecutó la aplicación contra SQL Server ni se recorrió la demo; la validación funcional de rutas se apoya en el código y en el guion de `docs/sprint2/demo-script.md`.
 - No se evaluó el contenido de los 238 archivos del Sprint 1 que arrastra el diff.
 - No se ejecutó `terraform plan` real ni los workflows de GitHub Actions; solo se revisó su definición.
-- La cobertura del 85,6 % corresponde a Application + Domain; no mide Razor ni Infrastructure.
+- La cobertura (87,6 % al cierre, 85,6 % en la línea base) corresponde a Application + Domain; no mide Razor ni Infrastructure.
 
 ---
 
