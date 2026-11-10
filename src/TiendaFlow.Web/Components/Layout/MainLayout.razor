@@ -1,0 +1,32 @@
+﻿@inherits LayoutComponentBase
+@inject ICurrentUser CurrentUser
+
+<div class="app-shell">
+    <aside class="sidebar">
+        <NavMenu />
+    </aside>
+
+    <div class="app-body">
+        <header class="topbar">
+            <div class="topbar-context">
+                <span class="topbar-eyebrow">Tienda</span>
+                <span class="topbar-store">@CurrentUser.StoreName</span>
+            </div>
+            <div class="topbar-meta">
+                <span class="topbar-date">@Formatters.LongDate(DateTime.UtcNow)</span>
+                <span class="topbar-user">@CurrentUser.Name</span>
+                <span class="topbar-role">@CurrentUser.RoleLabel</span>
+            </div>
+        </header>
+
+        <main class="app-content">
+            @Body
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Ocurrió un error inesperado.
+    <a href="." class="reload">Recargar</a>
+    <span class="dismiss">&times;</span>
+</div>

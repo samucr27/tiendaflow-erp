@@ -1,0 +1,96 @@
+@page "/seguridad/auditoria"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityAuditView)]
+@inject AuditTrailService AuditTrail
+@inject NavigationManager Navigation
+
+<PageTitle>Auditoría · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad"
+            Title="Auditoría"
+            Subtitle="Últimos eventos registrados: accesos, cambios y operaciones rechazadas" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_rows is null)
+{
+    <p class="muted">Cargando los eventos…</p>
+}
+else if (!_rows.Any())
+{
+    <EmptyState Title="Sin eventos registrados"
+                Message="Las operaciones sensibles aparecerán aquí en cuanto ocurran." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Eventos recientes</h2>
+                <p class="card-subtitle">@_rows.Count eventos, del más reciente al más antiguo</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha y hora</th>
+                        <th>Usuario</th>
+                        <th>Acción</th>
+                        <th>Módulo</th>
+                        <th>Entidad</th>
+                        <th>Detalle</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>@Formatters.ShortDateTime(row.Date)</td>
+                            <td>@(row.UserName ?? "Sistema")</td>
+                            <td>
+                                <span class="badge @BadgeClass(row.Action)">@row.Action</span>
+                            </td>
+                            <td>@row.Module</td>
+                            <td><code>@row.EntityId</code></td>
+                            <td>@row.Detail</td>
+                            <td>@(string.IsNullOrWhiteSpace(row.Ip) ? "—" : row.Ip)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<AuditTrailRow>? _rows;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _rows = AuditTrail.Recent();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static string BadgeClass(string action) => action switch
+    {
+        "LoginFailed" or "AccessDenied" => "badge-danger",
+        "UserDeactivated" or "PasswordReset" => "badge-warning",
+        _ => "badge-muted"
+    };
+}

@@ -1,0 +1,139 @@
+@page "/inventario/alertas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryAlertsView)]
+@inject InventoryDashboardService DashboardService
+@inject ICurrentUser CurrentUser
+@inject IAccessControl AccessControl
+
+<PageTitle>Alertas de stock · TiendaFlow</PageTitle>
+
+<PageHeader
+    Eyebrow="Inventario"
+    Title="Alertas de stock"
+    Subtitle="@($"Productos de {CurrentUser.StoreName} en o por debajo de su mínimo")">
+    <Actions>
+        @if (AccessControl.Has(Permissions.InventoryStockReceive))
+        {
+            <a class="button button-primary" href="inventario/recibir">+ Recibir mercancía</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_dashboard is null)
+{
+    <p class="muted">Cargando las alertas…</p>
+}
+else if (!_dashboard.LowStock.Any())
+{
+    <EmptyState Title="Sin alertas de stock"
+                Message="Todos los productos están por encima de su stock mínimo.">
+        <Action>
+            <a class="button button-secondary" href="inventario">Volver al panel</a>
+        </Action>
+    </EmptyState>
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Alertas activas"
+                 Value="@Formatters.Number(_dashboard.LowStock.Count)"
+                 Hint="Productos que requieren reposición"
+                 Tone="alert" />
+        <KpiCard Label="Sin stock"
+                 Value="@Formatters.Number(OutOfStock)"
+                 Hint="No se pueden vender"
+                 Tone="danger" />
+        <KpiCard Label="Unidades faltantes"
+                 Value="@Formatters.Quantity(MissingUnits)"
+                 Hint="Para alcanzar el mínimo"
+                 Tone="warning" />
+        <KpiCard Label="Reposición estimada"
+                 Value="@Formatters.Money(ReplenishmentValue)"
+                 Hint="A precio de venta"
+                 Tone="neutral" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Productos que requieren reposición</h2>
+                <p class="card-subtitle">Ordenados por menor disponibilidad</p>
+            </div>
+            <StatusBadge Text="@($"{_dashboard.LowStock.Count} alertas")" Tone="alert" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Ubicación</th>
+                        <th class="num">Disponible</th>
+                        <th class="num">Mínimo</th>
+                        <th class="num">Faltante</th>
+                        <th>Estado</th>
+                        <th class="actions"><span class="sr-only">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _dashboard.LowStock)
+                    {
+                        <tr>
+                            <td>
+                                <a class="table-link" href="inventario/productos/@Uri.EscapeDataString(row.Sku)">
+                                    @row.ProductName
+                                </a>
+                                <span class="table-meta">@row.Sku</span>
+                            </td>
+                            <td>@row.Location</td>
+                            <td class="num">@Formatters.Quantity(row.QuantityAvailable)</td>
+                            <td class="num">@Formatters.Quantity(row.MinStock)</td>
+                            <td class="num">@Formatters.Quantity(Deficit(row))</td>
+                            <td><StatusBadge Text="@StatusText(row)" Tone="@StatusTone(row)" /></td>
+                            <td class="actions">
+                                <a class="table-action"
+                                   href="@($"inventario/recibir?sku={Uri.EscapeDataString(row.Sku)}")">Recibir</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private InventoryDashboard? _dashboard;
+    private string? _error;
+
+    private int OutOfStock => _dashboard?.LowStock.Count(row => row.QuantityAvailable == 0) ?? 0;
+
+    private int MissingUnits => _dashboard?.LowStock.Sum(Deficit) ?? 0;
+
+    private decimal ReplenishmentValue =>
+        _dashboard?.LowStock.Sum(row => Deficit(row) * row.SalePrice) ?? 0m;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _dashboard = DashboardService.Get(CurrentUser.StoreId ?? 0);
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static int Deficit(StockRow row) => Math.Max(row.MinStock - row.QuantityAvailable, 0);
+
+    private static string StatusText(StockRow row) =>
+        row.QuantityAvailable == 0 ? "Sin stock" : "Bajo mínimo";
+
+    private static string StatusTone(StockRow row) =>
+        row.QuantityAvailable == 0 ? "danger" : "warning";
+}

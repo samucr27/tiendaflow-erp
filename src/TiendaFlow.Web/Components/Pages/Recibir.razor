@@ -1,0 +1,236 @@
+@page "/inventario/recibir"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryStockReceive)]
+@using System.ComponentModel.DataAnnotations
+@inject IProductCatalogQuery ProductQuery
+@inject IStockQuery StockQuery
+@inject StockService StockService
+@inject ICurrentUser CurrentUser
+
+<PageTitle>Recibir mercancía · TiendaFlow</PageTitle>
+
+<PageHeader
+    Eyebrow="Inventario"
+    Title="Recibir mercancía"
+    Subtitle="@($"Registra unidades que llegan a la tienda {CurrentUser.StoreName}")" />
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<div class="two-column">
+    <section class="card">
+        <h2>Datos de la recepción</h2>
+
+        <EditForm Model="_form" OnValidSubmit="Receive" FormName="recibir-mercancia">
+            <DataAnnotationsValidator />
+
+            <div class="field">
+                <label for="receive-sku">Producto</label>
+                <InputSelect id="receive-sku" class="input" @bind-Value="_form.Sku" @bind-Value:after="OnProductChanged">
+                    @foreach (var product in _products)
+                    {
+                        <option value="@product.Sku">@product.Sku · @product.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => _form.Sku" />
+            </div>
+
+            <div class="field">
+                <label for="receive-quantity">Cantidad recibida</label>
+                <InputNumber id="receive-quantity" class="input" @bind-Value="_form.Quantity" />
+                <ValidationMessage For="() => _form.Quantity" />
+            </div>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="receive-location">Ubicación</label>
+                    <InputText id="receive-location" class="input" @bind-Value="_form.Location" />
+                    <ValidationMessage For="() => _form.Location" />
+                </div>
+
+                <div class="field">
+                    <label for="receive-min-stock">Stock mínimo</label>
+                    <InputNumber id="receive-min-stock" class="input" @bind-Value="_form.MinStock" />
+                    <ValidationMessage For="() => _form.MinStock" />
+                </div>
+            </div>
+
+            <p class="field-hint">
+                La ubicación y el stock mínimo solo se aplican cuando el producto aún no tiene
+                una fila de stock en la tienda.
+            </p>
+
+            <button type="submit" class="button button-primary">Confirmar recepción</button>
+        </EditForm>
+    </section>
+
+    <section class="card">
+        <h2>Stock actual</h2>
+
+        @if (_product is null)
+        {
+            <p class="muted">Elige un producto para ver su stock.</p>
+        }
+        else
+        {
+            <div class="product-summary">
+                <span class="product-summary-name">@_product.Name</span>
+                <span class="table-meta">@_product.Sku · @Formatters.Money(_product.SalePrice)</span>
+            </div>
+
+            @if (!_stock.Any())
+            {
+                <p class="muted">Sin stock registrado. La primera recepción creará la fila de stock.</p>
+            }
+            else
+            {
+                <div class="stock-list">
+                    @foreach (var row in _stock)
+                    {
+                        <div class="stock-row">
+                            <div class="alert-copy">
+                                <span class="alert-name">
+                                    @(row.StoreId == (CurrentUser.StoreId ?? 0) ? CurrentUser.StoreName : $"Tienda {row.StoreId}")
+                                </span>
+                                <span class="alert-meta">@row.Location · mínimo @Formatters.Quantity(row.MinStock)</span>
+                            </div>
+                            <div class="stock-row-value">
+                                <strong>@Formatters.Quantity(row.QuantityAvailable)</strong>
+                                <StatusBadge Text="@StatusText(row)" Tone="@StatusTone(row)" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "sku")]
+    public string? Sku { get; set; }
+
+    private IReadOnlyList<ProductListItem> _products = [];
+    private IReadOnlyList<StockRow> _stock = [];
+    private ProductListItem? _product;
+    private ReceiveForm _form = new();
+    private string? _success;
+    private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        try
+        {
+            if (_products.Count == 0)
+            {
+                _products = ProductQuery.Search(term: null);
+            }
+
+            if (!string.IsNullOrWhiteSpace(Sku)
+                && _form.Sku != Sku
+                && _products.Any(product => product.Sku == Sku))
+            {
+                _form.Sku = Sku;
+            }
+
+            if (string.IsNullOrWhiteSpace(_form.Sku))
+            {
+                _form.Sku = _products.FirstOrDefault()?.Sku ?? string.Empty;
+            }
+
+            LoadStock();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void OnProductChanged()
+    {
+        _error = null;
+        _success = null;
+        LoadStock();
+    }
+
+    private void Receive()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            var product = ProductQuery.GetBySku(_form.Sku)
+                ?? throw new ProductNotFoundException(_form.Sku);
+
+            var quantity = _form.Quantity;
+
+            StockService.ReceiveStock(
+                CurrentUser.StoreId ?? 0,
+                _form.Sku,
+                quantity,
+                _form.Location.Trim(),
+                _form.MinStock,
+                DateTime.UtcNow);
+
+            LoadStock();
+
+            var available = _stock
+                .FirstOrDefault(row => row.StoreId == (CurrentUser.StoreId ?? 0))?.QuantityAvailable ?? 0;
+
+            _success = $"Recibidas {Formatters.Quantity(quantity)} unidades de {product.Name}. " +
+                       $"Stock disponible: {Formatters.Quantity(available)} unidades.";
+
+            _form.Quantity = 1;
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void LoadStock()
+    {
+        _stock = StockQuery.ListBySku(_form.Sku);
+        _product = ProductQuery.GetBySku(_form.Sku);
+
+        var current = _stock.FirstOrDefault(row => row.StoreId == (CurrentUser.StoreId ?? 0));
+        if (current is not null)
+        {
+            _form.Location = current.Location;
+            _form.MinStock = current.MinStock;
+        }
+    }
+
+    private static string StatusText(StockRow row) =>
+        row.QuantityAvailable == 0 ? "Sin stock"
+        : row.IsBelowMinimum ? "Bajo mínimo"
+        : "Disponible";
+
+    private static string StatusTone(StockRow row) =>
+        row.QuantityAvailable == 0 ? "danger"
+        : row.IsBelowMinimum ? "warning"
+        : "ok";
+
+    private sealed class ReceiveForm
+    {
+        [Required(ErrorMessage = "Elige un producto.")]
+        public string Sku { get; set; } = string.Empty;
+
+        [Range(1, 1_000_000, ErrorMessage = "La cantidad debe ser mayor que cero.")]
+        public int Quantity { get; set; } = 1;
+
+        [Required(ErrorMessage = "La ubicación es obligatoria.")]
+        [StringLength(80, ErrorMessage = "La ubicación no puede superar 80 caracteres.")]
+        public string Location { get; set; } = "Pasillo 1";
+
+        [Range(0, 1_000_000, ErrorMessage = "El stock mínimo no puede ser negativo.")]
+        public int MinStock { get; set; }
+    }
+}

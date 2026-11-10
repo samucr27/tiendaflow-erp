@@ -1,0 +1,152 @@
+@page "/inventario/productos/nuevo"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryProductsManage)]
+@using System.ComponentModel.DataAnnotations
+@inject InventoryService InventoryService
+@inject StockService StockService
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Registrar producto · TiendaFlow</PageTitle>
+
+<PageHeader
+    Eyebrow="Inventario / Productos"
+    Title="Registrar producto"
+    Subtitle="Crea un nuevo SKU en el catálogo de la tienda" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<EditForm Model="_form" OnValidSubmit="Save" FormName="registrar-producto" class="form-card">
+    <DataAnnotationsValidator />
+
+    <div class="form-section">
+        <h2>Datos del producto</h2>
+        <p class="card-subtitle">El SKU y el código de barras deben ser únicos en toda la cadena.</p>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="sku">SKU</label>
+                <InputText id="sku" class="input" @bind-Value="_form.Sku" placeholder="Ej. GAS-010" />
+                <ValidationMessage For="() => _form.Sku" />
+            </div>
+
+            <div class="field">
+                <label for="barcode">Código de barras</label>
+                <InputText id="barcode" class="input" @bind-Value="_form.Barcode" placeholder="Ej. 7701234567010" />
+                <ValidationMessage For="() => _form.Barcode" />
+            </div>
+
+            <div class="field field-span">
+                <label for="name">Nombre del producto</label>
+                <InputText id="name" class="input" @bind-Value="_form.Name" placeholder="Ej. Gaseosa 400 ml" />
+                <ValidationMessage For="() => _form.Name" />
+            </div>
+
+            <div class="field">
+                <label for="price">Precio de venta (COP)</label>
+                <InputNumber id="price" class="input" @bind-Value="_form.Price" placeholder="3500" />
+                <ValidationMessage For="() => _form.Price" />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h2>Stock inicial</h2>
+        <p class="card-subtitle">Opcional. Si registras unidades, creamos la fila de stock de esta tienda.</p>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="quantity">Unidades recibidas</label>
+                <InputNumber id="quantity" class="input" @bind-Value="_form.InitialQuantity" />
+                <ValidationMessage For="() => _form.InitialQuantity" />
+            </div>
+
+            <div class="field">
+                <label for="min-stock">Stock mínimo</label>
+                <InputNumber id="min-stock" class="input" @bind-Value="_form.MinStock" />
+                <ValidationMessage For="() => _form.MinStock" />
+            </div>
+
+            <div class="field field-span">
+                <label for="location">Ubicación en la tienda</label>
+                <InputText id="location" class="input" @bind-Value="_form.Location" placeholder="Ej. Pasillo 1" />
+                <ValidationMessage For="() => _form.Location" />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a class="button button-secondary" href="inventario/productos">Cancelar</a>
+        <button type="submit" class="button button-primary">Guardar producto</button>
+    </div>
+</EditForm>
+
+@code {
+    private readonly ProductForm _form = new();
+    private string? _error;
+
+    private void Save()
+    {
+        _error = null;
+
+        try
+        {
+            var product = new Product(
+                _form.Sku.Trim(),
+                _form.Barcode.Trim(),
+                _form.Name.Trim(),
+                _form.Price);
+
+            InventoryService.CreateProduct(product);
+
+            if (_form.InitialQuantity > 0)
+            {
+                StockService.ReceiveStock(
+                    CurrentUser.StoreId ?? 0,
+                    product.Sku,
+                    _form.InitialQuantity,
+                    _form.Location.Trim(),
+                    _form.MinStock,
+                    DateTime.UtcNow);
+            }
+
+            Navigation.NavigateTo(
+                $"inventario/productos/{Uri.EscapeDataString(product.Sku)}?created=true");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private sealed class ProductForm
+    {
+        [Required(ErrorMessage = "El SKU es obligatorio.")]
+        [StringLength(40, ErrorMessage = "El SKU no puede superar 40 caracteres.")]
+        public string Sku { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El código de barras es obligatorio.")]
+        [StringLength(40, ErrorMessage = "El código de barras no puede superar 40 caracteres.")]
+        public string Barcode { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El nombre del producto es obligatorio.")]
+        [StringLength(120, ErrorMessage = "El nombre no puede superar 120 caracteres.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Range(1, 1_000_000_000, ErrorMessage = "El precio debe ser mayor que cero.")]
+        public int Price { get; set; }
+
+        [Range(0, 1_000_000, ErrorMessage = "La cantidad no puede ser negativa.")]
+        public int InitialQuantity { get; set; }
+
+        [Range(0, 1_000_000, ErrorMessage = "El stock mínimo no puede ser negativo.")]
+        public int MinStock { get; set; }
+
+        [Required(ErrorMessage = "La ubicación es obligatoria.")]
+        [StringLength(80, ErrorMessage = "La ubicación no puede superar 80 caracteres.")]
+        public string Location { get; set; } = "Pasillo 1";
+    }
+}

@@ -1,0 +1,242 @@
+@page "/inventario/productos/{Sku}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryProductsView)]
+@using System.ComponentModel.DataAnnotations
+@inject IProductCatalogQuery ProductQuery
+@inject IStockQuery StockQuery
+@inject ProductPriceService PriceService
+@inject ICurrentUser CurrentUser
+@inject IAccessControl AccessControl
+
+<PageTitle>@(_product?.Name ?? "Producto") · TiendaFlow</PageTitle>
+
+@if (_product is null)
+{
+    <PageHeader Eyebrow="Inventario / Productos" Title="Producto no encontrado" />
+
+    <EmptyState Title="No encontramos ese producto"
+                Message="Verifica el SKU o vuelve al catálogo para elegir un producto.">
+        <Action>
+            <a class="button button-primary" href="inventario/productos">Volver al catálogo</a>
+        </Action>
+    </EmptyState>
+}
+else
+{
+    <PageHeader Eyebrow="@($"Producto · {_product.Sku}")"
+                Title="@_product.Name"
+                Subtitle="@($"Precio de venta {Formatters.Money(_product.SalePrice)} · {TotalUnits()} unidades en {CurrentUser.StoreName}")">
+        <Actions>
+            <a class="button button-secondary" href="inventario/productos">Volver</a>
+            @if (AccessControl.Has(Permissions.InventoryStockReceive))
+            {
+                <a class="button button-primary" href="@($"inventario/recibir?sku={Uri.EscapeDataString(_product.Sku)}")">
+                    Recibir mercancía
+                </a>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (_success is not null)
+    {
+        <div class="alert alert-success" role="status">@_success</div>
+    }
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">@_error</div>
+    }
+
+    <div class="detail-grid">
+        <section class="card">
+            <h2>Datos del producto</h2>
+            <dl class="definition-grid">
+                <div>
+                    <dt>SKU</dt>
+                    <dd class="mono">@_product.Sku</dd>
+                </div>
+                <div>
+                    <dt>Código de barras</dt>
+                    <dd class="mono">@_product.Barcode</dd>
+                </div>
+                <div>
+                    <dt>Precio de venta</dt>
+                    <dd>@Formatters.Money(_product.SalePrice)</dd>
+                </div>
+                <div>
+                    <dt>Stock total</dt>
+                    <dd>@Formatters.Quantity(TotalUnits()) unidades</dd>
+                </div>
+            </dl>
+        </section>
+
+        @if (AccessControl.Has(Permissions.InventoryPriceChange))
+        {
+            <section class="card">
+                <h2>Cambiar precio</h2>
+                <p class="card-subtitle">
+                    El cambio y su registro de auditoría se guardan en la misma transacción.
+                </p>
+
+                <EditForm Model="_priceForm" OnValidSubmit="ChangePrice" FormName="cambiar-precio">
+                    <DataAnnotationsValidator />
+
+                    <div class="field">
+                        <label for="new-price">Nuevo precio de venta (COP)</label>
+                        <InputNumber id="new-price" class="input" @bind-Value="_priceForm.NewPrice" />
+                        <ValidationMessage For="() => _priceForm.NewPrice" />
+                    </div>
+
+                    <button type="submit" class="button button-primary">Actualizar precio</button>
+                </EditForm>
+            </section>
+        }
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Stock por tienda</h2>
+                <p class="card-subtitle">Existencias y último movimiento registrado</p>
+            </div>
+        </div>
+
+        @if (!_stock.Any())
+        {
+            <EmptyState Title="Sin stock registrado"
+                        Message="Este producto todavía no tiene existencias en la tienda.">
+                <Action>
+                    <a class="button button-primary" href="@($"inventario/recibir?sku={Uri.EscapeDataString(_product.Sku)}")">
+                        Recibir mercancía
+                    </a>
+                </Action>
+            </EmptyState>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tienda</th>
+                            <th>Ubicación</th>
+                            <th class="num">Disponible</th>
+                            <th class="num">Mínimo</th>
+                            <th>Estado</th>
+                            <th>Último movimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _stock)
+                        {
+                            <tr>
+                                <td>@(row.StoreId == (CurrentUser.StoreId ?? 0) ? CurrentUser.StoreName : $"Tienda {row.StoreId}")</td>
+                                <td>@row.Location</td>
+                                <td class="num">@Formatters.Quantity(row.QuantityAvailable)</td>
+                                <td class="num">@Formatters.Quantity(row.MinStock)</td>
+                                <td><StatusBadge Text="@StatusText(row)" Tone="@StatusTone(row)" /></td>
+                                <td>@MovementText(row.LastMovement)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public string Sku { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery]
+    public bool Created { get; set; }
+
+    private ProductListItem? _product;
+    private IReadOnlyList<StockRow> _stock = [];
+    private PriceForm _priceForm = new();
+    private string? _success;
+    private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        LoadProduct();
+
+        if (Created && _success is null)
+        {
+            _success = "Producto registrado correctamente.";
+        }
+    }
+
+    private void LoadProduct()
+    {
+        try
+        {
+            _product = ProductQuery.GetBySku(Sku);
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+            return;
+        }
+
+        if (_product is null)
+        {
+            _stock = [];
+            return;
+        }
+
+        try
+        {
+            _stock = StockQuery.ListBySku(_product.Sku);
+            _priceForm = new PriceForm { NewPrice = (int)decimal.Round(_product.SalePrice) };
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void ChangePrice()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            PriceService.UpdatePrice(
+                _product!.Sku,
+                _priceForm.NewPrice,
+                CurrentUser.UserId,
+                DateTime.UtcNow);
+            LoadProduct();
+            _success = $"Precio actualizado a {Formatters.Money(_product!.SalePrice)}.";
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private int TotalUnits() => _stock.Sum(row => row.QuantityAvailable);
+
+    private static string StatusText(StockRow row) =>
+        row.QuantityAvailable == 0 ? "Sin stock"
+        : row.IsBelowMinimum ? "Bajo mínimo"
+        : "Disponible";
+
+    private static string StatusTone(StockRow row) =>
+        row.QuantityAvailable == 0 ? "danger"
+        : row.IsBelowMinimum ? "warning"
+        : "ok";
+
+    private static string MovementText(InventoryMovement? movement) =>
+        movement is null
+            ? "Sin movimientos"
+            : $"{(movement.Type == MovementType.Sale ? "Venta" : "Recepción")} de {movement.Quantity} · {Formatters.ShortDateTime(movement.Date)}";
+
+    private sealed class PriceForm
+    {
+        [Range(1, 1_000_000_000, ErrorMessage = "El precio debe ser mayor que cero.")]
+        public int NewPrice { get; set; }
+    }
+}

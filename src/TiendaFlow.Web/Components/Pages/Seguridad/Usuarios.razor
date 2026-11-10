@@ -1,0 +1,108 @@
+@page "/seguridad/usuarios"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityUsersView)]
+@inject UserDirectoryService UserDirectory
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Usuarios · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad"
+            Title="Usuarios"
+            Subtitle="Personas autorizadas a ingresar a TiendaFlow y el rol que tienen asignado">
+    <Actions>
+        @if (AccessControl.Has(Permissions.SecurityUsersManage))
+        {
+            <a class="button button-primary" href="seguridad/usuarios/nuevo">+ Crear usuario</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_users is null)
+{
+    <p class="muted">Cargando los usuarios…</p>
+}
+else if (!_users.Any())
+{
+    <EmptyState Title="Todavía no hay usuarios"
+                Message="Crea el primer usuario para que pueda ingresar al sistema." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Equipo con acceso</h2>
+                <p class="card-subtitle">@_users.Count usuarios registrados</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Documento</th>
+                        <th>Tienda</th>
+                        <th>Rol</th>
+                        <th>Estado</th>
+                        @if (AccessControl.Has(Permissions.SecurityUsersManage))
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in _users)
+                    {
+                        <tr>
+                            <td>@user.FullName</td>
+                            <td>@user.Email</td>
+                            <td>@user.IdNumber</td>
+                            <td>@user.StoreName</td>
+                            <td>@user.RoleLabel</td>
+                            <td>
+                                <span class="badge @(user.Active ? "badge-success" : "badge-muted")">
+                                    @(user.Active ? "Activo" : "Inactivo")
+                                </span>
+                            </td>
+                            @if (AccessControl.Has(Permissions.SecurityUsersManage))
+                            {
+                                <td class="table-actions">
+                                    <a class="button button-secondary button-small"
+                                       href="@($"seguridad/usuarios/{user.Id}")">Editar</a>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<UserListItem>? _users;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _users = UserDirectory.List();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

@@ -1,0 +1,90 @@
+@page "/seguridad/roles"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityRolesView)]
+@inject RoleCatalogService RoleCatalog
+@inject NavigationManager Navigation
+
+<PageTitle>Roles y permisos · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad"
+            Title="Roles y permisos"
+            Subtitle="Matriz de solo lectura: cada rol puede usar únicamente las funciones marcadas" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_matrix is null)
+{
+    <p class="muted">Cargando la matriz…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Matriz de acceso</h2>
+                <p class="card-subtitle">
+                    @_matrix.Roles.Count roles y @_matrix.Rows.Count permisos.
+                    La matriz se define en el código y se aplica en páginas, botones y servicios.
+                </p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table matrix-table">
+                <thead>
+                    <tr>
+                        <th>Permiso</th>
+                        @foreach (var role in _matrix.Roles)
+                        {
+                            <th class="matrix-role">@SystemRoles.Label(role)</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _matrix.Rows)
+                    {
+                        <tr>
+                            <td><code>@row.Permission</code></td>
+                            @foreach (var role in _matrix.Roles)
+                            {
+                                <td class="matrix-cell">
+                                    @if (row.AllowedByRole[role])
+                                    {
+                                        <span class="matrix-yes" aria-label="Permitido">Sí</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="matrix-no" aria-label="No permitido">—</span>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private RoleMatrix? _matrix;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _matrix = RoleCatalog.GetMatrix();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

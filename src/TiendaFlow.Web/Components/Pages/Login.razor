@@ -1,0 +1,70 @@
+@page "/login"
+@layout LoginLayout
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Ingresar · TiendaFlow</PageTitle>
+
+<div class="login-card">
+    <div class="login-brand">
+        <div class="brand-mark" aria-hidden="true">TF</div>
+        <div>
+            <h1>TiendaFlow</h1>
+            <p>ERP para tiendas de conveniencia</p>
+        </div>
+    </div>
+
+    <div class="login-copy">
+        <h2>Inicia sesión</h2>
+        <p class="muted">Ingresa con el correo y la contraseña asignados por el administrador.</p>
+    </div>
+
+    @if (Error == 1)
+    {
+        <div class="alert alert-error" role="alert">
+            El correo o la contraseña no son correctos, o el usuario está inactivo.
+        </div>
+    }
+
+    <form method="post" action="/login" class="login-form">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+        <div class="field">
+            <label for="login-email">Correo electrónico</label>
+            <input id="login-email"
+                   class="input"
+                   type="email"
+                   name="email"
+                   autocomplete="username"
+                   required
+                   autofocus
+                   placeholder="nombre@tiendaflow.co" />
+        </div>
+
+        <div class="field">
+            <label for="login-password">Contraseña</label>
+            <input id="login-password"
+                   class="input"
+                   type="password"
+                   name="password"
+                   autocomplete="current-password"
+                   required
+                   placeholder="Tu contraseña" />
+        </div>
+
+        <button type="submit" class="button button-primary button-block">Ingresar</button>
+    </form>
+
+    <p class="login-footnote">
+        ¿No puedes ingresar? Contacta al administrador del sistema.
+    </p>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+}

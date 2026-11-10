@@ -1,0 +1,273 @@
+@page "/rrhh/nomina"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrPayrollManage)]
+@using TiendaFlow.Application.Payroll
+@inject PayrollRunService PayrollRunService
+@inject NavigationManager Navigation
+
+<PageTitle>Nómina · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Nómina del mes"
+            Subtitle="Calcula la nómina de los empleados activos con los parámetros de referencia del sistema">
+</PageHeader>
+
+<div class="alert alert-error" role="note">
+    Los valores usan parámetros de referencia pendientes de validación legal.
+</div>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Datos de la corrida</h2>
+            <p class="card-subtitle">Se calculan únicamente los empleados activos.</p>
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="run-days">Días trabajados</label>
+            <input id="run-days" class="input" type="number" min="1" max="30" @bind="_daysWorked" />
+        </div>
+
+        <div class="field">
+            <label for="run-risk">Clase de riesgo ARL</label>
+            <input id="run-risk" class="input" type="number" min="1" max="5" @bind="_riskClass" />
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="button button-primary" @onclick="Calculate">
+            Calcular nómina del mes
+        </button>
+    </div>
+</section>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_run is not null)
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Resultado de la corrida</h2>
+                <p class="card-subtitle">
+                    @_run.DaysWorked días · @_run.CalculatedCount empleados calculados
+                    @if (_run.ProblemCount > 0)
+                    {
+                        <span> · @_run.ProblemCount con novedades</span>
+                    }
+                </p>
+            </div>
+        </div>
+
+        @if (!_run.Lines.Any())
+        {
+            <p class="muted">No hay empleados activos para calcular.</p>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Cargo</th>
+                            <th>Contrato</th>
+                            <th>Devengado</th>
+                            <th>Deducciones</th>
+                            <th>Neto</th>
+                            <th>Costo empleador</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _run.Lines)
+                        {
+                            if (line.Result is PayrollResult result)
+                            {
+                                <tr @onclick="() => Select(line)">
+                                    <td>@line.Name</td>
+                                    <td>@line.Position</td>
+                                    <td>@line.ContractLabel</td>
+                                    <td>@Formatters.Money(result.GrossEarnings)</td>
+                                    <td>@Formatters.Money(result.TotalDeductions)</td>
+                                    <td>@Formatters.Money(result.NetPay)</td>
+                                    <td>@Formatters.Money(result.TotalEmployerCost)</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td>@line.Name</td>
+                                    <td>@line.Position</td>
+                                    <td>@line.ContractLabel</td>
+                                    <td colspan="4">
+                                        <span class="badge badge-muted">No calculado</span>
+                                        <span>@line.Problem</span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                    @if (_run.CalculatedCount > 0)
+                    {
+                        <tfoot>
+                            <tr>
+                                <th colspan="3">Totales (@_run.CalculatedCount empleados)</th>
+                                <td>@Formatters.Money(_run.TotalGrossEarnings)</td>
+                                <td>@Formatters.Money(_run.TotalDeductions)</td>
+                                <td>@Formatters.Money(_run.TotalNetPay)</td>
+                                <td>@Formatters.Money(_run.TotalEmployerCost)</td>
+                            </tr>
+                        </tfoot>
+                    }
+                </table>
+            </div>
+        }
+    </section>
+
+    @if (_selected?.Result is PayrollResult breakdown)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Desglose de @_selected.Name</h2>
+                    <p class="card-subtitle">
+                        @_selected.Position · @_selected.ContractLabel ·
+                        @_run.DaysWorked días · riesgo ARL @_run.RiskClass
+                    </p>
+                </div>
+            </div>
+
+            <dl class="definition-grid">
+                <div>
+                    <dt>Salario devengado</dt>
+                    <dd>@Formatters.Money(breakdown.EarnedSalary)</dd>
+                </div>
+                <div>
+                    <dt>Otros devengos</dt>
+                    <dd>@Formatters.Money(breakdown.OtherSalaryEarnings)</dd>
+                </div>
+                <div>
+                    <dt>Auxilio de transporte</dt>
+                    <dd>@Formatters.Money(breakdown.TransportSubsidy)</dd>
+                </div>
+                <div>
+                    <dt>Total devengado</dt>
+                    <dd>@Formatters.Money(breakdown.GrossEarnings)</dd>
+                </div>
+                <div>
+                    <dt>Base de cotización</dt>
+                    <dd>@Formatters.Money(breakdown.ContributionBase)</dd>
+                </div>
+                <div>
+                    <dt>Salud (empleado)</dt>
+                    <dd>@Formatters.Money(breakdown.EmployeeHealth)</dd>
+                </div>
+                <div>
+                    <dt>Pensión (empleado)</dt>
+                    <dd>@Formatters.Money(breakdown.EmployeePension)</dd>
+                </div>
+                <div>
+                    <dt>Fondo de solidaridad</dt>
+                    <dd>@Formatters.Money(breakdown.SolidarityFund)</dd>
+                </div>
+                <div>
+                    <dt>Retención en la fuente</dt>
+                    <dd>@Formatters.Money(breakdown.Withholding)</dd>
+                </div>
+                <div>
+                    <dt>Total deducciones</dt>
+                    <dd>@Formatters.Money(breakdown.TotalDeductions)</dd>
+                </div>
+                <div>
+                    <dt>Neto a pagar</dt>
+                    <dd>@Formatters.Money(breakdown.NetPay)</dd>
+                </div>
+                <div>
+                    <dt>Salud (empleador)</dt>
+                    <dd>@Formatters.Money(breakdown.EmployerHealth)</dd>
+                </div>
+                <div>
+                    <dt>Pensión (empleador)</dt>
+                    <dd>@Formatters.Money(breakdown.EmployerPension)</dd>
+                </div>
+                <div>
+                    <dt>ARL</dt>
+                    <dd>@Formatters.Money(breakdown.Arl)</dd>
+                </div>
+                <div>
+                    <dt>Caja de compensación</dt>
+                    <dd>@Formatters.Money(breakdown.CompensationBox)</dd>
+                </div>
+                <div>
+                    <dt>SENA</dt>
+                    <dd>@Formatters.Money(breakdown.Sena)</dd>
+                </div>
+                <div>
+                    <dt>ICBF</dt>
+                    <dd>@Formatters.Money(breakdown.Icbf)</dd>
+                </div>
+                <div>
+                    <dt>Total aportes del empleador</dt>
+                    <dd>@Formatters.Money(breakdown.TotalEmployerContributions)</dd>
+                </div>
+                <div>
+                    <dt>Cesantías</dt>
+                    <dd>@Formatters.Money(breakdown.Severance)</dd>
+                </div>
+                <div>
+                    <dt>Intereses sobre cesantías</dt>
+                    <dd>@Formatters.Money(breakdown.SeveranceInterest)</dd>
+                </div>
+                <div>
+                    <dt>Prima de servicios</dt>
+                    <dd>@Formatters.Money(breakdown.ServiceBonus)</dd>
+                </div>
+                <div>
+                    <dt>Vacaciones</dt>
+                    <dd>@Formatters.Money(breakdown.Vacations)</dd>
+                </div>
+                <div>
+                    <dt>Total provisiones</dt>
+                    <dd>@Formatters.Money(breakdown.TotalProvisions)</dd>
+                </div>
+                <div>
+                    <dt>Costo total del empleador</dt>
+                    <dd>@Formatters.Money(breakdown.TotalEmployerCost)</dd>
+                </div>
+            </dl>
+        </section>
+    }
+}
+
+@code {
+    private int _daysWorked = 30;
+    private int _riskClass = 1;
+    private PayrollRun? _run;
+    private PayrollRunLine? _selected;
+    private string? _error;
+
+    private void Calculate()
+    {
+        _error = null;
+
+        try
+        {
+            _run = PayrollRunService.Calculate(_daysWorked, _riskClass);
+            _selected = null;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Select(PayrollRunLine line) => _selected = line;
+}
