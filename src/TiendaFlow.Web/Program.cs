@@ -33,6 +33,7 @@ builder.Services.AddSingleton<IWithholdingCalculator, WithholdingCalculator>();
 builder.Services.AddSingleton<IPayrollStrategy, EmploymentPayrollStrategy>();
 builder.Services.AddSingleton<IPayrollStrategy, ServiceProvisionPayrollStrategy>();
 builder.Services.AddScoped<IPayrollEngine, PayrollEngine>();
+builder.Services.AddScoped<PayrollRunService>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
