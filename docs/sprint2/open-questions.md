@@ -12,5 +12,7 @@ Este archivo registra dudas, bloqueos y decisiones pendientes detectadas durante
 | 6 | Nómina / legal | Las tres discrepancias de parámetros (solidaridad, retención de prestación de servicios y base de retención con auxilio de transporte) requieren validación legal antes de producción. | Documentada en `payroll-parameters-validation.md` | Nómina + jurídica |
 | 7 | Pruebas | No hay pruebas de componentes Razor (bUnit). ¿Se agrega un proyecto en el Sprint 3? | Abierta | Calidad |
 | 8 | CI | El workflow usa `dotnet build` / `dotnet test` sin fijar `TiendaFlow.slnx`. ¿Se fija el objetivo para evitar descubrimientos accidentales? | Abierta | DevOps |
+| 9 | Datos demo | La contraseña del cajero demo se cambió desde la pantalla de usuarios después del sembrado, por lo que ya no inicia sesión con `Seed:DemoPassword`. ¿Se restablece con el secreto de demo o se vuelve a sembrar la base de desarrollo? | Abierta | Demo + QA |
+| 10 | Proceso | `OPENCODE_PROMPT_2.md` termina en la Fase E, paso 4: no contiene las Fases F ni G ni el CIERRE. ¿Se comparte el texto faltante para completar la pasada? | Bloqueo | Líder técnico |
 
 > Ninguna de estas preguntas bloqueó la entrega del Sprint 2. Las migraciones no fueron necesarias y no se creó ninguna.
