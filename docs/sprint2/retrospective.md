@@ -4,25 +4,46 @@
 
 - La arquitectura por capas (Domain, Application, Infrastructure, Web) y la
   regla de que Domain y Application no referencian EF Core se mantuvieron.
-- La seguridad quedó completa: 7 roles, matriz central, autorización en tres
-  niveles y auditoría, verificada de extremo a extremo.
+- La seguridad quedó implementada con 7 roles, matriz central, autorización en
+  tres niveles y auditoría verificada de extremo a extremo. Quedan decisiones
+  abiertas de privacidad y una desalineación latente de permisos en alertas,
+  registradas en `docs/sprint2/open-questions.md`.
 - El motor de nómina quedó aislado tras interfaces, con pruebas unitarias de
   números calculados a mano.
 - La documentación arc42 se produjo junto con el código.
+
+## Resultados verificables del Sprint 2
+
+- **Cobertura:** 85,6 % de líneas en Application + Domain, medida con coverlet y
+  ReportGenerator.
+- **Pruebas:** la línea base tenía 213 pruebas (190 unitarias y 6 de aceptación
+  en verde, 17 de integración omitidas). La Fase 1 sumó 54 pruebas unitarias:
+  al cierre hay 250 pruebas activas en verde (244 unitarias y 6 de aceptación)
+  y las mismas 17 de integración omitidas por falta de SQL Server en CI.
+- **CI:** build y pruebas en verde en GitHub Actions; las pruebas de integración
+  se omiten porque el runner no tiene SQL Server.
+- **Terraform:** `init`, `validate` y `plan` se ejecutan en el workflow con
+  estado remoto en HCP Terraform y la configuración está en verde; el recurso
+  actual es un *placeholder* declarado.
+- **Fase 1:** CRUD de empleados con enmascaramiento de salario, corrida de
+  nómina por empleado activo, auditoría con módulo `hr` y pruebas unitarias de
+  ambas piezas.
+- **Documentación:** arc42 (secciones 05, 07 y 10), validación de parámetros de
+  nómina, guion de demo, revisión de código y paquete para Notion.
 
 ## Qué se puede mejorar
 
 - La complejidad de HU-04 (nómina) fue subestimada: el planning poker no
   consideró suficientes casos de borde.
-- Se asumió demasiado alcance para una sola persona (CRUD de cinco módulos).
+- Se asumió demasiado alcance para el equipo disponible (CRUD de cinco módulos).
 - La integración continua no ejecuta las pruebas de integración (no hay SQL
   Server en GitHub Actions), por lo que parte de la cobertura solo se verifica
   en local.
 
 ## Impedimentos
 
-- El equipo estuvo ocupado con otras asignaturas y la implementación recayó en
-  una sola persona.
+- La implementación se concentró en un integrante mientras el resto del equipo
+  atendía otras asignaturas, lo que dejó pendiente la revisión cruzada de código.
 - La herramienta de asistencia de código usada alcanzó su límite diario
   gratuito y el trabajo tuvo que continuar a mano.
 - La fecha de entrega (antes del 11 de noviembre) dejó poco margen para
@@ -34,6 +55,8 @@
    (nómina, impuestos, facturación electrónica), con la regla de abajo.
 2. **IaC:** pipeline básico de GitHub Actions para que `terraform plan` corra
    automáticamente en cada PR a `develop` que modifique archivos `.tf`.
+3. **Reparto de trabajo:** asignar desde el Sprint Planning al menos una HU o
+   tarea por integrante y exigir la revisión de cada PR por un compañero.
 
 ## Tarea 1: por qué HU-04 fue subestimada
 
@@ -77,3 +100,6 @@ electrónica DIAN, datos personales):
    vigencia anotada.
 5. **Definition of Done ampliada:** revisión de las reglas por alguien que
    conozca la normativa, o marca explícita de "supuesto pendiente de validar".
+6. **Registro obligatorio en la HU:** estimado base, factores de riesgo
+   aplicados, multiplicador y resultado redondeado a Fibonacci. Una HU sin ese
+   registro no entra al Sprint Planning.
