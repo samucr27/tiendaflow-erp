@@ -2,7 +2,7 @@
 
 ## 5.1 Vista de nivel 1: TiendaFlow ERP (monolito modular)
 
-TiendaFlow es una única aplicación Blazor Web App organizada en cuatro capas con una dirección de dependencia estricta: **Domain → Application → Infrastructure → Web**. Domain y Application no referencian EF Core.
+TiendaFlow es una única aplicación Blazor Web App organizada en cuatro capas con una dirección de dependencia estricta: **Domain <- Application <- Infrastructure <- Web**. Domain y Application no referencian EF Core.
 
 | Bloque | Responsabilidad |
 |---|---|

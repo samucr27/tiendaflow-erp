@@ -17,10 +17,10 @@ else authorized
     Endpoint -> Engine : Calculate(input)
     Engine -> Engine : validate input\n(salary > 0, days 1..30, other earnings >= 0)
     Engine -> Engine : select strategy where Supports(contractType)
-    Engine -> Strategy : Calculate(input)
-    Strategy -> Params : GetParameters()
-    Params --> Strategy : PayrollParameters
-    Strategy -> Withholding : Calculate(taxable base, parameters)
+    Engine -> Params : GetCurrent()
+    Params --> Engine : PayrollParameters
+    Engine -> Strategy : Calculate(input, parameters)
+    Strategy -> Withholding : CalculateMonthlyEmployeeWithholding(\ngross income, mandatory contributions, parameters)
     Withholding --> Strategy : withholding amount
     Strategy --> Engine : PayrollResult
     Engine --> Endpoint : PayrollResult
