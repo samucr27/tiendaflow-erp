@@ -228,7 +228,8 @@ El cajero **no** tiene `InventoryAlertsView`, por eso no se usa para esta demo.
    - Verificación: **Total** muestra `$44.000`.
    - Cálculo: `8 × 5.500 = 44.000`.
 6. Hacer clic en **Confirmar venta**.
-   - Verificación: aparece el comprobante de la operación en la columna derecha y el stock baja a `4`.
+   - Verificación: el comprobante **Venta registrada** aparece en la columna derecha y su pie dice **Stock restante: 4 unidades**.
+   - Verificación: el resumen **Disponible en Tienda Centro** puede seguir mostrando el valor anterior hasta cambiar de producto; el dato vinculante es el del comprobante y el de `/inventario/alertas`.
    - Verificación: si el stock inicial ya no era 12 por una demo anterior, vender la cantidad necesaria para quedar **por debajo de 5**: `cantidad = stock_actual − 5 + 1`. Anotar el stock visto en el paso 4.
 7. Abrir **Inventario → Alertas de stock** (`/inventario/alertas`).
    - Verificación: el KPI **Alertas activas** muestra `1`.
@@ -261,9 +262,10 @@ surte efecto en el siguiente inicio de sesión y ver el rechazo en la auditoría
 4. En **Rol**, seleccionar **Jefe de tienda** y hacer clic en **Guardar cambios**.
    - Verificación: aparece el mensaje de éxito y la cabecera muestra el nuevo rol.
 5. Abrir **Seguridad → Roles y permisos** (`/seguridad/roles`).
-   - Verificación: la matriz es de solo lectura y muestra 7 roles y el total de permisos.
-   - Verificación: la fila **Jefe de tienda** tiene marcados, entre otros, **Usar punto de venta**, **Ver alertas de stock** y **Recibir mercancía**.
-   - Verificación: la fila **Auxiliar de bodega** **no** tiene marcado **Usar punto de venta**.
+   - Verificación: la matriz es de solo lectura y muestra los 7 roles y el total de permisos.
+   - Verificación: la fila `sales.pos.use` tiene **Sí** en la columna **Jefe de tienda** y **—** en la columna **Auxiliar de bodega**.
+   - Verificación: la fila `inventory.alerts.view` tiene **Sí** en **Jefe de tienda** y **Sí** en **Auxiliar de bodega**.
+   - Verificación: la fila `inventory.stock.receive` tiene **Sí** en **Jefe de tienda** y **Sí** en **Auxiliar de bodega**.
    - Énfasis para el video: la matriz se define en el código y se aplica en páginas, botones y servicios (texto visible en la pantalla).
 6. Cerrar sesión con **Salir**.
 7. Iniciar sesión como `bodega@tiendaflow.local` con `Seed:DemoPassword`. El cambio de rol se aplica al emitir la nueva cookie.
