@@ -1,3 +1,4 @@
+using TiendaFlow.Application.Payroll;
 using TiendaFlow.Domain;
 
 namespace TiendaFlow.Web.Formatting;
@@ -44,6 +45,14 @@ public static class DomainErrorTranslator
             "La orden de compra no se puede completar con esos datos. Revisa las líneas, las cantidades y el estado de la orden.",
         PurchaseOrderNotFoundException =>
             "No encontramos la orden de compra solicitada.",
+        InvalidEmployeeException =>
+            "Revisa los datos del empleado. El documento, el nombre, el cargo, el tipo de contrato y la tienda deben ser válidos, y el salario no puede ser negativo.",
+        EmployeeNotFoundException =>
+            "No encontramos el empleado solicitado.",
+        InvalidPayrollInputException =>
+            "Revisa los datos de la nómina. Los días trabajados deben estar entre 1 y 30 y la clase de riesgo entre 1 y 5.",
+        UnsupportedContractTypeException =>
+            "El tipo de contrato del empleado no tiene una regla de nómina configurada.",
         _ => "Ocurrió un error inesperado. Intenta de nuevo."
     };
 }

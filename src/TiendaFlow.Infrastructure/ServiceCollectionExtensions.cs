@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AuthenticationService>();
         services.AddScoped<SupplierService>();
         services.AddScoped<PurchaseOrderService>();
+        services.AddScoped<EmployeeService>();
 
         return services;
     }
