@@ -5,6 +5,8 @@
 **Archivo revisado:** `src/TiendaFlow.Application/Payroll/PayrollParameters.cs`
 **Alcance:** documentar y contrastar los valores; **no se modificó ningún valor del código** en esta fase.
 
+> Borrador preparado con asistente de código a partir de fuentes públicas (varias secundarias). No lo ha validado un contador ni un integrante del equipo; debe confirmarse contra la norma oficial antes de cualquier uso real.
+
 > Este documento sustenta la advertencia visible de la pantalla `/rrhh/nomina`:
 > «Los valores usan parámetros de referencia pendientes de validación legal».
 > Es un ejercicio académico y no reemplaza la revisión de un contador o de un
@@ -15,12 +17,12 @@
 1. Se leyó el archivo completo de parámetros, incluidas las provisiones y la tabla de retención.
 2. Se contrastó cada valor con la norma general que lo define y con una fuente oficial
    (Ministerio del Trabajo, DIAN, Ministerio de Salud/UGPP, ARL o Código Sustantivo del Trabajo).
-3. Se marcó **Verificado** cuando el valor coincide con la fuente consultada.
+3. Se marcó **Consistente con la fuente consultada** cuando el valor coincide con la fuente consultada.
    Se marcó **Discrepancia** cuando el valor del código no coincide con la regla vigente,
    indicando el valor o modelo correcto propuesto.
 4. Las fuentes se consultaron el 9 de noviembre de 2026. Los enlaces completos están en la sección 6.
 
-**Resumen:** 26 parámetros revisados: **23 verificados** y **3 discrepancias**.
+**Resumen:** 26 parámetros revisados: **23 consistentes con la fuente consultada** y **3 discrepancias**.
 Las discrepancias no rompen los cálculos de los tres casos de prueba de la sección 4,
 pero sí afectan salarios altos y contratos de prestación de servicios de no declarantes.
 
@@ -28,68 +30,68 @@ pero sí afectan salarios altos y contratos de prestación de servicios de no de
 
 ### 2.1 Valores de referencia
 
-| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Estado |
+| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Resultado del asistente |
 |---|---:|---|---|---|
-| `MinimumWage` | $1.750.905 | Salario mínimo legal mensual vigente 2026 (Decreto 1469 de 2025). El Decreto 0159 de 2026 mantuvo transitoriamente el mismo valor tras la suspensión provisional. | Ministerio del Trabajo — Decreto 1469 del 29-12-2025 | **Verificado** — Decreto 1469 de 2025, consultado 09-11-2026 |
-| `TransportSubsidy` | $249.095 | Auxilio de transporte 2026 (Decreto 1470 de 2025), para quienes devengan hasta 2 SMMLV. | Ministerio del Trabajo — Decreto 1470 del 29-12-2025 | **Verificado** — Decreto 1470 de 2025, consultado 09-11-2026 |
-| `TransportSubsidyLimitInMinimumWages` | 2 | Límite de 2 SMMLV para tener derecho al auxilio de transporte (Decreto 1470 de 2025). | Ministerio del Trabajo — Decreto 1470 de 2025 | **Verificado** — el código usa `<= 2 SMMLV`, que coincide con «hasta dos salarios mínimos» |
-| `Uvt` | $52.374 | Unidad de Valor Tributario 2026 (Resolución DIAN 000238 del 15-12-2025). | DIAN — Resolución 000238 de 2025 | **Verificado** — DIAN, consultado 09-11-2026 |
-| `MaxContributionBaseInMinimumWages` | 25 | Límite de la base de cotización a seguridad social: 25 SMMLV (Ley 100 de 1993, art. 18). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Verificado** — regla general de 25 SMMLV |
+| `MinimumWage` | $1.750.905 | Salario mínimo legal mensual vigente 2026 (Decreto 1469 de 2025). El decreto está demandado en nulidad ante el Consejo de Estado: la suspensión provisional decretada el 12-02-2026 fue revocada el 17-07-2026, así que el valor sigue vigente, pero el proceso de nulidad continúa y el valor podría cambiar. El Decreto 0159 de 2026 mantuvo transitoriamente el mismo valor durante la suspensión. | Ministerio del Trabajo — Decreto 1469 del 29-12-2025; Consejo de Estado — autos del 12-02-2026 y 17-07-2026 | **Consistente con la fuente consultada** — valor vigente tras la revocatoria del 17-07-2026; proceso de nulidad en curso (consultado 09-11-2026) |
+| `TransportSubsidy` | $249.095 | Auxilio de transporte 2026 (Decreto 1470 de 2025), para quienes devengan hasta 2 SMMLV. | Ministerio del Trabajo — Decreto 1470 del 29-12-2025 | **Consistente con la fuente consultada** — Decreto 1470 de 2025, consultado 09-11-2026 |
+| `TransportSubsidyLimitInMinimumWages` | 2 | Límite de 2 SMMLV para tener derecho al auxilio de transporte (Decreto 1470 de 2025). | Ministerio del Trabajo — Decreto 1470 de 2025 | **Consistente con la fuente consultada** — el código usa `<= 2 SMMLV`, que coincide con «hasta dos salarios mínimos» |
+| `Uvt` | $52.374 | Unidad de Valor Tributario 2026 (Resolución DIAN 000238 del 15-12-2025). | DIAN — Resolución 000238 de 2025 | **Consistente con la fuente consultada** — DIAN, consultado 09-11-2026 |
+| `MaxContributionBaseInMinimumWages` | 25 | Límite de la base de cotización a seguridad social: 25 SMMLV (Ley 100 de 1993, art. 18). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Consistente con la fuente consultada** — regla general de 25 SMMLV |
 
 ### 2.2 Deducciones del empleado
 
-| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Estado |
+| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Resultado del asistente |
 |---|---:|---|---|---|
-| `EmployeeHealthRate` | 4 % | Aporte del empleado al régimen contributivo de salud (Ley 100 de 1993, art. 204). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Verificado** — 4 % a cargo del empleado |
-| `EmployeePensionRate` | 4 % | Aporte del empleado al sistema general de pensiones (Ley 100 de 1993, art. 20). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Verificado** — 4 % a cargo del empleado |
-| `SolidarityFundThresholdInMinimumWages` | 4 | Aporte adicional al Fondo de Solidaridad Pensional desde 4 SMMLV de ingreso base de cotización (Ley 100 de 1993 y Ley 797 de 2003, art. 8). | Ministerio de Salud / UGPP — Ley 797 de 2003 | **Verificado** — el umbral de 4 SMMLV es correcto |
+| `EmployeeHealthRate` | 4 % | Aporte del empleado al régimen contributivo de salud (Ley 100 de 1993, art. 204). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Consistente con la fuente consultada** — 4 % a cargo del empleado |
+| `EmployeePensionRate` | 4 % | Aporte del empleado al sistema general de pensiones (Ley 100 de 1993, art. 20). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Consistente con la fuente consultada** — 4 % a cargo del empleado |
+| `SolidarityFundThresholdInMinimumWages` | 4 | Aporte adicional al Fondo de Solidaridad Pensional desde 4 SMMLV de ingreso base de cotización (Ley 100 de 1993 y Ley 797 de 2003, art. 8). | Ministerio de Salud / UGPP — Ley 797 de 2003 | **Consistente con la fuente consultada** — el umbral de 4 SMMLV es correcto |
 | `SolidarityFundRate` | 1 % | Aporte adicional al Fondo de Solidaridad Pensional: 1 % entre 4 y menos de 16 SMMLV; luego 1,2 % (16–17), 1,4 % (17–18), 1,6 % (18–19), 1,8 % (19–20) y 2 % (20 o más) (Ley 797 de 2003, art. 8). | Ministerio de Salud / UGPP — Ley 797 de 2003 | **Discrepancia** — el código aplica 1 % plano a todo IBC ≥ 4 SMMLV. Valor correcto propuesto: escala graduada 1 % / 1,2 % / 1,4 % / 1,6 % / 1,8 % / 2 % según el tramo. No se modificó el código. |
 
 ### 2.3 Aportes del empleador
 
-| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Estado |
+| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Resultado del asistente |
 |---|---:|---|---|---|
-| `EmployerHealthRate` | 8,5 % | Aporte del empleador al régimen contributivo de salud (Ley 100 de 1993, art. 204). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Verificado** — 8,5 % a cargo del empleador |
-| `EmployerPensionRate` | 12 % | Aporte del empleador al sistema general de pensiones (Ley 100 de 1993, art. 20). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Verificado** — 12 % a cargo del empleador |
-| `ArlRates` | Clase 1: 0,522 %; clase 2: 1,044 %; clase 3: 2,436 %; clase 4: 4,350 %; clase 5: 6,960 % | Tarifas de cotización al Sistema General de Riesgos Laborales por clase de riesgo (Decreto 1771 de 1994, que desarrolla el Decreto 1295 de 1994). | ARL / Ministerio del Trabajo — Decreto 1771 de 1994 | **Verificado** — las cinco tarifas coinciden |
-| `CompensationBoxRate` | 4 % | Aporte parafiscal a las Cajas de Compensación Familiar (Ley 21 de 1982). | Ministerio del Trabajo / UGPP — Ley 21 de 1982 | **Verificado** — 4 % sobre la nómina salarial |
-| `SenaRate` | 2 % | Aporte parafiscal al SENA (Ley 21 de 1982). | Ministerio del Trabajo / UGPP — Ley 21 de 1982 | **Verificado** — 2 % sobre la nómina salarial |
-| `IcbfRate` | 3 % | Aporte parafiscal al ICBF (Ley 21 de 1982). | Ministerio del Trabajo / UGPP — Ley 21 de 1982 | **Verificado** — 3 % sobre la nómina salarial |
-| `ApplyExoneration` | `true` | Exoneración de aportes del empleador a salud, SENA e ICBF para trabajadores que devenguen menos de 10 SMMLV (Estatuto Tributario, art. 114-1, incorporado por la Ley 1819 de 2016). | Ministerio de Salud / UGPP — Estatuto Tributario art. 114-1 | **Verificado** — la exoneración no cobija pensión ni ARL ni caja |
-| `ExonerationLimitInMinimumWages` | 10 | Límite de 10 SMMLV para la exoneración de aportes (Estatuto Tributario, art. 114-1). | Ministerio de Salud / UGPP — Estatuto Tributario art. 114-1 | **Verificado** — el código usa `< 10 SMMLV`, que coincide con «menos de 10» |
+| `EmployerHealthRate` | 8,5 % | Aporte del empleador al régimen contributivo de salud (Ley 100 de 1993, art. 204). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Consistente con la fuente consultada** — 8,5 % a cargo del empleador |
+| `EmployerPensionRate` | 12 % | Aporte del empleador al sistema general de pensiones (Ley 100 de 1993, art. 20). | Ministerio de Salud / UGPP — Ley 100 de 1993 | **Consistente con la fuente consultada** — 12 % a cargo del empleador |
+| `ArlRates` | Clase 1: 0,522 %; clase 2: 1,044 %; clase 3: 2,436 %; clase 4: 4,350 %; clase 5: 6,960 % | Tarifas de cotización al Sistema General de Riesgos Laborales por clase de riesgo (Decreto 1772 de 1994, art. 13, que reglamenta el Decreto 1295 de 1994). | Secretaría Jurídica Distrital de Bogotá (compilación normativa) — Decreto 1772 de 1994, art. 13 | **Consistente con la fuente consultada** — las cinco tarifas coinciden con el «valor inicial» de la tabla del artículo 13 |
+| `CompensationBoxRate` | 4 % | Aporte parafiscal a las Cajas de Compensación Familiar (Ley 21 de 1982, art. 12, numeral 1). | Ministerio del Trabajo / UGPP — Ley 21 de 1982, art. 12 | **Consistente con la fuente consultada** — 4 % sobre la nómina salarial |
+| `SenaRate` | 2 % | Aporte parafiscal al SENA (Ley 21 de 1982, art. 12, numeral 2). | Ministerio del Trabajo / UGPP — Ley 21 de 1982, art. 12 | **Consistente con la fuente consultada** — 2 % sobre la nómina salarial |
+| `IcbfRate` | 3 % | Aporte parafiscal al ICBF (Ley 89 de 1988, art. 1, que elevó al 3 % el aporte antes fijado por las Leyes 27 de 1974 y 7 de 1979). | ICBF — Ley 89 de 1988, art. 1 | **Consistente con la fuente consultada** — 3 % sobre la nómina salarial |
+| `ApplyExoneration` | `true` | Exoneración de aportes del empleador a salud, SENA e ICBF para trabajadores que devenguen menos de 10 SMMLV (Estatuto Tributario, art. 114-1, incorporado por la Ley 1819 de 2016). | Ministerio de Salud / UGPP — Estatuto Tributario art. 114-1 | **Consistente con la fuente consultada** — la exoneración no cobija pensión ni ARL ni caja |
+| `ExonerationLimitInMinimumWages` | 10 | Límite de 10 SMMLV para la exoneración de aportes (Estatuto Tributario, art. 114-1). | Ministerio de Salud / UGPP — Estatuto Tributario art. 114-1 | **Consistente con la fuente consultada** — el código usa `< 10 SMMLV`, que coincide con «menos de 10» |
 
 ### 2.4 Provisiones sociales (valor mensual como fracción de la base)
 
-| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Estado |
+| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Resultado del asistente |
 |---|---:|---|---|---|
-| `SeveranceRate` | 8,33 % | Cesantías: un mes de salario por año (Código Sustantivo del Trabajo, art. 249). La provisión mensual es 1/12 = 8,333… %. | Ministerio del Trabajo — CST | **Verificado con aproximación** — el código usa 0,0833 en lugar de 1/12; la diferencia es de centavos por mes |
-| `SeveranceInterestRate` | 1 % | Intereses sobre cesantías: 12 % anual sobre el saldo de cesantías (CST y normas que lo desarrollan). La provisión mensual aproximada es 1 %. | Ministerio del Trabajo — CST | **Verificado con simplificación** — el interés real se causa día a día sobre el saldo acumulado, no exactamente 1 % del salario mensual |
-| `ServiceBonusRate` | 8,33 % | Prima de servicios: 30 días de salario por año, pagada en dos cuotas (CST, art. 306). La provisión mensual es 8,333… %. | Ministerio del Trabajo — CST | **Verificado con aproximación** — el código usa 0,0833 |
-| `VacationRate` | 4,17 % | Vacaciones: 15 días hábiles de descanso remunerado por año (CST, art. 186). La provisión mensual es 15/360 = 4,1666… %. | Ministerio del Trabajo — CST | **Verificado con aproximación** — el código usa 0,0417 y excluye el auxilio de transporte de la base, lo cual es correcto |
+| `SeveranceRate` | 8,33 % | Cesantías: un mes de salario por año (Código Sustantivo del Trabajo, art. 249). La provisión mensual es 1/12 = 8,333… %. | Ministerio del Trabajo — CST | **Consistente con la fuente consultada** (aproximación) — el código usa 0,0833 en lugar de 1/12; la diferencia es de centavos por mes |
+| `SeveranceInterestRate` | 1 % | Intereses sobre cesantías: 12 % anual sobre el saldo de cesantías (CST y normas que lo desarrollan). La provisión mensual aproximada es 1 %. | Ministerio del Trabajo — CST | **Consistente con la fuente consultada** (simplificación) — el interés real se causa día a día sobre el saldo acumulado, no exactamente 1 % del salario mensual |
+| `ServiceBonusRate` | 8,33 % | Prima de servicios: 30 días de salario por año, pagada en dos cuotas (CST, art. 306). La provisión mensual es 8,333… %. | Ministerio del Trabajo — CST | **Consistente con la fuente consultada** (aproximación) — el código usa 0,0833 |
+| `VacationRate` | 4,17 % | Vacaciones: 15 días hábiles de descanso remunerado por año (CST, art. 186). La provisión mensual es 15/360 = 4,1666… %. | Ministerio del Trabajo — CST | **Consistente con la fuente consultada** (aproximación) — el código usa 0,0417 y excluye el auxilio de transporte de la base, lo cual es correcto |
 
 ### 2.5 Retención en la fuente del empleado
 
-| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Estado |
+| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Resultado del asistente |
 |---|---:|---|---|---|
-| `ExemptIncomeRate` | 25 % | Renta exenta del 25 % del ingreso laboral (Estatuto Tributario, art. 206, numeral 10). | DIAN — Estatuto Tributario art. 206 | **Verificado con simplificación** — el código aplica el 25 % sobre el ingreso neto de aportes y prorratea el tope anual por mes |
-| `ExemptIncomeAnnualCapUvt` | 790 UVT | Tope anual de la renta exenta: 790 UVT (Estatuto Tributario, art. 206, numeral 10). | DIAN — Estatuto Tributario art. 206 | **Verificado** — el tope mensual usado por el código es 790/12 × UVT |
-| `WithholdingBrackets` | 7 tramos (ver tabla 2.5.1) | Tabla de retención en la fuente por rentas de trabajo (Estatuto Tributario, art. 383). | DIAN — Estatuto Tributario art. 383 | **Verificado** — tramos, tarifas marginales y valores adicionales coinciden |
+| `ExemptIncomeRate` | 25 % | Renta exenta del 25 % del ingreso laboral (Estatuto Tributario, art. 206, numeral 10). | DIAN — Estatuto Tributario art. 206 | **Consistente con la fuente consultada** (simplificación) — el código aplica el 25 % sobre el ingreso neto de aportes y prorratea el tope anual por mes |
+| `ExemptIncomeAnnualCapUvt` | 790 UVT | Tope anual de la renta exenta: 790 UVT (Estatuto Tributario, art. 206, numeral 10). | DIAN — Estatuto Tributario art. 206 | **Consistente con la fuente consultada** — el tope mensual usado por el código es 790/12 × UVT |
+| `WithholdingBrackets` | 7 tramos (ver tabla 2.5.1) | Tabla de retención en la fuente por rentas de trabajo (Estatuto Tributario, art. 383). | DIAN — Estatuto Tributario art. 383 | **Consistente con la fuente consultada** — tramos, tarifas marginales y valores adicionales coinciden |
 
 #### 2.5.1 Tramos de `WithholdingBrackets`
 
-| Desde (UVT) | Hasta (UVT) | Tarifa marginal | Adicional (UVT) | Estado |
+| Desde (UVT) | Hasta (UVT) | Tarifa marginal | Adicional (UVT) | Resultado del asistente |
 |---:|---:|---:|---:|---|
-| 0 | 95 | 0 % | 0 | Verificado |
-| 95 | 150 | 19 % | 0 | Verificado |
-| 150 | 360 | 28 % | 10 | Verificado |
-| 360 | 640 | 33 % | 69 | Verificado |
-| 640 | 945 | 35 % | 162 | Verificado |
-| 945 | 2.300 | 37 % | 268 | Verificado |
-| 2.300 | En adelante | 39 % | 770 | Verificado |
+| 0 | 95 | 0 % | 0 | Consistente con la fuente consultada |
+| 95 | 150 | 19 % | 0 | Consistente con la fuente consultada |
+| 150 | 360 | 28 % | 10 | Consistente con la fuente consultada |
+| 360 | 640 | 33 % | 69 | Consistente con la fuente consultada |
+| 640 | 945 | 35 % | 162 | Consistente con la fuente consultada |
+| 945 | 2.300 | 37 % | 268 | Consistente con la fuente consultada |
+| 2.300 | En adelante | 39 % | 770 | Consistente con la fuente consultada |
 
 ### 2.6 Contratos de prestación de servicios
 
-| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Estado |
+| Parámetro | Valor actual en código | Norma que lo define | Fuente oficial a consultar | Resultado del asistente |
 |---|---:|---|---|---|
 | `ServiceProvisionWithholdingRate` | 4 % | Retención en la fuente por servicios en general: 4 % para declarantes de renta y 6 % para no declarantes (Decreto 1625 de 2016, arts. 1.2.4.4.14 y 1.2.4.4.1, modificados por el Decreto 572 de 2025, art. 2). | DIAN — Decreto 1625 de 2016 y Decreto 572 de 2025 | **Discrepancia** — el código aplica 4 % plano. Valor correcto propuesto: 4 % para declarante y 6 % para no declarante, con un indicador de declarante en la entrada o dos tarifas separadas. No se modificó el código. |
 | `ServiceProvisionWithholdingMinimumUvt` | 4 UVT | Base mínima individual para practicar retención por servicios: 2 UVT desde el 1 de julio de 2026 (Decreto 572 de 2025, art. 2). | DIAN — Decreto 572 de 2025; Consejo de Estado, exp. 30229, auto del 02-06-2026 | **Discrepancia** — el código usa 4 UVT (regla anterior). Valor correcto propuesto: 2 UVT ($104.748 en 2026). No se modificó el código. |
@@ -317,6 +319,13 @@ caso adicional con un salario de, por ejemplo, 30 SMMLV.
   https://www.cerlatam.com/normatividad/mintrabajo-decreto-1469-de-2025-29-dic-2025/
 - Presidencia de la República, **Decreto 0159 del 19 de febrero de 2026** (fijación transitoria del salario mínimo):
   https://dapre.presidencia.gov.co/normativa/normativa/DECRETO%20No.%200159%20DEL%2019%20DE%20FEBRERO%20DE%202026.pdf
+- Consejo de Estado, Sección Segunda, **auto del 12 de febrero de 2026** (suspensión
+  provisional del Decreto 1469 de 2025) y **auto del 17 de julio de 2026** (revocatoria
+  de esa suspensión; el valor de $1.750.905 sigue vigente y el proceso de nulidad continúa).
+  Cobertura consultada: Infobae, 17-07-2026,
+  https://www.infobae.com/colombia/2026/07/17/consejo-de-estado-revoco-la-suspension-del-decreto-del-gobierno-petro-que-subio-23-el-salario-minimo-de-2026/
+  y Actualícese, 2026,
+  https://actualicese.com/el-consejo-de-estado-revoco-la-suspension-del-decreto-del-salario-minimo-en-colombia-2026/
 - Ministerio del Trabajo, **Decreto 1470 del 29 de diciembre de 2025** (auxilio de transporte 2026):
   https://imagenes.noticiasrcn.com/cms/2025/12/29215454/DECRETO-1470-DEL-29-DE-DICIEMBRE-DE-2025.pdf
 - DIAN, **Resolución 000238 del 15 de diciembre de 2025** (UVT 2026):
@@ -336,9 +345,11 @@ caso adicional con un salario de, por ejemplo, 30 SMMLV.
   https://www.fasecolda.com/wp-content/uploads/ley-797-2003.pdf
 - **Ley 1819 de 2016 / Estatuto Tributario, art. 114-1** (exoneración de aportes):
   https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=79140
-- **Ley 21 de 1982** (aportes parafiscales: caja 4 %, SENA 2 %, ICBF 3 %):
-  https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=4827
-- **Decreto 1771 de 1994** (tarifas ARL por clase de riesgo):
-  https://coriesgos.com/blog/arl-independientes-colombia-2026
+- **Ley 21 de 1982, art. 12** (aportes parafiscales: caja de compensación 4 % y SENA 2 %):
+  https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=4827
+- **Ley 89 de 1988, art. 1** (aporte parafiscal al ICBF: 3 % de la nómina mensual de salarios):
+  https://www.icbf.gov.co/cargues/avance/compilacion/docs/ley_0089_1988.htm
+- **Decreto 1772 de 1994, art. 13** (tarifas ARL por clase de riesgo; «valor inicial» 0,522 %, 1,044 %, 2,436 %, 4,350 % y 6,960 %):
+  https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=8803
 - **Código Sustantivo del Trabajo** (arts. 186, 249 y 306; vacaciones, cesantías y prima):
   https://www.gerencie.com/porcentajes-prestaciones-sociales.html
