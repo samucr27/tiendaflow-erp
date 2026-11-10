@@ -31,7 +31,7 @@
 | SDK | `actions/setup-dotnet@v4` con .NET 9.0.x | SDK disponible |
 | Restore | `dotnet restore` | Paquetes restaurados |
 | Build | `dotnet build --no-restore` | 0 advertencias y 0 errores |
-| Test | `dotnet test --no-build --collect:"XPlat Code Coverage"` | Pruebas unitarias y de aceptación en verde; integración omitida sin SQL Server |
+| Test | `dotnet test --no-build --collect:"XPlat Code Coverage"` | Pruebas unitarias y de aceptación; integración omitida sin SQL Server |
 
 ## 7.5 Infraestructura como código
 

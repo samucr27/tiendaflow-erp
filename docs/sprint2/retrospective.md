@@ -5,8 +5,9 @@
 - La arquitectura por capas (Domain, Application, Infrastructure, Web) y la
   regla de que Domain y Application no referencian EF Core se mantuvieron.
 - La seguridad quedó implementada con 7 roles, matriz central, autorización en
-  tres niveles y auditoría verificada de extremo a extremo. Quedan decisiones
-  abiertas de privacidad y una desalineación latente de permisos en alertas,
+  tres niveles y auditoría de accesos cubierta por pruebas automatizadas.
+  Quedan decisiones abiertas de privacidad (el correo del intento fallido de
+  inicio de sesión) y una desalineación latente de permisos en alertas,
   registradas en `docs/sprint2/open-questions.md`.
 - El motor de nómina quedó aislado tras interfaces, con pruebas unitarias de
   números calculados a mano.
@@ -20,11 +21,14 @@
   en verde, 17 de integración omitidas). La Fase 1 sumó 54 pruebas unitarias:
   al cierre hay 250 pruebas activas en verde (244 unitarias y 6 de aceptación)
   y las mismas 17 de integración omitidas por falta de SQL Server en CI.
-- **CI:** build y pruebas en verde en GitHub Actions; las pruebas de integración
-  se omiten porque el runner no tiene SQL Server.
-- **Terraform:** `init`, `validate` y `plan` se ejecutan en el workflow con
-  estado remoto en HCP Terraform y la configuración está en verde; el recurso
-  actual es un *placeholder* declarado.
+- **CI:** el workflow `.github/workflows/ci.yml` ejecuta restore, build y
+  `dotnet test` con cobertura en cada push; las pruebas de integración se omiten
+  porque el runner no tiene SQL Server. Esta revisión no consultó el resultado
+  remoto de GitHub Actions.
+- **Terraform:** el workflow `.github/workflows/terraform-plan.yml` define
+  `init`, `validate` y `plan` con estado remoto en HCP Terraform; el recurso
+  actual es un *placeholder* declarado. Esta revisión no ejecutó `terraform
+  plan` real.
 - **Fase 1:** CRUD de empleados con enmascaramiento de salario, corrida de
   nómina por empleado activo, auditoría con módulo `hr` y pruebas unitarias de
   ambas piezas.

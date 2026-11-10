@@ -236,7 +236,7 @@ Cada corrección va en su propio commit, con compilación y pruebas verdes antes
 | Commit | Tipo | Archivos | Qué corrige | Pruebas |
 |---|---|---|---|---|
 | `5f8719f` | `fix(security)` | `UserService.cs`, `AuthenticationService.cs`, `UserServiceTests.cs`, `AuthenticationServiceTests.cs` | Elimina el correo del detalle de auditoría en alta, edición, desactivación, restablecimiento e inicio de sesión correcto; agrega aserciones `DoesNotContain` sobre el correo | 244 unitarias + 6 aceptación, 0 fallos |
-| `3f90d73` | `docs(sprint2)` | `docs/sprint2/demo-script.md` | Alinea la demo con la matriz real (códigos crudos, fila `sales.pos.use`, `inventory.alerts.view`, `inventory.stock.receive`) y con el texto del comprobante de venta | No aplica (documentación); build y pruebas verdes |
+| `3f90d73` | `docs(sprint2)` | `docs/sprint2/demo-script.md` | Alinea la demo con la matriz real (códigos crudos, fila `sales.pos.use`, `inventory.alerts.view`, `inventory.stock.receive`) y con el texto del comprobante de venta | No aplica (documentación); sin cambios de código |
 
 **No se modificaron valores de nómina**, conforme a la Fase 3. Las discrepancias I-01, I-02 e I-03 permanecen documentadas y con propuesta.
 
