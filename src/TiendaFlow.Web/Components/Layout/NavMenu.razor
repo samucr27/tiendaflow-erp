@@ -84,9 +84,27 @@
         }
     }
 
+    @if (AccessControl.Has(Permissions.HrEmployeesView)
+         || AccessControl.Has(Permissions.HrPayrollManage))
+    {
+        <p class="nav-section">Talento humano</p>
+
+        @if (AccessControl.Has(Permissions.HrEmployeesView))
+        {
+            <NavLink class="nav-item" href="rrhh/empleados" Match="NavLinkMatch.Prefix">
+                Empleados
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrPayrollManage))
+        {
+            <NavLink class="nav-item" href="rrhh/nomina" Match="NavLinkMatch.Prefix">
+                Nómina
+            </NavLink>
+        }
+    }
+
     <p class="nav-section">Módulos</p>
     <span class="nav-item nav-item-disabled">Compras <small>Fase 3</small></span>
-    <span class="nav-item nav-item-disabled">Talento humano <small>Próximamente</small></span>
     <span class="nav-item nav-item-disabled">Clientes <small>Próximamente</small></span>
 </nav>
 
