@@ -123,7 +123,7 @@ app.MapPost("/login", async (
 
     await SignInClaims.SignInAsync(context, user, ip);
 
-    var target = IsLocalUrl(returnUrl) ? returnUrl! : "/inventario";
+    var target = IsLocalUrl(returnUrl) ? returnUrl! : LandingPage.For(user.Permissions);
     return Results.LocalRedirect(target);
 }).AllowAnonymous();
 
