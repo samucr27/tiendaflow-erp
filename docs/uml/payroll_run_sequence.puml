@@ -1,0 +1,51 @@
+@startuml payroll_run_sequence
+title HU-04 - Monthly payroll run (/rrhh/nomina)
+
+actor "HR Officer\n(browser)" as Client
+participant "Nómina page\n/rrhh/nomina" as Page
+participant "PayrollRunService" as Run
+participant "IEmployeeRepository" as Employees
+participant "IPayrollEngine\n(PayrollEngine)" as Engine
+participant "IPayrollStrategy" as Strategy
+participant "IAuditLog" as Audit
+
+Client -> Page : open /rrhh/nomina
+Page -> Page : [Authorize(Policy = hr.payroll.manage)]
+Client -> Page : Calculate(daysWorked, riskClass)
+Page -> Run : Calculate(daysWorked, riskClass)
+Run -> Run : Demand(hr.payroll.manage)
+alt missing permission
+    Run --> Page : AccessDeniedException\n(denied attempt audited)
+else authorized
+    Run -> Run : validate days 1..30 and risk 1..5
+    alt invalid input
+        Run --> Page : InvalidPayrollInputException
+    else valid
+        Run -> Employees : List()
+        Employees --> Run : employees
+        loop every active employee
+            alt salary is 0 or contract label unknown
+                Run -> Run : build line with Problem (no engine call)
+            else valid employee
+                Run -> Engine : Calculate(PayrollInput)
+                alt engine rejects the employee
+                    Engine --> Run : InvalidPayrollInputException /\nUnsupportedContractTypeException
+                    Run -> Run : build line with Problem, keep the run
+                else calculated
+                    Engine -> Strategy : Calculate(input, parameters)
+                    Strategy --> Engine : PayrollResult
+                    Engine --> Run : PayrollResult
+                end
+            end
+        end
+        Run -> Run : sum totals over lines with result only
+        Run -> Audit : Record("PayrollCalculated",\nemployee count + days only)
+        Run --> Page : PayrollRun(days, risk, lines, totals)
+        Page -> Page : render table; click a row for the full breakdown
+        note right of Page
+            Results are NOT persisted. Recalculating or leaving the page
+            discards the run (explicit limitation).
+        end note
+    end
+end
+@enduml

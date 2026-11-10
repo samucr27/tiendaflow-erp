@@ -9,9 +9,9 @@ Domain and Application never reference EF Core.
 | Building block | Responsibility |
 |---|---|
 | **TiendaFlow.Domain** | Entities, enums (for example `ContractType`) and domain exceptions. No framework dependencies. |
-| **TiendaFlow.Application** | Use-case services (`StockService`, `InventoryService`, `SupplierService`, `PurchaseOrderService`, `AuthenticationService`), the permission catalog (`Permissions`), the role matrix (`RolePermissions`), `IAccessControl`, `IAuditLog`, and the **Payroll module**. Depends only on abstractions. |
+| **TiendaFlow.Application** | Use-case services (`StockService`, `InventoryService`, `SupplierService`, `PurchaseOrderService`, `EmployeeService`, `AuthenticationService`), the permission catalog (`Permissions`), the role matrix (`RolePermissions`), `IAccessControl`, `IAuditLog`, and the **Payroll module** (`PayrollEngine`, `PayrollRunService`, `ContractTypeLabels`). Depends only on abstractions. |
 | **TiendaFlow.Infrastructure** | EF Core 9 persistence for SQL Server (`TiendaFlowDbContext`, fluent configurations, repositories, unit of work, migrations). |
-| **TiendaFlow.Web** | Blazor Web App (interactive server), cookie authentication, one authorization policy per permission, Minimal API endpoints, formatting and Spanish error translation. |
+| **TiendaFlow.Web** | Blazor Web App (interactive server), cookie authentication, one authorization policy per permission, Minimal API endpoints, formatting and Spanish error translation. HR screens live under `/rrhh/*`. |
 
 ## 5.2 Level 2 - Whitebox: Payroll module (HU-04)
 
@@ -36,7 +36,21 @@ Domain and Application never reference EF Core.
 Relationships: `Endpoint -> IPayrollEngine -> IPayrollStrategy -> (IWithholdingCalculator, IPayrollParametersProvider)`.
 The sequence diagram is in `docs/uml/payroll_sequence.puml`.
 
-## 5.3 Cross-reference with Section 10
+## 5.3 Level 2 - Whitebox: Employee management and payroll run (HU-04)
+
+| Component | Responsibility | Principle |
+|---|---|---|
+| `EmployeeService` (Application) | Lists and edits employees for the HR screens. Reading requires `hr.employees.view`; only callers with `hr.employees.manage` receive the salary, otherwise the row exposes `null` and the UI shows "—". Validates the contract type, store, salary and duplicate document, and audits every write with module `hr` without names or amounts. | SRP; Ley 1581 de 2012 data minimisation. |
+| `PayrollRunService` (Application) | Runs the monthly payroll for every **active** employee. Validates days worked (1-30) and ARL risk class (1-5), then delegates each employee to `IPayrollEngine`. A missing salary, unknown contract or engine rejection becomes a per-line `Problem` in Spanish instead of failing the whole run. Returns totals only over calculated lines and audits the employee count and days. | SRP: orchestration and resilience. Depends on abstractions (DIP). |
+| `ContractTypeLabels` (Application) | Translates between the `ContractType` enum and the Spanish labels stored in `Employees.ContractType` (`Indefinido`, `Término fijo`, `Obra o labor`, `Prestación de servicios`). Accepts unaccented variants and enum names when parsing. | Keeps persistence labels and payroll enum decoupled. |
+| Pages `/rrhh/empleados`, `/rrhh/empleados/nuevo`, `/rrhh/empleados/{id}`, `/rrhh/nomina` (Web) | Employee list, create/edit form and monthly run screen. Policies: `hr.employees.view`, `hr.employees.manage` and `hr.payroll.manage`. The run screen shows a visible warning that the parameters are reference values pending legal validation. | Defence in depth: page policy + UI visibility + service `Demand`. |
+
+**Explicit limitation:** payroll runs are **not persisted**. `PayrollRunService`
+calculates and returns an in-memory result; closing or recalculating the page
+discards it. Persisting runs, their lines and a period close is left for a
+later sprint and would require new tables (and therefore a migration).
+
+## 5.4 Cross-reference with Section 10
 
 The payroll endpoint is protected by `hr.payroll.manage`, which the role matrix
 (Section 10.2) grants only to the **HR Officer**. Payroll data is therefore

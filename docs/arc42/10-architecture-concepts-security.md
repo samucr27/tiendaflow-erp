@@ -18,8 +18,14 @@
      `AccessDeniedException` inside the application services.
 - **Audit:** the audit log stores the real user id, module, action and IP.
   Denied access attempts are recorded both at page level and at service level.
+  HR writes use module `hr` and record only ids, counts and actions; employee
+  names, documents and amounts never appear in the detail.
 - **Personal data (Ley 1581 de 2012):** minimum data is collected, personal
   data is not logged, and payroll data is restricted to the HR Officer.
+  In the employee list, the salary is only returned when the caller has
+  `hr.employees.manage`; a user with only `hr.employees.view` receives `null`
+  from `EmployeeService` and the page shows "—". This is a data-protection
+  control, not just a visual rule, because the value never leaves the service.
 - **Separation of duties:** the Administrator manages users, roles and
   parameters and can read most modules, but holds no operational permissions
   (no POS, no purchase orders, no payroll).

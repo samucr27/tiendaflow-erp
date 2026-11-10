@@ -55,7 +55,8 @@ descontando clases y entregas de otras asignaturas.
 | (API) Endpoint `POST /api/nomina/calculate` protegido por `hr.payroll.manage` | Hecho |
 | (Pruebas) Pruebas unitarias del motor (`PayrollEngineTests`) | Hecho |
 | (Documentación) Diagrama de secuencia UML (`docs/uml/payroll_sequence.puml`) | Hecho |
-| (Pendiente) Persistencia y pantallas de empleados y corridas de nómina | Por hacer |
+| (Pantallas) Empleados y corrida de nómina sin persistencia | Hecho |
+| (Persistencia) Guardar las corridas de nómina | Por hacer |
 
 ### HU-05 Alerta de stock crítico (5)
 
