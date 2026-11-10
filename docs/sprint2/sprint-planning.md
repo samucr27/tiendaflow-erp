@@ -21,10 +21,10 @@ descontando clases y entregas de otras asignaturas.
 
 | Integrante | Horas disponibles | Rol en el sprint |
 |---|---|---|
-| Samuel Castellanos Rivera | 6,5 h | Asignado: nómina, seguridad, Compras, pruebas, arc42, Terraform y CI. Hecho: CRUD de RR. HH. y entrega final |
+| Samuel Castellanos Rivera | 6,5 h | Hecho: nómina, seguridad, Compras, pruebas, arc42, Terraform, CI y CRUD de RR. HH. Asignado: entrega final |
 | Jonathan Alejandro Yacuma Rivera | 6 h | Asignado: arc42 a Notion y video del tour de arquitectura |
 | Juan Sebastián Rodríguez Blanco | 5,5 h | Asignado: revisión del PR #2 y ejecución de la demo manual |
-| Sergio Steeven Moreno Forero | 6 h | Asignado: validación de parámetros de nómina y regla de estimación |
+| Sergio Steeven Moreno Forero | 6 h | Asignado: grabar el video del tour de arquitectura y revisar el PR #2 |
 
 | Tarea | Responsable | Estimado | Estado |
 |---|---|---|---|
