@@ -1,22 +1,16 @@
 # Guion del video: tour de arquitectura (máximo 1 minuto)
 
-Navegar en Notion por arc42: Sección 5, luego Sección 10.
+Este guion coincide con `docs/sprint2/video-guide.md`. Duración objetivo: 60 segundos. Palabras habladas: 105 (tope: 140). Lo graba una persona del equipo.
 
-**[0:00 - 0:10] Sección 5, vista general.** "TiendaFlow es un monolito modular
-en cuatro capas: Domain, Application, Infrastructure y Web. Domain y
-Application no dependen de EF Core."
+**Páginas de Notion:** `05 — Vista de bloques de construcción` y `10 — Conceptos de arquitectura: seguridad y roles`.
 
-**[0:10 - 0:30] Sección 5, nivel 2: nómina.** "La guía habla de un
-microservicio de nómina; lo implementamos como un módulo dentro del monolito,
-con su propio motor, `PayrollEngine`, y su endpoint
-`POST /api/nomina/calculate`. El motor solo depende de interfaces: estrategias
-por tipo de contrato, calculadora de retención y proveedor de parámetros.
-Esto aplica SRP y DIP."
+| Tiempo | Página y punto a señalar | Texto |
+|---|---|---|
+| 0:00–0:10 | Página 05, tabla **5.1**, cuatro filas de capas. | "Hola. TiendaFlow es un monolito modular en cuatro capas: Domain, Application, Infrastructure y Web. Domain y Application no conocen EF Core." |
+| 0:10–0:30 | Página 05, sección **5.2**, filas `PayrollEngine` e `IPayrollStrategy` y recuadro **Decisión de arquitectura**. | "En la sección 5.2 está el módulo de nómina. PayrollEngine valida, elige la estrategia según el contrato y delega. Depende solo de interfaces, así que cumple SRP y DIP." |
+| 0:30–0:50 | Página 10, tabla **10.2**, fila `hr.payroll.manage` y columna **HR**; luego tabla **10.3**. | "En la sección 10, la matriz de siete roles marca hr.payroll.manage solo para HR Officer. Por eso la nómina exige ese permiso en página, interfaz y servicio, y cada rechazo se audita." |
+| 0:50–1:00 | Volver a página 05, sección **5.4**. | "La coherencia es esta: el bloque de nómina de la Sección 5 queda protegido por la matriz de roles de la Sección 10." |
 
-**[0:30 - 0:50] Sección 10, roles.** "En la sección 10 está la matriz de siete
-roles por permiso. Ese endpoint exige el permiso `hr.payroll.manage`, que solo
-tiene el Oficial de RR. HH. La autorización se aplica en tres niveles: página
-o endpoint, interfaz y servicio, y los accesos denegados se auditan."
+**Frase de coherencia:** "La coherencia es esta: el bloque de nómina de la Sección 5 queda protegido por la matriz de roles de la Sección 10."
 
-**[0:50 - 1:00] Cierre.** "La coherencia es esta: el componente de nómina de
-la sección 5 está protegido por el modelo de roles de la sección 10."
+La lista de verificación previa a grabar está en `docs/sprint2/video-guide.md`.
