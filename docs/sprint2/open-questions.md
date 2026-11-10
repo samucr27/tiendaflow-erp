@@ -13,6 +13,8 @@ Este archivo registra dudas, bloqueos y decisiones pendientes detectadas durante
 | 7 | Pruebas | No hay pruebas de componentes Razor (bUnit). ¿Se agrega un proyecto en el Sprint 3? | Abierta | Calidad |
 | 8 | CI | El workflow usa `dotnet build` / `dotnet test` sin fijar `TiendaFlow.slnx`. ¿Se fija el objetivo para evitar descubrimientos accidentales? | Abierta | DevOps |
 | 9 | Datos demo | La contraseña del cajero demo se cambió desde la pantalla de usuarios después del sembrado, por lo que ya no inicia sesión con `Seed:DemoPassword`. ¿Se restablece con el secreto de demo o se vuelve a sembrar la base de desarrollo? | Abierta | Demo + QA |
-| 10 | Proceso | `OPENCODE_PROMPT_2.md` termina en la Fase E, paso 4: no contiene las Fases F ni G ni el CIERRE. ¿Se comparte el texto faltante para completar la pasada? | Bloqueo | Líder técnico |
+| 10 | Proceso | `OPENCODE_PROMPT_2.md` termina en la Fase E, paso 4: no contiene las Fases F ni G ni el CIERRE. ¿Se comparte el texto faltante para completar la pasada? | Resuelto: `OPENCODE_PROMPT_3.md` contiene las Fases F, G y H y el CIERRE | Líder técnico |
+| 11 | Proceso | E-02: el login sin `returnUrl` llevaba siempre a `/inventario`, que RR. HH. no puede abrir. ¿Se elige la página inicial según los permisos? | Resuelto en `1a80602` (`feat(security): add landing page per role`) | Seguridad + líder técnico |
+| 12 | Secretos | La contraseña SA actual aparece en el historial de la rama `feature/efcore-persistence` (commits `f5dc478` y `5815953`; archivos `docker-compose.yml` y `TiendaFlowDbContextFactory.cs`). No está en el árbol de trabajo ni en `develop`/`main`, pero sí en esa rama y en `origin/feature/efcore-persistence`. ¿Se rota la contraseña y se purga el historial de esa rama? | Abierta (severidad alta) | Seguridad + líder técnico |
 
 > Ninguna de estas preguntas bloqueó la entrega del Sprint 2. Las migraciones no fueron necesarias y no se creó ninguna.

@@ -106,17 +106,27 @@ encontró ninguna ruta que sirviera contenido protegido de forma anónima.
   302 A; `/rrhh/empleados`, `/rrhh/empleados/nuevo`, `/rrhh/nomina` y la API
   302 A.
 
-### E-02 — El destino posterior al inicio de sesión no siempre es accesible
+### E-02 - El destino posterior al inicio de sesión no siempre es accesible
 
-- **Observado:** el inicio de sesión sin `returnUrl` redirige a `/inventario`
+- **Observado:** el inicio de sesión sin `returnUrl` redirigía a `/inventario`
   para todos los roles (`Program.cs:126`). RR. HH. no tiene
-  `InventoryStockView`, así que al seguir esa redirección recibe
-  `302 A` y termina en `/acceso-denegado` justo después de autenticarse.
-- **Impacto:** usabilidad de la demo para el rol de RR. HH.; no es una falla de
-  autorización, porque la página protegida sigue negando el acceso.
-- **Recomendación:** elegir el destino inicial según los permisos del usuario
-  (por ejemplo, RR. HH. → `/rrhh/empleados`) o mantener un `returnUrl` válido.
-  No se modificó en esta fase para no agregar lógica de navegación nueva.
+  `InventoryStockView`, así que al seguir esa redirección recibía
+  `302 A` y terminaba en `/acceso-denegado` justo después de autenticarse.
+- **Impacto:** usabilidad de la demo para el rol de RR. HH.; no era una falla de
+  autorización, porque la página protegida seguía negando el acceso.
+- **Corregido en `1a80602`** (`feat(security): add landing page per role`):
+  `LandingPage.For(user.Permissions)` elige la primera ruta permitida entre
+  `/inventario`, `/rrhh/empleados` y `/seguridad/usuarios`, con `/inventario`
+  como respaldo. Se usa solo cuando no hay un `returnUrl` local válido.
+- **Verificación por HTTP después del cambio** (misma app y mismas cuentas):
+  `rrhh@tiendaflow.local` recibe `302 /rrhh/empleados`; Admin, Gerente, Jefe de
+  tienda, Bodega y Logística reciben `302 /inventario`. El cajero no se pudo
+  probar por el bloqueo de contraseña de E-01. Un `returnUrl` local como
+  `/rrhh/nomina` o `/seguridad/roles` se respeta; `//evil.example` y
+  `/\evil.example` se descartan y aterrizan en `/inventario`.
+- **Pruebas:** `tests/TiendaFlow.UnitTests/LandingPageTests.cs` cubre los siete
+  roles con `RolePermissions.ForRole`, el respaldo sin permisos y el orden de
+  prioridad.
 
 ### E-03 — Las rutas de API responden con redirecciones de cookie en lugar de 401/403
 
@@ -139,4 +149,5 @@ encontró ninguna ruta que sirviera contenido protegido de forma anónima.
 - La única fila no verificada es la del cajero, por un cambio de contraseña
   hecho desde la aplicación sobre la base de datos de desarrollo; el hallazgo
   E-01 documenta la causa y los valores esperados.
-- No se modificó código, base de datos ni configuración durante esta fase.
+- Durante la prueba de la Fase E no se modificó código, base de datos ni
+  configuración. La corrección de E-02 llegó después, en `1a80602`.

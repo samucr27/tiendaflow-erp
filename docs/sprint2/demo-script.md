@@ -66,6 +66,26 @@ Los montos se muestran con formato `es-CO`. Según el sistema operativo, el sím
 `$ 1.750.905`). Lo que se valida en la demo son los dígitos y los separadores de
 miles, no el espacio del símbolo.
 
+### 1.4 Página de aterrizaje tras el inicio de sesión
+
+Si el inicio de sesión no trae un `returnUrl` local válido, la aplicación elige la
+primera página permitida del rol en este orden: `/inventario`,
+`/rrhh/empleados`, `/seguridad/usuarios`. Si el rol no tiene ninguna de las tres,
+usa `/inventario` como antes.
+
+| Rol | Correo | Página tras el login |
+|---|---|---|
+| Administrador | `admin@tiendaflow.local` | `/inventario` |
+| Gerente corporativo | `gerente@tiendaflow.local` | `/inventario` |
+| Jefe de tienda | `jefe.tienda@tiendaflow.local` | `/inventario` |
+| Cajero | `cajero@tiendaflow.local` | `/inventario` |
+| Auxiliar de bodega | `bodega@tiendaflow.local` | `/inventario` |
+| Coordinador de logística | `logistica@tiendaflow.local` | `/inventario` |
+| Gestor de recursos humanos | `rrhh@tiendaflow.local` | `/rrhh/empleados` |
+
+Un `returnUrl` local válido (por ejemplo, `/rrhh/nomina`) se respeta. Una URL
+externa o malformada se descarta y se aplica la tabla anterior.
+
 ---
 
 ## 2. Paso previo: empleados y salarios (HU-04)
@@ -110,6 +130,7 @@ el enmascaramiento del salario y la asignación de salarios que la nómina neces
 ### 3.1 Cálculo desde la página `/rrhh/nomina`
 
 1. Iniciar sesión como `rrhh@tiendaflow.local` con `Seed:DemoPassword`.
+   - Verificación: tras el login, la aplicación aterriza en `/rrhh/empleados` (no en `/acceso-denegado`).
 2. Abrir **Talento humano → Nómina** (`/rrhh/nomina`).
    - Verificación: se ve el aviso **“Los valores usan parámetros de referencia pendientes de validación legal.”**
    - Verificación: **Días trabajados** vale `30` y **Clase de riesgo ARL** vale `1`.
