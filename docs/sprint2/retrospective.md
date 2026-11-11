@@ -19,7 +19,7 @@
 
 ## 2. Resultados verificables del Sprint 2
 
-- **Pruebas:** 296 pruebas activas en verde (290 unitarias y 6 de aceptación) y 17
+- **Pruebas:** 310 pruebas activas en verde (304 unitarias y 6 de aceptación) y 17
   de integración omitidas porque el runner no tiene SQL Server. La línea base del
   Sprint 1 tenía 213 pruebas.
 - **Cobertura:** 88,4 % de líneas y 73,6 % de ramas sobre `TiendaFlow.Application`
@@ -178,10 +178,10 @@ workflow.
 | Cobertura de lógica de negocio mayor al 80 % | Cumplido | 88,4 % de líneas en Application + Domain |
 | arc42 actualizado por cada HU terminada | Cumplido | Secciones 05 y 10 actualizadas en el mismo PR que los módulos |
 | Build sin advertencias ni errores | Cumplido | `dotnet build` con 0 advertencias y 0 errores |
-| `dotnet test` en verde antes de cada commit | Cumplido | 290 unitarias + 6 de aceptación en verde |
+| `dotnet test` en verde antes de cada commit | Cumplido | 304 unitarias + 6 de aceptación en verde (CI de `c62c49b`) |
 | Una migración de EF Core por fase | Cumplido | `Phase3Purchasing`, `Phase4Invoicing`, `Phase5Crm` |
 | Nada de datos personales en logs | Cumplido | La auditoría de RR. HH. guarda ids, estados y conteos; CRM y facturación guardan ids y totales |
-| Pull request revisado por un compañero | **Pendiente** | La revisión cruzada no se completó antes de esta entrega |
+| Pull request revisado por un compañero | **Pendiente** | Los PR #2 y #3 se fusionaron en `develop` sin una revisión registrada en GitHub |
 
 ## 9. Qué se puede mejorar
 
