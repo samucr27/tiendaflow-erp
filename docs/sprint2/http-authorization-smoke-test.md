@@ -1,7 +1,7 @@
 # Prueba de humo de autorización por HTTP — Sprint 2
 
 **Fecha:** 9 de noviembre de 2026
-**Rama:** `feature/opencode-erp-ui`
+**Rama:** `feature/sprint2-erp`
 **Aplicación:** `dotnet run --project src\TiendaFlow.Web --launch-profile http`
 en `http://localhost:5212`
 **Base de datos:** contenedor Docker `tiendaflow-sql` (`Up`, puerto 1433)

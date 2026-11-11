@@ -1,0 +1,174 @@
+@page "/facturacion"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SalesInvoicesView)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject SalesInvoiceService InvoiceService
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Facturación · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Ventas"
+            Title="Facturación"
+            Subtitle="Facturas emitidas en la tienda, con su cliente, fecha y total">
+    <Actions>
+        @if (AccessControl.Has(Permissions.SalesInvoicesManage))
+        {
+            <a class="button button-primary" href="facturacion/nueva">+ Nueva factura</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_invoices is null)
+{
+    <p class="muted">Cargando las facturas…</p>
+}
+else if (!_invoices.Any())
+{
+    <EmptyState Title="Todavía no hay facturas"
+                Message="Emite la primera factura para registrar una venta con cliente e ítems." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Facturas emitidas</h2>
+                <p class="card-subtitle">@Filtered.Count() de @_invoices.Count facturas</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   aria-label="Buscar facturas"
+                   placeholder="Buscar por cliente o documento"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Factura</th>
+                        <th>Cliente</th>
+                        <th>Documento</th>
+                        <th>Fecha</th>
+                        <th class="num">Ítems</th>
+                        <th class="num">Total</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var invoice in Filtered)
+                    {
+                        <tr>
+                            <td>#@invoice.Id</td>
+                            <td>@invoice.CustomerName</td>
+                            <td>@invoice.CustomerDocument</td>
+                            <td>@Formatters.ShortDate(invoice.IssueDate)</td>
+                            <td class="num">@invoice.LineCount</td>
+                            <td class="num">@Formatters.Money(invoice.Total)</td>
+                            <td>
+                                <span class="badge @(invoice.Status == InvoiceStatus.Cancelled ? "badge-muted" : "badge-success")">
+                                    @invoice.StatusLabel
+                                </span>
+                            </td>
+                            <td class="table-actions">
+                                <a class="button button-secondary button-small"
+                                   href="@($"facturacion/{invoice.Id}")">
+                                    @(invoice.Status == InvoiceStatus.Issued ? "Editar" : "Ver")
+                                </a>
+                                @if (invoice.Status == InvoiceStatus.Issued
+                                     && AccessControl.Has(Permissions.SalesInvoicesManage))
+                                {
+                                    <button type="button"
+                                            class="button button-secondary button-small"
+                                            @onclick="() => Cancel(invoice)">
+                                        Anular
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "guardado")]
+    public string? Guardado { get; set; }
+
+    [SupplyParameterFromQuery(Name = "anulada")]
+    public string? Anulada { get; set; }
+
+    private IReadOnlyList<InvoiceRow>? _invoices;
+    private string? _search;
+    private string? _error;
+    private string? _success;
+
+    private IEnumerable<InvoiceRow> Filtered =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _invoices ?? Array.Empty<InvoiceRow>()
+            : (_invoices ?? Array.Empty<InvoiceRow>()).Where(row =>
+                row.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || row.CustomerDocument.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnParametersSet()
+    {
+        _success = Guardado == "1"
+            ? "La factura se guardó correctamente."
+            : Anulada == "1"
+                ? "La factura quedó anulada."
+                : null;
+
+        Load();
+    }
+
+    private void Load()
+    {
+        try
+        {
+            _invoices = InvoiceService.List();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Cancel(InvoiceRow invoice)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            InvoiceService.Cancel(invoice.Id);
+            Navigation.NavigateTo("facturacion?anulada=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

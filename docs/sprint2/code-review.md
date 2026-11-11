@@ -2,7 +2,7 @@
 
 > **Revisión automatizada preparada con asistente de código. No sustituye la aprobación de un integrante del equipo en GitHub.**
 
-**Rama revisada:** `feature/opencode-erp-ui` frente a `origin/develop`
+**Rama revisada:** `feature/sprint2-erp` frente a `origin/develop`
 **Fecha:** 9 de noviembre de 2026
 **Autor de la revisión:** asistente de código (OpenCode)
 **Alcance temporal:** trabajo del Sprint 2 (nómina, empleados, Compras, seguridad/auditoría, documentación, CI/Terraform y Fase 1)
@@ -24,7 +24,7 @@
 | Pruebas | `tests/TiendaFlow.UnitTests/**` (`EmployeeServiceTests`, `PayrollEngineTests`, `PayrollRunServiceTests`, `UserServiceTests`, `AuthenticationServiceTests`) |
 | Documentación y CI | `docs/arc42/05`, `07`, `10`, `docs/sprint2/**`, `docs/uml/payroll_*.puml`, `.github/workflows/ci.yml`, `.github/workflows/terraform-plan.yml`, `infra/terraform/main.tf` |
 
-**Fuera de alcance:** migraciones y esquema de base de datos (no se modificaron), infraestructura real (Terraform es un *placeholder* declarado), contenido del Sprint 1 y archivos generados (`tests/TiendaFlow.AcceptanceTests/Features/ConsultStock.feature.cs`, que no se versiona).
+**Fuera de alcance (al momento de esta revisión):** migraciones y esquema de base de datos (no se modificaron en esa revisión), infraestructura real (Terraform es un *placeholder* declarado), contenido del Sprint 1 y archivos generados (`tests/TiendaFlow.AcceptanceTests/Features/ConsultStock.feature.cs`, que no se versiona).
 
 ### Evidencia de compilación y pruebas al momento de la revisión
 
@@ -33,6 +33,8 @@
 | `dotnet build TiendaFlow.slnx` | 0 advertencias, 0 errores |
 | `dotnet test TiendaFlow.slnx` | 244 unitarias correctas, 6 de aceptación correctas, 17 de integración omitidas, 0 fallos |
 | Cobertura Application + Domain | 87,6 % de líneas al cierre (85,6 % en la línea base) |
+
+> Estas cifras son la foto de esta revisión. El cierre del Sprint 2, con los módulos de Proveedores, Facturación y CRM, se reporta en `docs/sprint2/retrospective.md`: 88,4 % de líneas y 73,6 % de ramas.
 
 ---
 
@@ -257,7 +259,7 @@ Cada corrección va en su propio commit, con compilación y pruebas verdes antes
 - Es una revisión **automatizada**: no reemplaza la lectura de un integrante del equipo ni la aprobación formal en GitHub.
 - No se ejecutó la aplicación contra SQL Server ni se recorrió la demo; la validación funcional de rutas se apoya en el código y en el guion de `docs/sprint2/demo-script.md`.
 - No se evaluó el contenido de los 238 archivos del Sprint 1 que arrastra el diff.
-- No se ejecutó `terraform plan` real ni los workflows de GitHub Actions; solo se revisó su definición.
+- Esta revisión no ejecutó Terraform ni los workflows de GitHub Actions; solo revisó su definición. La corrida posterior del PR dejó el job `plan` en verde, sin `apply`.
 - La cobertura (87,6 % al cierre, 85,6 % en la línea base) corresponde a Application + Domain; no mide Razor ni Infrastructure.
 
 ---

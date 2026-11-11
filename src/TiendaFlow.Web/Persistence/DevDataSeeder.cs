@@ -46,6 +46,9 @@ public sealed class DevDataSeeder : IHostedService
         await SeedRolesAsync(context, cancellationToken);
         await SeedUsersAsync(context, cancellationToken);
         await SeedCatalogAsync(context, cancellationToken);
+        await SeedSuppliersAsync(context, cancellationToken);
+        await SeedInvoicesAsync(context, cancellationToken);
+        await SeedCustomersAsync(context, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -194,6 +197,63 @@ public sealed class DevDataSeeder : IHostedService
             new StockItem("SKU-1002", DefaultStoreId, 25, "Pasillo 1", minStock: 8),
             new StockItem("SKU-1003", DefaultStoreId, 18, "Pasillo 2", minStock: 6),
             new StockItem("SKU-1004", DefaultStoreId, 12, "Pasillo 3", minStock: 5));
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedSuppliersAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.Suppliers.AnyAsync(cancellationToken))
+            return;
+
+        context.Suppliers.AddRange(
+            new Supplier(0, "900123456-1", "Distribuidora Andina S.A.S.", "Calle 13 # 45-20, Bogotá"),
+            new Supplier(0, "900654321-2", "Lácteos del Altiplano Ltda.", "Carrera 7 # 12-34, Tunja"),
+            new Supplier(0, "901987654-3", "Aseo Total Colombia S.A.S.", "Avenida 68 # 22-10, Bogotá"));
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedInvoicesAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.SalesInvoices.AnyAsync(cancellationToken))
+            return;
+
+        var counter = new SalesInvoice(
+            id: 0,
+            customerName: "Cliente mostrador",
+            customerDocument: "2222222222",
+            issueDate: DateTime.UtcNow);
+        counter.AddLine("SKU-1001", "Agua 600 ml", 2, 2500m);
+        counter.AddLine("SKU-1004", "Pan tajado", 1, 5500m);
+
+        var neighbor = new SalesInvoice(
+            id: 0,
+            customerName: "María Fernanda Rojas",
+            customerDocument: "1010101010",
+            issueDate: DateTime.UtcNow.AddDays(-1));
+        neighbor.AddLine("SKU-1002", "Gaseosa 400 ml", 3, 3500m);
+        neighbor.AddLine("SKU-1003", "Arroz 500 g", 2, 3300m);
+
+        context.SalesInvoices.AddRange(counter, neighbor);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedCustomersAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.Customers.AnyAsync(cancellationToken))
+            return;
+
+        context.Customers.AddRange(
+            new Customer(0, "1010101010", "María Fernanda Rojas", "maria.rojas@example.com", "3001234567", "Calle 45 # 12-30, Bogotá"),
+            new Customer(0, "2222222222", "Cliente mostrador", null, null, null),
+            new Customer(0, "79876543", "Jorge Iván Peña", "jorge.pena@example.com", "3107654321", "Carrera 15 # 80-20, Bogotá"));
 
         await context.SaveChangesAsync(cancellationToken);
     }

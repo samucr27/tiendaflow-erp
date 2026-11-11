@@ -103,9 +103,32 @@
         }
     }
 
-    <p class="nav-section">Módulos</p>
-    <span class="nav-item nav-item-disabled">Compras <small>Fase 3</small></span>
-    <span class="nav-item nav-item-disabled">Clientes <small>Próximamente</small></span>
+    @if (AccessControl.Has(Permissions.PurchasingSuppliersView))
+    {
+        <p class="nav-section">Compras</p>
+
+        <NavLink class="nav-item" href="proveedores" Match="NavLinkMatch.Prefix">
+            Proveedores
+        </NavLink>
+    }
+
+    @if (AccessControl.Has(Permissions.SalesInvoicesView))
+    {
+        <p class="nav-section">Facturación</p>
+
+        <NavLink class="nav-item" href="facturacion" Match="NavLinkMatch.Prefix">
+            Facturas
+        </NavLink>
+    }
+
+    @if (AccessControl.Has(Permissions.CrmCustomersView))
+    {
+        <p class="nav-section">CRM</p>
+
+        <NavLink class="nav-item" href="crm/clientes" Match="NavLinkMatch.Prefix">
+            Clientes
+        </NavLink>
+    }
 </nav>
 
 <div class="sidebar-user">

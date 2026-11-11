@@ -1,0 +1,196 @@
+@page "/proveedores/nuevo"
+@page "/proveedores/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.PurchasingSuppliersManage)]
+@using System.ComponentModel.DataAnnotations
+@using TiendaFlow.Application
+@inject SupplierService SupplierService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEditing ? "Editar proveedor" : "Registrar proveedor") · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Compras / Proveedores"
+            Title="@(IsEditing ? "Editar proveedor" : "Registrar proveedor")"
+            Subtitle="Identificación, razón social y datos de contacto">
+    <Actions>
+        <a class="button button-secondary" href="proveedores">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_form is null)
+{
+    <p class="muted">Cargando los datos del proveedor…</p>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="Save" FormName="proveedor" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-section">
+            <h2>Datos de la empresa</h2>
+            <p class="card-subtitle">El NIT debe ser único en la cadena.</p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="supplier-nit">NIT</label>
+                    @if (IsEditing)
+                    {
+                        <input id="supplier-nit" class="input" value="@_form.Nit" readonly />
+                    }
+                    else
+                    {
+                        <InputText id="supplier-nit" class="input" @bind-Value="_form.Nit" />
+                        <ValidationMessage For="() => _form.Nit" />
+                    }
+                </div>
+
+                <div class="field">
+                    <label for="supplier-name">Razón social</label>
+                    <InputText id="supplier-name" class="input" @bind-Value="_form.BusinessName" />
+                    <ValidationMessage For="() => _form.BusinessName" />
+                </div>
+
+                <div class="field">
+                    <label for="supplier-address">Dirección</label>
+                    <InputText id="supplier-address" class="input" @bind-Value="_form.Address" />
+                    <ValidationMessage For="() => _form.Address" />
+                </div>
+
+                @if (!IsEditing)
+                {
+                    <div class="field">
+                        <label for="supplier-rating">Calificación inicial (%)</label>
+                        <InputNumber id="supplier-rating" class="input" @bind-Value="_form.Rating" />
+                        <ValidationMessage For="() => _form.Rating" />
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (IsEditing)
+        {
+            <div class="form-section">
+                <h2>Estado</h2>
+                <p class="card-subtitle">
+                    Un proveedor inactivo conserva su historial, pero no se ofrece para compras nuevas.
+                </p>
+
+                <div class="field field-inline">
+                    <InputCheckbox id="supplier-active" @bind-Value="_form.Active" />
+                    <label for="supplier-active">Proveedor activo</label>
+                </div>
+            </div>
+        }
+
+        <div class="form-actions">
+            <a class="button button-secondary" href="proveedores">Cancelar</a>
+            <button type="submit" class="button button-primary">
+                @(IsEditing ? "Guardar cambios" : "Registrar proveedor")
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private SupplierForm? _form;
+    private string? _error;
+
+    private bool IsEditing => Id > 0;
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _form = new SupplierForm { Rating = 100m, Active = true };
+
+            if (!IsEditing)
+                return;
+
+            var supplier = SupplierService.Get(Id);
+            _form = new SupplierForm
+            {
+                Nit = supplier.Nit,
+                BusinessName = supplier.BusinessName,
+                Address = supplier.Address,
+                Rating = supplier.Rating,
+                Active = supplier.Active
+            };
+        }
+        catch (SupplierNotFoundException)
+        {
+            _error = "No encontramos el proveedor solicitado.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+
+        try
+        {
+            if (IsEditing)
+            {
+                SupplierService.Update(Id, new UpdateSupplierRequest(
+                    _form!.BusinessName,
+                    _form.Address,
+                    _form.Active));
+            }
+            else
+            {
+                SupplierService.Create(new CreateSupplierRequest(
+                    _form!.Nit,
+                    _form.BusinessName,
+                    _form.Address,
+                    _form.Rating));
+            }
+
+            Navigation.NavigateTo("proveedores?guardado=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private sealed class SupplierForm
+    {
+        [Required(ErrorMessage = "El NIT es obligatorio.")]
+        [StringLength(30, ErrorMessage = "El NIT no puede superar 30 caracteres.")]
+        public string Nit { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La razón social es obligatoria.")]
+        [StringLength(200, ErrorMessage = "La razón social no puede superar 200 caracteres.")]
+        public string BusinessName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La dirección es obligatoria.")]
+        [StringLength(200, ErrorMessage = "La dirección no puede superar 200 caracteres.")]
+        public string Address { get; set; } = string.Empty;
+
+        [Range(0, 100, ErrorMessage = "La calificación debe estar entre 0 y 100.")]
+        public decimal Rating { get; set; }
+
+        public bool Active { get; set; }
+    }
+}

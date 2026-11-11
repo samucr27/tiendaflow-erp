@@ -6,9 +6,9 @@ Este directorio contiene un archivo Markdown por sección de arc42, listo para i
 
 | Orden | Archivo | Título que verá Notion | Contenido |
 |---|---|---|---|
-| 1 | `05-building-block-view.md` | 05 — Vista de bloques de construcción | Capas, módulo de nómina, empleados y corrida, trazabilidad |
+| 1 | `05-building-block-view.md` | 05 — Vista de bloques de construcción | Capas, módulo de nómina, empleados y corrida, proveedores, facturación, CRM clientes, trazabilidad |
 | 2 | `07-deployment-view.md` | 07 — Vista de despliegue | Infraestructura local, secretos, CI y Terraform |
-| 3 | `10-architecture-concepts-security.md` | 10 — Conceptos de arquitectura: seguridad y roles | Autenticación, matriz de 7 roles, tres capas y auditoría |
+| 3 | `10-architecture-concepts-security.md` | 10 — Conceptos de arquitectura: seguridad y roles | Autenticación, matriz de 7 roles, tres capas, auditoría y módulos del Sprint 2 |
 
 ## 2. Pasos de importación
 
@@ -42,7 +42,8 @@ Los demás diagramas del proyecto ya tienen su PNG en la raíz del repositorio y
 ## 4. Recomendaciones de presentación
 
 - Mantener las páginas 05 y 10 cerca en el árbol: son las que se muestran en el video de un minuto.
-- En la página 10, fijar la tabla 10.2 como bloque destacado para que la fila `hr.payroll.manage` sea fácil de señalar.
-- En la página 05, destacar la tabla 5.2 y el párrafo de decisión de arquitectura.
+- En la página 10, fijar la tabla 10.2 como bloque destacado para que las filas `hr.payroll.manage` y `sales.invoices.manage` sean fáciles de señalar.
+- En la página 05, destacar la tabla 5.2, el párrafo de decisión de arquitectura y las secciones 5.4 a 5.6 de los módulos nuevos.
+- La tabla de verificación módulo-código-permiso del tour está en `docs/sprint2/architecture-tour-script.md`; no se importa a Notion.
 - No incluir contraseñas, cadenas de conexión ni valores de secretos en Notion. Los nombres de los secretos de desarrollo son `Seed:AdminPassword` y `Seed:DemoPassword`; sus valores nunca se documentan.
 - Si se importa de nuevo una página, Notion puede duplicarla. Archivar la versión anterior antes de reimportar.

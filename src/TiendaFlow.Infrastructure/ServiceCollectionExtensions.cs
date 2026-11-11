@@ -39,6 +39,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupplierQuery, EfSupplierQuery>();
         services.AddScoped<IPurchaseOrderQuery, EfPurchaseOrderQuery>();
 
+        services.AddScoped<IInvoiceRepository, EfInvoiceRepository>();
+        services.AddScoped<IInvoiceQuery, EfInvoiceQuery>();
+
+        services.AddScoped<ICustomerRepository, EfCustomerRepository>();
+        services.AddScoped<ICustomerQuery, EfCustomerQuery>();
+
         services.AddScoped<IAccessControl, AccessControl>();
 
         services.AddSingleton<IClock, SystemClock>();
@@ -54,6 +60,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AuthenticationService>();
         services.AddScoped<SupplierService>();
         services.AddScoped<PurchaseOrderService>();
+        services.AddScoped<SalesInvoiceService>();
+        services.AddScoped<CustomerService>();
         services.AddScoped<EmployeeService>();
 
         return services;
