@@ -24,7 +24,7 @@
 | Pruebas | `tests/TiendaFlow.UnitTests/**` (`EmployeeServiceTests`, `PayrollEngineTests`, `PayrollRunServiceTests`, `UserServiceTests`, `AuthenticationServiceTests`) |
 | Documentación y CI | `docs/arc42/05`, `07`, `10`, `docs/sprint2/**`, `docs/uml/payroll_*.puml`, `.github/workflows/ci.yml`, `.github/workflows/terraform-plan.yml`, `infra/terraform/main.tf` |
 
-**Fuera de alcance:** migraciones y esquema de base de datos (no se modificaron), infraestructura real (Terraform es un *placeholder* declarado), contenido del Sprint 1 y archivos generados (`tests/TiendaFlow.AcceptanceTests/Features/ConsultStock.feature.cs`, que no se versiona).
+**Fuera de alcance (al momento de esta revisión):** migraciones y esquema de base de datos (no se modificaron en esa revisión), infraestructura real (Terraform es un *placeholder* declarado), contenido del Sprint 1 y archivos generados (`tests/TiendaFlow.AcceptanceTests/Features/ConsultStock.feature.cs`, que no se versiona).
 
 ### Evidencia de compilación y pruebas al momento de la revisión
 
@@ -33,6 +33,8 @@
 | `dotnet build TiendaFlow.slnx` | 0 advertencias, 0 errores |
 | `dotnet test TiendaFlow.slnx` | 244 unitarias correctas, 6 de aceptación correctas, 17 de integración omitidas, 0 fallos |
 | Cobertura Application + Domain | 87,6 % de líneas al cierre (85,6 % en la línea base) |
+
+> Estas cifras son la foto de esta revisión. El cierre del Sprint 2, con los módulos de Proveedores, Facturación y CRM, se reporta en `docs/sprint2/retrospective.md`: 88,4 % de líneas y 73,6 % de ramas.
 
 ---
 

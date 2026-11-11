@@ -47,7 +47,7 @@ Verifica que el contenedor esté en ejecución:
 docker ps --filter "name=tiendaflow-sql"
 ```
 
-La primera ejecución de la aplicación en el entorno `Development` aplica las migraciones de EF Core y crea la base `TiendaFlow_OpenCode` con la tienda, los roles, los usuarios demo y el catálogo inicial. Ese sembrado solo se ejecuta si la base está vacía; no se repite al reiniciar.
+La primera ejecución de la aplicación en el entorno `Development` aplica las migraciones de EF Core y crea la base `TiendaFlow_OpenCode` con la tienda, los roles, los usuarios demo y los datos iniciales (4 productos con stock, 3 proveedores, 2 facturas y 3 clientes). Ese sembrado solo se ejecuta si cada tabla está vacía; no se repite al reiniciar.
 
 ### 2. Secretos de desarrollo
 
@@ -91,6 +91,40 @@ Todos usan el dominio `@tiendaflow.local`. Las contraseñas no se documentan aqu
 | Coordinador de logística | `logistica@tiendaflow.local` | `Seed:DemoPassword` |
 | Gestor de recursos humanos | `rrhh@tiendaflow.local` | `Seed:DemoPassword` |
 
+## Rutas principales
+
+| Módulo | Rutas | Permiso de lectura | Permiso de escritura |
+|---|---|---|---|
+| Inventario | `/inventario`, `/inventario/productos`, `/inventario/alertas` | `inventory.stock.view`, `inventory.products.view` | `inventory.products.manage`, `inventory.stock.*` |
+| Nómina y empleados | `/rrhh/empleados`, `/rrhh/nomina` | `hr.employees.view`, `hr.payroll.manage` | `hr.employees.manage`, `hr.payroll.manage` |
+| Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/{id}` | `purchasing.suppliers.view` | `purchasing.suppliers.manage` |
+| Facturación | `/facturacion`, `/facturacion/nueva`, `/facturacion/{id}` | `sales.invoices.view` | `sales.invoices.manage` |
+| CRM clientes | `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id}` | `crm.customers.view` | `crm.customers.manage` |
+| Seguridad | `/seguridad/usuarios`, `/seguridad/roles`, `/seguridad/auditoria` | `security.*.view` | `security.*.manage` |
+
+El detalle de qué rol tiene cada permiso está en `docs/arc42/10-architecture-concepts-security.md` y en `src/TiendaFlow.Application/Security/RolePermissions.cs`.
+
+## Migraciones de EF Core
+
+La aplicación aplica las migraciones pendientes al arrancar en `Development`. Para generarlas o aplicarlas manualmente:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
+
+# Nueva migración (ejemplo)
+dotnet ef migrations add NombreDeLaFase `
+  --project src\TiendaFlow.Infrastructure `
+  --startup-project src\TiendaFlow.Web `
+  --output-dir Persistence\Migrations
+
+# Aplicar todas las migraciones pendientes
+dotnet ef database update `
+  --project src\TiendaFlow.Infrastructure `
+  --startup-project src\TiendaFlow.Web
+```
+
+Las migraciones de esta entrega son `20261109011701_Phase3Purchasing` (proveedores y órdenes), `20261111005733_Phase4Invoicing` (facturación) y `20261111010125_Phase5Crm` (clientes).
+
 ## Pruebas y cobertura
 
 ```powershell
@@ -130,7 +164,7 @@ infra/                        Infraestructura como código (Terraform)
 
 - [arc42](docs/arc42): vista de bloques, despliegue y conceptos de seguridad.
 - [Notion](docs/notion): versión para Notion de los mismos documentos.
-- [Sprint 2](docs/sprint2): planeación, guion de demo, revisión de código, validación de parámetros de nómina, revisión de la UI de RR. HH., prueba de humo de autorización, retrospectiva y preguntas abiertas.
+- [Sprint 2](docs/sprint2): planeación, guion de demo, guion del tour de arquitectura, flujo de Terraform, revisión de código, validación de parámetros de nómina, revisión de la UI de RR. HH., prueba de humo de autorización, retrospectiva y preguntas abiertas.
 - [Diagramas UML](docs/uml): secuencias de la corrida de nómina.
 - [Documento del proyecto](TiendaFlow_Project_Definition_Sprint1.pdf): definición del Sprint 1.
 

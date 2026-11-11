@@ -138,14 +138,17 @@ definir.
 equipo comparte un único state sin conflictos de archivos locales. Un workflow
 de GitHub Actions (`.github/workflows/terraform-plan.yml`) ejecuta
 `terraform init`, `validate` y `plan` en cada PR hacia `develop` que modifique
-archivos `.tf`; se verificó en el PR #2 con resultado exitoso. Limitación: el
-recurso declarado es de relleno (`random_pet`) y no describe infraestructura
-real; la definición de la infraestructura de despliegue queda para el Sprint 3.
+archivos `.tf`. **Limitación verificable:** el workspace no se aprovisionó en
+esta entrega y el workflow no se ejecutó durante esta revisión; no se afirma una
+corrida exitosa. El recurso declarado es de relleno (`random_pet`) y no describe
+infraestructura real; la definición de la infraestructura de despliegue queda
+para el Sprint 3.
 
 **Adherencia al DoD.** Cobertura de líneas medida sobre `TiendaFlow.Application`
-y `TiendaFlow.Domain`: **85,6 %** (1.311 de 1.530 líneas), por encima del 80 %
-exigido; cobertura de ramas 68,5 %. Las 17 pruebas de integración requieren
+y `TiendaFlow.Domain`: **88,4 %** (1.945 de 2.200 líneas), por encima del 80 %
+exigido; cobertura de ramas 73,6 %. Las 17 pruebas de integración requieren
 SQL Server y se saltan en CI, por lo que su cobertura solo se verifica en
-local. arc42 actualizado para HU-04, HU-06 y HU-08 (secciones 5, 7 y 10). Los
-cambios viajan en el PR #2 hacia `develop`, con CI y Terraform Plan en verde.
-La revisión cruzada del PR #2 está pendiente.
+local. arc42 actualizado para HU-04, HU-06 y HU-08 (secciones 5, 7 y 10), y la
+sección 5 incluye los módulos de Proveedores, Facturación y CRM. Los cambios
+viajan en el PR #2 hacia `develop`. La revisión cruzada del PR #2 está
+pendiente.

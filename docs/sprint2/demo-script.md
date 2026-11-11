@@ -1,7 +1,7 @@
 # Guion de demo manual — Sprint 2
 
 **Rama:** `feature/opencode-erp-ui`
-**Historias cubiertas:** HU-04 (nómina), HU-05 (alertas de stock), HU-06 (roles y auditoría) y los pasos de empleados.
+**Historias cubiertas:** HU-04 (nómina), HU-05 (alertas de stock), HU-06 (roles y auditoría), los pasos de empleados y los CRUD de Proveedores, Facturación y CRM clientes.
 **Formato:** pasos numerados y verificables. Este documento no incluye capturas de pantalla.
 **Idioma de la demo:** español. Los nombres de campos y botones son los que aparecen en la interfaz.
 
@@ -55,6 +55,14 @@ Todos usan el dominio `@tiendaflow.local`:
 
 Los cuatro productos empiezan **por encima** de su mínimo, así que el panel arranca
 con 0 alertas. Esa es la condición inicial que la demo de HU-05 va a cambiar.
+
+El seeder también deja datos para los módulos nuevos:
+
+| Módulo | Datos sembrados |
+|---|---|
+| Proveedores | 3 proveedores activos: Distribuidora Andina S.A.S., Lácteos del Altiplano Ltda. y Aseo Total Colombia S.A.S. |
+| Facturación | 2 facturas emitidas: Cliente mostrador (documento `2222222222`) y María Fernanda Rojas (documento `1010101010`) |
+| CRM clientes | 3 clientes: María Fernanda Rojas, Cliente mostrador y Jorge Iván Peña |
 
 ### 1.3 Regla de oro de la demo
 
@@ -315,13 +323,130 @@ surte efecto en el siguiente inicio de sesión y ver el rechazo en la auditoría
 
 ---
 
-## 6. Cierre de la demo
+## 6. CRUD de Proveedores (Compras)
 
-1. Recorrido final sugerido: **Empleados** (salario visible para RR. HH.) → **Nómina** (desglose y totales) → **Alertas de stock** (Pan tajado bajo mínimo) → **Roles** (matriz) → **Auditoría** (acceso denegado).
+**Objetivo:** demostrar listado, búsqueda, alta, edición y desactivación de proveedores,
+y que el rol de Coordinador de Logística es el único que administra el módulo.
+
+**Usuario:** `logistica@tiendaflow.local` (`PurchasingSuppliersView` y `PurchasingSuppliersManage`).
+
+1. Iniciar sesión como `logistica@tiendaflow.local` con `Seed:DemoPassword`.
+2. Abrir **Compras → Proveedores** (`/proveedores`).
+   - Verificación: se ven 3 proveedores sembrados y el botón **+ Registrar proveedor**.
+   - Verificación: cada fila activa muestra **Editar** y **Desactivar**.
+3. Hacer clic en **+ Registrar proveedor** (`/proveedores/nuevo`) y completar:
+   - **NIT:** `901555444-9`
+   - **Razón social:** `Panadería El Trigal S.A.S.`
+   - **Dirección:** `Calle 100 # 20-30, Bogotá`
+   - **Calificación inicial (%):** `95`
+4. Hacer clic en **Registrar proveedor**.
+   - Verificación: vuelve a `/proveedores?guardado=1` con **“El proveedor se guardó correctamente.”**
+   - Verificación: la tabla muestra el nuevo proveedor con calificación `95 %`, compras `0` y estado **Activo**.
+5. En la fila del proveedor nuevo, hacer clic en **Editar**.
+   - Verificación: el NIT aparece en solo lectura; la razón social y la dirección son editables.
+   - Cambiar la dirección a `Calle 100 # 20-32, Bogotá` y guardar.
+   - Verificación: la tabla muestra la dirección nueva.
+6. En la fila del proveedor nuevo, hacer clic en **Desactivar**.
+   - Verificación: el estado pasa a **Inactivo** y el botón **Desactivar** desaparece de esa fila.
+7. Probar la búsqueda: escribir `Trigal` en **Buscar**.
+   - Verificación: queda solo la fila del proveedor nuevo.
+8. **Verificación de roles (solo lectura y denegación):**
+   - Cerrar sesión e iniciar como `jefe.tienda@tiendaflow.local` con `Seed:DemoPassword`.
+   - Abrir **Compras → Proveedores**.
+   - Verificación: la lista se ve, pero **no** aparecen **+ Registrar proveedor**, **Editar** ni **Desactivar**.
+   - Cerrar sesión e iniciar como `bodega@tiendaflow.local` con `Seed:DemoPassword`.
+   - Verificación: el menú no muestra la sección **Compras**.
+   - Navegar a `http://localhost:5212/proveedores`.
+   - Verificación: redirige a `/acceso-denegado`.
+
+---
+
+## 7. CRUD de Facturación (Ventas)
+
+**Objetivo:** emitir una factura con varias líneas, editarla, anularla y comprobar que
+una factura anulada queda en solo lectura.
+
+**Usuario:** `cajero@tiendaflow.local` (`SalesInvoicesView` y `SalesInvoicesManage`).
+
+1. Iniciar sesión como `cajero@tiendaflow.local` con `Seed:DemoPassword`.
+2. Abrir **Facturación → Facturas** (`/facturacion`).
+   - Verificación: se ven 2 facturas sembradas, ambas con estado **Emitida**, y el botón **+ Nueva factura**.
+3. Hacer clic en **+ Nueva factura** (`/facturacion/nueva`) y completar:
+   - **Nombre del cliente:** `Andrés Pérez`
+   - **Documento:** `1032456789`
+   - **Fecha de emisión:** la fecha del día
+4. En la primera línea, completar:
+   - **SKU:** `SKU-1001`
+   - **Descripción:** `Agua 600 ml`
+   - **Cantidad:** `3`
+   - **Precio unitario:** `2500`
+5. Hacer clic en **+ Agregar ítem** y completar la segunda línea:
+   - **SKU:** `SKU-1004`
+   - **Descripción:** `Pan tajado`
+   - **Cantidad:** `1`
+   - **Precio unitario:** `5500`
+   - Verificación: **Total:** `$13.000` (3 × 2.500 + 1 × 5.500).
+6. Hacer clic en **Emitir factura**.
+   - Verificación: vuelve a `/facturacion?guardado=1` con **“La factura se guardó correctamente.”**
+   - Verificación: la factura nueva aparece con cliente `Andrés Pérez`, 2 ítems, total `$13.000` y estado **Emitida**.
+7. Hacer clic en **Editar** en la factura nueva.
+   - Cambiar la cantidad de la primera línea de `3` a `4`.
+   - Verificación: **Total:** `$15.500` (4 × 2.500 + 1 × 5.500).
+   - Guardar y verificar el total en la lista.
+8. En la lista, hacer clic en **Anular** en la factura nueva.
+   - Verificación: vuelve a `/facturacion?anulada=1` con **“La factura quedó anulada.”**
+   - Verificación: el estado pasa a **Anulada** y el botón **Anular** desaparece de esa fila.
+9. Hacer clic en **Ver** en la factura anulada.
+   - Verificación: aparece el aviso **“Esta factura está anulada y ya no se puede editar.”**
+   - Verificación: los ítems se ven en solo lectura y no hay botón **Guardar cambios**.
+10. **Verificación de roles:** cerrar sesión e iniciar como `rrhh@tiendaflow.local` con `Seed:DemoPassword`.
+    - Verificación: el menú no muestra la sección **Facturación**.
+    - Navegar a `http://localhost:5212/facturacion`.
+    - Verificación: redirige a `/acceso-denegado`.
+
+---
+
+## 8. CRUD de CRM clientes
+
+**Objetivo:** registrar, editar y desactivar un cliente, comprobar la unicidad del
+documento y verificar que el módulo solo aparece para los roles autorizados.
+
+**Usuario:** `cajero@tiendaflow.local` (`CrmCustomersView` y `CrmCustomersManage`).
+
+1. Con la sesión de `cajero@tiendaflow.local`, abrir **CRM → Clientes** (`/crm/clientes`).
+   - Verificación: se ven 3 clientes sembrados y el botón **+ Registrar cliente**.
+2. Hacer clic en **+ Registrar cliente** (`/crm/clientes/nuevo`) y completar:
+   - **Documento:** `1099887766`
+   - **Nombre completo:** `Laura Gómez`
+   - **Correo electrónico:** `laura.gomez@example.com`
+   - **Teléfono:** `3205557788`
+   - **Dirección:** `Carrera 11 # 70-15, Bogotá`
+3. Hacer clic en **Registrar cliente**.
+   - Verificación: vuelve a `/crm/clientes?guardado=1` con **“El cliente se guardó correctamente.”**
+   - Verificación: la fila muestra documento, nombre, `laura.gomez@example.com · 3205557788` y estado **Activo**.
+4. Hacer clic en **Editar** en la fila de Laura Gómez.
+   - Verificación: el documento aparece en solo lectura.
+   - Cambiar el teléfono a `3205557799` y guardar; verificar el cambio en la lista.
+5. En la fila de Laura Gómez, hacer clic en **Desactivar**.
+   - Verificación: el estado pasa a **Inactivo** y el botón **Desactivar** desaparece de esa fila.
+6. **Verificación de documento único:** hacer clic en **+ Registrar cliente** e intentar crear otro cliente con documento `1099887766`.
+   - Verificación: aparece **“Ya existe un cliente con ese documento.”** y no se crea una segunda fila.
+7. Probar la búsqueda: escribir `Laura` en **Buscar**.
+   - Verificación: queda solo la fila de Laura Gómez.
+8. **Verificación de roles:** cerrar sesión e iniciar como `bodega@tiendaflow.local` con `Seed:DemoPassword`.
+   - Verificación: el menú no muestra la sección **CRM**.
+   - Navegar a `http://localhost:5212/crm/clientes`.
+   - Verificación: redirige a `/acceso-denegado`.
+
+---
+
+## 9. Cierre de la demo
+
+1. Recorrido final sugerido: **Empleados** (salario visible para RR. HH.) → **Nómina** (desglose y totales) → **Alertas de stock** (Pan tajado bajo mínimo) → **Roles** (matriz) → **Auditoría** (acceso denegado) → **Proveedores** → **Facturación** → **Clientes**.
 2. Frase de cierre: “TiendaFlow separa la vista, la acción y el dato: cada pantalla pide un permiso, cada botón se oculta sin permiso y cada servicio vuelve a exigirlo; además, todo rechazo queda auditado sin datos personales”.
-3. Verificación final de integridad: cerrar sesión y confirmar que `/rrhh/nomina`, `/seguridad/usuarios` y `/inventario/ventas` redirigen a `/login` cuando no hay sesión.
+3. Verificación final de integridad: cerrar sesión y confirmar que `/rrhh/nomina`, `/seguridad/usuarios`, `/inventario/ventas`, `/proveedores`, `/facturacion` y `/crm/clientes` redirigen a `/login` cuando no hay sesión.
 
-### 6.1 Estado que deja la demo
+### 9.1 Estado que deja la demo
 
 | Cambio | Cómo revertirlo |
 |---|---|
@@ -329,6 +454,9 @@ surte efecto en el siguiente inicio de sesión y ver el rechazo en la auditoría
 | Empleado “Prueba Demo” (si se creó) | No hay borrado en la interfaz; se elimina al recrear la base de desarrollo. |
 | Stock de Pan tajado en 4 | Registrar una recepción en `/inventario/recibir` o recrear la base de desarrollo. |
 | Rol de Diego Herrera | Ya se restaura en el paso 11 de la sección 5. |
+| Proveedor “Panadería El Trigal S.A.S.” | Queda inactivo; se elimina al recrear la base de desarrollo. |
+| Factura de Andrés Pérez | Queda anulada; se elimina al recrear la base de desarrollo. |
+| Cliente Laura Gómez | Queda inactivo; se elimina al recrear la base de desarrollo. |
 
 > Recrear la base de datos de desarrollo vuelve a ejecutar el seeder y deja los
 > salarios en `0` otra vez. No se deben borrar volúmenes ni contenedores de otros
