@@ -23,14 +23,14 @@ descontando clases y entregas de otras asignaturas.
 |---|---|---|
 | Samuel Castellanos Rivera | 6,5 h | Hecho: nómina, seguridad, Compras, pruebas, arc42, Terraform, CI y CRUD de RR. HH. Asignado: entrega final |
 | Jonathan Alejandro Yacuma Rivera | 6 h | Asignado: arc42 a Notion y video del tour de arquitectura |
-| Juan Sebastián Rodríguez Blanco | 5,5 h | Asignado: revisión del PR #2 y ejecución de la demo manual |
-| Sergio Steeven Moreno Forero | 6 h | Asignado: grabar el video del tour de arquitectura y revisar el PR #2 |
+| Juan Sebastián Rodríguez Blanco | 5,5 h | Asignado: revisión del PR #3 y ejecución de la demo manual |
+| Sergio Steeven Moreno Forero | 6 h | Asignado: grabar el video del tour de arquitectura y revisar el PR #3 |
 
 | Tarea | Responsable | Estimado | Estado |
 |---|---|---|---|
 | Pasar `docs/arc42/` (secciones 5, 7 y 10) a Notion | Samuel | 1 h | Por hacer |
 | Grabar el video de 1 minuto con `video-guide.md` | Sergio | 1 h | Por hacer |
-| Revisar y aprobar el PR #2 | Sergio | 0,5 h | Por hacer |
+| Revisar el PR #3 (ya fusionado sin revisión registrada) | Sergio | 0,5 h | Por hacer |
 | Ejecutar la demo de HU-04, HU-05 y HU-06 | Samuel | 1 h | Por hacer |
 | Validar los parámetros de nómina contra la normativa (borrador del asistente en `docs/sprint2/payroll-parameters-validation.md`) | Samuel | 1 h | Por hacer |
 | Revisión humana de la retrospectiva | Samuel | 0,5 h | Por hacer |
@@ -150,5 +150,6 @@ exigido; cobertura de ramas 73,6 %. Las 17 pruebas de integración requieren
 SQL Server y se saltan en CI, por lo que su cobertura solo se verifica en
 local. arc42 actualizado para HU-04, HU-06 y HU-08 (secciones 5, 7 y 10), y la
 sección 5 incluye los módulos de Proveedores, Facturación y CRM. Los cambios
-viajan en el PR #2 hacia `develop`. La revisión cruzada del PR #2 está
-pendiente.
+llegaron a `develop` con los PR #2 y #3, fusionados el 10 y el 11 de noviembre
+(commit `c62c49b`). La revisión cruzada sigue pendiente: ninguno de los dos PR
+tiene una revisión registrada en GitHub.
