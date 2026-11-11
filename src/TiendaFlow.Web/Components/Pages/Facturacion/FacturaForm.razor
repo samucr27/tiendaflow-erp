@@ -1,0 +1,326 @@
+@page "/facturacion/nueva"
+@page "/facturacion/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SalesInvoicesManage)]
+@using System.ComponentModel.DataAnnotations
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject SalesInvoiceService InvoiceService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEditing ? $"Factura #{Id}" : "Nueva factura") · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Ventas / Facturación"
+            Title="@(IsEditing ? $"Factura #{Id}" : "Nueva factura")"
+            Subtitle="Cliente, fecha e ítems de la venta">
+    <Actions>
+        <a class="button button-secondary" href="facturacion">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_form is null)
+{
+    <p class="muted">Cargando la factura…</p>
+}
+else if (_cancelled)
+{
+    <div class="alert alert-warning" role="status">
+        Esta factura está anulada y ya no se puede editar.
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>@_form.CustomerName</h2>
+                <p class="card-subtitle">Documento @_form.CustomerDocument · @Formatters.ShortDate(_form.IssueDate)</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Descripción</th>
+                        <th class="num">Cantidad</th>
+                        <th class="num">Precio unitario</th>
+                        <th class="num">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _form.Lines)
+                    {
+                        <tr>
+                            <td>@line.ProductSku</td>
+                            <td>@line.Description</td>
+                            <td class="num">@line.Quantity</td>
+                            <td class="num">@Formatters.Money(line.UnitPrice)</td>
+                            <td class="num">@Formatters.Money(line.Quantity * line.UnitPrice)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-actions">
+            <strong>Total: @Formatters.Money(Total)</strong>
+        </div>
+    </section>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="Save" FormName="factura" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-section">
+            <h2>Datos del cliente</h2>
+            <p class="card-subtitle">Se guardan como copia histórica de la factura.</p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="invoice-customer">Nombre del cliente</label>
+                    <InputText id="invoice-customer" class="input" @bind-Value="_form.CustomerName" />
+                    <ValidationMessage For="() => _form.CustomerName" />
+                </div>
+
+                <div class="field">
+                    <label for="invoice-document">Documento</label>
+                    <InputText id="invoice-document" class="input" @bind-Value="_form.CustomerDocument" />
+                    <ValidationMessage For="() => _form.CustomerDocument" />
+                </div>
+
+                <div class="field">
+                    <label for="invoice-date">Fecha de emisión</label>
+                    <InputDate id="invoice-date" class="input" @bind-Value="_form.IssueDate" />
+                    <ValidationMessage For="() => _form.IssueDate" />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Ítems</h2>
+            <p class="card-subtitle">
+                Cada ítem guarda el SKU, la descripción y el precio del momento de la venta.
+            </p>
+
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Descripción</th>
+                            <th class="num">Cantidad</th>
+                            <th class="num">Precio unitario</th>
+                            <th class="num">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _form.Lines)
+                        {
+                            <tr>
+                                <td>
+                                    <InputText class="input" @bind-Value="line.ProductSku" />
+                                </td>
+                                <td>
+                                    <InputText class="input" @bind-Value="line.Description" />
+                                </td>
+                                <td class="num">
+                                    <InputNumber class="input" @bind-Value="line.Quantity" />
+                                </td>
+                                <td class="num">
+                                    <InputNumber class="input" @bind-Value="line.UnitPrice" />
+                                </td>
+                                <td class="num">@Formatters.Money(line.Quantity * line.UnitPrice)</td>
+                                <td>
+                                    <button type="button"
+                                            class="button button-secondary button-small"
+                                            @onclick="() => RemoveLine(line)">
+                                        Quitar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button-secondary" @onclick="AddLine">
+                    + Agregar ítem
+                </button>
+                <strong>Total: @Formatters.Money(Total)</strong>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a class="button button-secondary" href="facturacion">Cancelar</a>
+            <button type="submit" class="button button-primary">
+                @(IsEditing ? "Guardar cambios" : "Emitir factura")
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private InvoiceForm? _form;
+    private string? _error;
+    private bool _cancelled;
+
+    private bool IsEditing => Id > 0;
+
+    private decimal Total => _form is null
+        ? 0m
+        : _form.Lines.Sum(line => line.Quantity * line.UnitPrice);
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _form = new InvoiceForm { IssueDate = DateTime.Today };
+            _cancelled = false;
+
+            if (!IsEditing)
+            {
+                _form.Lines.Add(new InvoiceLineForm());
+                return;
+            }
+
+            var invoice = InvoiceService.GetForEdit(Id);
+            _cancelled = invoice.Status == InvoiceStatus.Cancelled;
+            _form = new InvoiceForm
+            {
+                CustomerName = invoice.CustomerName,
+                CustomerDocument = invoice.CustomerDocument,
+                IssueDate = invoice.IssueDate.Date,
+                Lines = invoice.Lines
+                    .Select(line => new InvoiceLineForm
+                    {
+                        ProductSku = line.ProductSku,
+                        Description = line.Description,
+                        Quantity = line.Quantity,
+                        UnitPrice = line.UnitPrice
+                    })
+                    .ToList()
+            };
+        }
+        catch (InvoiceNotFoundException)
+        {
+            _error = "No encontramos la factura solicitada.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void AddLine() => _form?.Lines.Add(new InvoiceLineForm());
+
+    private void RemoveLine(InvoiceLineForm line)
+    {
+        if (_form is null)
+            return;
+
+        _form.Lines.Remove(line);
+
+        if (_form.Lines.Count == 0)
+            _form.Lines.Add(new InvoiceLineForm());
+    }
+
+    private void Save()
+    {
+        _error = null;
+
+        if (_form is null)
+            return;
+
+        var lines = _form.Lines
+            .Where(line =>
+                !string.IsNullOrWhiteSpace(line.ProductSku)
+                || !string.IsNullOrWhiteSpace(line.Description)
+                || line.Quantity != 0
+                || line.UnitPrice != 0m)
+            .Select(line => new InvoiceLineRequest(
+                line.ProductSku,
+                line.Description,
+                line.Quantity,
+                line.UnitPrice))
+            .ToList();
+
+        if (lines.Count == 0)
+        {
+            _error = "Agrega al menos un ítem a la factura.";
+            return;
+        }
+
+        try
+        {
+            if (IsEditing)
+            {
+                InvoiceService.Update(Id, new UpdateInvoiceRequest(
+                    _form.CustomerName,
+                    _form.CustomerDocument,
+                    _form.IssueDate,
+                    lines));
+            }
+            else
+            {
+                InvoiceService.Create(new CreateInvoiceRequest(
+                    _form.CustomerName,
+                    _form.CustomerDocument,
+                    _form.IssueDate,
+                    lines));
+            }
+
+            Navigation.NavigateTo("facturacion?guardado=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private sealed class InvoiceForm
+    {
+        [Required(ErrorMessage = "El nombre del cliente es obligatorio.")]
+        [StringLength(200, ErrorMessage = "El nombre no puede superar 200 caracteres.")]
+        public string CustomerName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El documento del cliente es obligatorio.")]
+        [StringLength(50, ErrorMessage = "El documento no puede superar 50 caracteres.")]
+        public string CustomerDocument { get; set; } = string.Empty;
+
+        public DateTime IssueDate { get; set; }
+
+        public List<InvoiceLineForm> Lines { get; set; } = new();
+    }
+
+    private sealed class InvoiceLineForm
+    {
+        public string ProductSku { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        public int Quantity { get; set; } = 1;
+
+        public decimal UnitPrice { get; set; }
+    }
+}

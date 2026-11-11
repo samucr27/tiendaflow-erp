@@ -112,6 +112,15 @@
         </NavLink>
     }
 
+    @if (AccessControl.Has(Permissions.SalesInvoicesView))
+    {
+        <p class="nav-section">Facturación</p>
+
+        <NavLink class="nav-item" href="facturacion" Match="NavLinkMatch.Prefix">
+            Facturas
+        </NavLink>
+    }
+
     <p class="nav-section">Módulos</p>
     <span class="nav-item nav-item-disabled">Clientes <small>Próximamente</small></span>
 </nav>

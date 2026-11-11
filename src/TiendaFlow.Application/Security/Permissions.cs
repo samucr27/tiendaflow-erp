@@ -31,6 +31,8 @@ public static class Permissions
     public const string SalesPosUse = "sales.pos.use";
     public const string SalesReturnsAuthorize = "sales.returns.authorize";
     public const string SalesReportsView = "sales.reports.view";
+    public const string SalesInvoicesView = "sales.invoices.view";
+    public const string SalesInvoicesManage = "sales.invoices.manage";
 
     // Supplier and purchasing
     public const string PurchasingSuppliersView = "purchasing.suppliers.view";
@@ -81,6 +83,8 @@ public static class Permissions
         SalesPosUse,
         SalesReturnsAuthorize,
         SalesReportsView,
+        SalesInvoicesView,
+        SalesInvoicesManage,
         PurchasingSuppliersView,
         PurchasingSuppliersManage,
         PurchasingOrdersView,

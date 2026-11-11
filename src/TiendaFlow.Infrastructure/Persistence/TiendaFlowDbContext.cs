@@ -29,6 +29,10 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
 
+    public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
+
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

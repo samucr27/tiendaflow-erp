@@ -47,6 +47,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedUsersAsync(context, cancellationToken);
         await SeedCatalogAsync(context, cancellationToken);
         await SeedSuppliersAsync(context, cancellationToken);
+        await SeedInvoicesAsync(context, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -211,6 +212,33 @@ public sealed class DevDataSeeder : IHostedService
             new Supplier(0, "900654321-2", "Lácteos del Altiplano Ltda.", "Carrera 7 # 12-34, Tunja"),
             new Supplier(0, "901987654-3", "Aseo Total Colombia S.A.S.", "Avenida 68 # 22-10, Bogotá"));
 
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedInvoicesAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.SalesInvoices.AnyAsync(cancellationToken))
+            return;
+
+        var counter = new SalesInvoice(
+            id: 0,
+            customerName: "Cliente mostrador",
+            customerDocument: "2222222222",
+            issueDate: DateTime.UtcNow);
+        counter.AddLine("SKU-1001", "Agua 600 ml", 2, 2500m);
+        counter.AddLine("SKU-1004", "Pan tajado", 1, 5500m);
+
+        var neighbor = new SalesInvoice(
+            id: 0,
+            customerName: "María Fernanda Rojas",
+            customerDocument: "1010101010",
+            issueDate: DateTime.UtcNow.AddDays(-1));
+        neighbor.AddLine("SKU-1002", "Gaseosa 400 ml", 3, 3500m);
+        neighbor.AddLine("SKU-1003", "Arroz 500 g", 2, 3300m);
+
+        context.SalesInvoices.AddRange(counter, neighbor);
         await context.SaveChangesAsync(cancellationToken);
     }
 

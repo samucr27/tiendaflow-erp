@@ -41,6 +41,10 @@ public static class DomainErrorTranslator
             "No encontramos el proveedor solicitado.",
         DuplicateNitException =>
             "Ya existe un proveedor con ese NIT.",
+        InvalidInvoiceException =>
+            "Revisa los datos de la factura. El cliente, el documento y al menos un ítem con cantidad y precio mayores que cero son obligatorios.",
+        InvoiceNotFoundException =>
+            "No encontramos la factura solicitada.",
         InvalidPurchaseOrderException =>
             "La orden de compra no se puede completar con esos datos. Revisa las líneas, las cantidades y el estado de la orden.",
         PurchaseOrderNotFoundException =>
