@@ -1,0 +1,172 @@
+@page "/proveedores"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.PurchasingSuppliersView)]
+@using TiendaFlow.Application
+@inject SupplierService SupplierService
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Proveedores · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Compras"
+            Title="Proveedores"
+            Subtitle="Empresas que abastecen a la cadena y su estado actual">
+    <Actions>
+        @if (AccessControl.Has(Permissions.PurchasingSuppliersManage))
+        {
+            <a class="button button-primary" href="proveedores/nuevo">+ Registrar proveedor</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_suppliers is null)
+{
+    <p class="muted">Cargando los proveedores…</p>
+}
+else if (!_suppliers.Any())
+{
+    <EmptyState Title="Todavía no hay proveedores"
+                Message="Registra el primer proveedor para asociarlo a las compras de la cadena." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Directorio de proveedores</h2>
+                <p class="card-subtitle">@Filtered.Count() de @_suppliers.Count proveedores</p>
+            </div>
+            <input id="supplier-search"
+                   class="search-input"
+                   type="search"
+                   aria-label="Buscar proveedores"
+                   placeholder="Buscar por NIT, razón social o dirección"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>NIT</th>
+                        <th>Razón social</th>
+                        <th>Dirección</th>
+                        <th>Calificación</th>
+                        <th>Compras</th>
+                        <th>Estado</th>
+                        @if (AccessControl.Has(Permissions.PurchasingSuppliersManage))
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var supplier in Filtered)
+                    {
+                        <tr>
+                            <td>@supplier.Nit</td>
+                            <td>@supplier.BusinessName</td>
+                            <td>@supplier.Address</td>
+                            <td>@supplier.RatingLabel</td>
+                            <td>@supplier.OrderCount</td>
+                            <td>
+                                <span class="badge @(supplier.Active ? "badge-success" : "badge-muted")">
+                                    @(supplier.Active ? "Activo" : "Inactivo")
+                                </span>
+                            </td>
+                            @if (AccessControl.Has(Permissions.PurchasingSuppliersManage))
+                            {
+                                <td class="table-actions">
+                                    <a class="button button-secondary button-small"
+                                       href="@($"proveedores/{supplier.Id}")">Editar</a>
+                                    @if (supplier.Active)
+                                    {
+                                        <button type="button"
+                                                class="button button-secondary button-small"
+                                                @onclick="() => Deactivate(supplier)">
+                                            Desactivar
+                                        </button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "guardado")]
+    public string? Guardado { get; set; }
+
+    private IReadOnlyList<SupplierRow>? _suppliers;
+    private string? _search;
+    private string? _error;
+    private string? _success;
+
+    private IEnumerable<SupplierRow> Filtered =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _suppliers ?? Array.Empty<SupplierRow>()
+            : (_suppliers ?? Array.Empty<SupplierRow>()).Where(row =>
+                row.Nit.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || row.BusinessName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || row.Address.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnParametersSet()
+    {
+        _success = Guardado == "1" ? "El proveedor se guardó correctamente." : null;
+        Load();
+    }
+
+    private void Load()
+    {
+        try
+        {
+            _suppliers = SupplierService.List();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Deactivate(SupplierRow supplier)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            SupplierService.Update(supplier.Id, new UpdateSupplierRequest(
+                supplier.BusinessName,
+                supplier.Address,
+                Active: false));
+            _success = $"El proveedor {supplier.BusinessName} quedó inactivo.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

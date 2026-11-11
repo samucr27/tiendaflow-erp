@@ -46,6 +46,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedRolesAsync(context, cancellationToken);
         await SeedUsersAsync(context, cancellationToken);
         await SeedCatalogAsync(context, cancellationToken);
+        await SeedSuppliersAsync(context, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -194,6 +195,21 @@ public sealed class DevDataSeeder : IHostedService
             new StockItem("SKU-1002", DefaultStoreId, 25, "Pasillo 1", minStock: 8),
             new StockItem("SKU-1003", DefaultStoreId, 18, "Pasillo 2", minStock: 6),
             new StockItem("SKU-1004", DefaultStoreId, 12, "Pasillo 3", minStock: 5));
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedSuppliersAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.Suppliers.AnyAsync(cancellationToken))
+            return;
+
+        context.Suppliers.AddRange(
+            new Supplier(0, "900123456-1", "Distribuidora Andina S.A.S.", "Calle 13 # 45-20, Bogotá"),
+            new Supplier(0, "900654321-2", "Lácteos del Altiplano Ltda.", "Carrera 7 # 12-34, Tunja"),
+            new Supplier(0, "901987654-3", "Aseo Total Colombia S.A.S.", "Avenida 68 # 22-10, Bogotá"));
 
         await context.SaveChangesAsync(cancellationToken);
     }

@@ -103,8 +103,16 @@
         }
     }
 
+    @if (AccessControl.Has(Permissions.PurchasingSuppliersView))
+    {
+        <p class="nav-section">Compras</p>
+
+        <NavLink class="nav-item" href="proveedores" Match="NavLinkMatch.Prefix">
+            Proveedores
+        </NavLink>
+    }
+
     <p class="nav-section">Módulos</p>
-    <span class="nav-item nav-item-disabled">Compras <small>Fase 3</small></span>
     <span class="nav-item nav-item-disabled">Clientes <small>Próximamente</small></span>
 </nav>
 
