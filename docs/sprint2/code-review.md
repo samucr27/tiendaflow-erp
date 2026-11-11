@@ -2,7 +2,7 @@
 
 > **Revisión automatizada preparada con asistente de código. No sustituye la aprobación de un integrante del equipo en GitHub.**
 
-**Rama revisada:** `feature/opencode-erp-ui` frente a `origin/develop`
+**Rama revisada:** `feature/sprint2-erp` frente a `origin/develop`
 **Fecha:** 9 de noviembre de 2026
 **Autor de la revisión:** asistente de código (OpenCode)
 **Alcance temporal:** trabajo del Sprint 2 (nómina, empleados, Compras, seguridad/auditoría, documentación, CI/Terraform y Fase 1)

@@ -1,7 +1,7 @@
 # Revisión estática de la UI de RR. HH. — Sprint 2
 
 **Fecha:** 9 de noviembre de 2026
-**Rama:** `feature/opencode-erp-ui`
+**Rama:** `feature/sprint2-erp`
 **Alcance:** revisión de código sin navegador de `Empleados.razor`,
 `EmpleadoForm.razor`, `Nomina.razor`, `NavMenu.razor`, `EmployeeService` y
 `PayrollRunService`. No se agregó funcionalidad.

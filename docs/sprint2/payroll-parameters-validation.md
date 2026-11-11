@@ -1,7 +1,7 @@
 # Validación de parámetros de nómina — Sprint 2
 
 **Fecha de consulta:** 9 de noviembre de 2026
-**Rama:** `feature/opencode-erp-ui`
+**Rama:** `feature/sprint2-erp`
 **Archivo revisado:** `src/TiendaFlow.Application/Payroll/PayrollParameters.cs`
 **Alcance:** documentar y contrastar los valores; **no se modificó ningún valor del código** en esta fase.
 

@@ -1,6 +1,6 @@
 # Guion de demo manual — Sprint 2
 
-**Rama:** `feature/opencode-erp-ui`
+**Rama:** `feature/sprint2-erp`
 **Historias cubiertas:** HU-04 (nómina), HU-05 (alertas de stock), HU-06 (roles y auditoría), los pasos de empleados y los CRUD de Proveedores, Facturación y CRM clientes.
 **Formato:** pasos numerados y verificables. Este documento no incluye capturas de pantalla.
 **Idioma de la demo:** español. Los nombres de campos y botones son los que aparecen en la interfaz.
