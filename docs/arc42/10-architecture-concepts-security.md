@@ -57,6 +57,8 @@ Roles: **ADM** Administrator, **CM** Corporate Manager, **SM** Store Manager,
 | sales.pos.use | | | ✓ | ✓ | | | |
 | sales.returns.authorize | | | ✓ | | | | |
 | sales.reports.view | ✓ | ✓ | ✓ | | | | |
+| sales.invoices.view | ✓ | ✓ | ✓ | ✓ | | | |
+| sales.invoices.manage | ✓ | ✓ | ✓ | ✓ | | | |
 | purchasing.suppliers.view | ✓ | ✓ | ✓ | | | ✓ | |
 | purchasing.suppliers.manage | | | | | | ✓ | |
 | purchasing.orders.view | ✓ | ✓ | ✓ | | | ✓ | |
@@ -74,7 +76,7 @@ Roles: **ADM** Administrator, **CM** Corporate Manager, **SM** Store Manager,
 | hr.attendance.manage | | | ✓ | | | | ✓ |
 | hr.shifts.manage | | | ✓ | | | | ✓ |
 | crm.customers.view | ✓ | ✓ | ✓ | ✓ | | | |
-| crm.customers.manage | | | | ✓ | | | |
+| crm.customers.manage | ✓ | ✓ | ✓ | ✓ | | | |
 | crm.points.manage | | | | ✓ | | | |
 | crm.pqrs.manage | | | ✓ | | | | |
 | crm.campaigns.manage | | ✓ | | | | | |

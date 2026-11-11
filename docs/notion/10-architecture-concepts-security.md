@@ -37,6 +37,8 @@ Roles: **ADM** Administrator, **CM** Corporate Manager, **SM** Store Manager, **
 | sales.pos.use | | | ✓ | ✓ | | | |
 | sales.returns.authorize | | | ✓ | | | | |
 | sales.reports.view | ✓ | ✓ | ✓ | | | | |
+| sales.invoices.view | ✓ | ✓ | ✓ | ✓ | | | |
+| sales.invoices.manage | ✓ | ✓ | ✓ | ✓ | | | |
 | purchasing.suppliers.view | ✓ | ✓ | ✓ | | | ✓ | |
 | purchasing.suppliers.manage | | | | | | ✓ | |
 | purchasing.orders.view | ✓ | ✓ | ✓ | | | ✓ | |
@@ -54,7 +56,7 @@ Roles: **ADM** Administrator, **CM** Corporate Manager, **SM** Store Manager, **
 | hr.attendance.manage | | | ✓ | | | | ✓ |
 | hr.shifts.manage | | | ✓ | | | | ✓ |
 | crm.customers.view | ✓ | ✓ | ✓ | ✓ | | | |
-| crm.customers.manage | | | | ✓ | | | |
+| crm.customers.manage | ✓ | ✓ | ✓ | ✓ | | | |
 | crm.points.manage | | | | ✓ | | | |
 | crm.pqrs.manage | | | ✓ | | | | |
 | crm.campaigns.manage | | ✓ | | | | | |
@@ -72,6 +74,12 @@ Roles: **ADM** Administrator, **CM** Corporate Manager, **SM** Store Manager, **
 | `/seguridad/roles` | `security.roles.view` | Matriz de solo lectura | `RoleCatalogService.GetMatrix` exige `security.roles.view` |
 | `/seguridad/auditoria` | `security.audit.view` | Sin acciones de escritura | `AuditTrailService.Recent` exige `security.audit.view` |
 | `/inventario/alertas` | `inventory.alerts.view` | Acciones según `inventory.stock.receive` | `InventoryDashboardService.Get` exige `inventory.stock.view` |
+| `/proveedores` | `purchasing.suppliers.view` | Alta, edición y desactivación ocultas sin `purchasing.suppliers.manage` | `SupplierService.List` exige vista; `Create`, `Update` y el cambio de estado exigen `purchasing.suppliers.manage` |
+| `/proveedores/nuevo` y `/{id}` | `purchasing.suppliers.manage` | Formulario completo solo para quien administra | `SupplierService.Create` y `Update` exigen `purchasing.suppliers.manage` |
+| `/facturacion` | `sales.invoices.view` | Nueva factura y anulación ocultas sin `sales.invoices.manage` | `SalesInvoiceService.List` exige vista; `Create`, `Update` y `Cancel` exigen `sales.invoices.manage` |
+| `/facturacion/nueva` y `/{id}` | `sales.invoices.manage` | Formulario completo solo para quien administra | `SalesInvoiceService` exige `sales.invoices.manage` en cada escritura |
+| `/crm/clientes` | `crm.customers.view` | Alta, edición y desactivación ocultas sin `crm.customers.manage` | `CustomerService.List` exige vista; `Create` y `Update` exigen `crm.customers.manage` |
+| `/crm/clientes/nuevo` y `/{id}` | `crm.customers.manage` | Formulario completo solo para quien administra | `CustomerService.Create` y `Update` exigen `crm.customers.manage` |
 
 ## 10.4 Asignación de roles (HU-06)
 
@@ -84,6 +92,9 @@ El administrador asigna un rol desde `/seguridad/usuarios`. La matriz se muestra
 | Crear o actualizar empleado | id del empleado, estado activo y tienda | No |
 | Corrida de nómina | cantidad de empleados activos y días trabajados | No |
 | Crear, actualizar o desactivar usuario | id del usuario, rol y estado | No |
+| Crear o actualizar proveedor | id del proveedor, NIT y estado | No |
+| Crear, actualizar o anular factura | id de la factura, cliente y total | Sí, nombre y documento del cliente en el detalle; decisión pendiente |
+| Crear o actualizar cliente CRM | id del cliente y estado | No; el detalle usa el nombre, no el documento |
 | Inicio de sesión correcto | id del usuario y texto fijo | No |
 | Inicio de sesión fallido | correo intentado como `EntityId` | Sí, decisión pendiente |
 | Acceso denegado | id del usuario, permiso o política y ruta | No |
@@ -91,3 +102,5 @@ El administrador asigna un rol desde `/seguridad/usuarios`. La matriz se muestra
 ## 10.6 Coherencia con la Sección 5
 
 El bloque de nómina de la Sección 5 queda protegido por esta matriz: `hr.payroll.manage` solo está marcado para **HR Officer**, y el endpoint y la pantalla de nómina exigen ese permiso. El Administrador puede leer el listado de empleados con `hr.employees.view`, pero no ve salarios ni ejecuta la nómina. Cada rechazo se audita sin nombres, documentos ni montos.
+
+Los módulos del Sprint 2 repiten el patrón: la fila de permisos de la tabla 10.2 coincide con la política de la página, con la visibilidad del menú y con el `Demand` del servicio. Proveedores queda administrado solo por LC; Facturación y CRM clientes quedan disponibles para ADM, CM, SM y CSH.
