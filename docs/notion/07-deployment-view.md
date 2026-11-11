@@ -7,7 +7,7 @@
 | Servidor de aplicación | .NET 9, Kestrel (`http://localhost:5212` en desarrollo) | Blazor Web App `TiendaFlow.Web` con renderizado interactivo en servidor: interfaz, endpoints Minimal API y autenticación por cookie. |
 | Servidor de base de datos | SQL Server 2022 en un contenedor Docker (`tiendaflow-sql`, puerto 1433) | Base de datos `TiendaFlow_OpenCode`, creada a partir de las migraciones de EF Core. |
 | Integración continua | GitHub Actions (`.github/workflows/ci.yml`, .NET 9.0.x) | Restore, build y test con cobertura XPlat en cada push. |
-| Infraestructura como código | Terraform con estado remoto en HCP Terraform (`.github/workflows/terraform-plan.yml`, `infra/terraform/main.tf`) | `terraform init`, `validate` y `plan` en pull requests a `develop`. El recurso actual es un *placeholder* declarado. |
+| Infraestructura como código | Terraform con estado remoto en HCP Terraform (`.github/workflows/terraform-plan.yml`, `infra/terraform/main.tf`) | `terraform init`, `validate` y `plan` en pull requests a `develop`; el plan se ejecutó en verde contra el backend remoto. El recurso actual es un *placeholder* y no hubo `apply`. |
 
 ## 7.2 Configuración y secretos
 
@@ -21,7 +21,7 @@
 1. El equipo trabaja en una rama de feature y ejecuta build y pruebas en local.
 2. El push dispara el CI: build y pruebas con cobertura.
 3. `dotnet ef database update` aplica las migraciones, una por fase.
-4. La automatización de infraestructura con Terraform y estado remoto es el siguiente paso; el plan se ejecuta en pull requests a `develop`.
+4. La automatización de infraestructura con Terraform y estado remoto ejecuta `init`, `validate` y `plan` en pull requests a `develop`; el plan se verificó en verde. Todavía no hay `apply`, así que no se crea infraestructura real.
 
 ## 7.4 Integración continua
 
@@ -39,11 +39,13 @@
 - El proveedor `random` y el recurso `random_pet` demuestran el flujo de estado remoto y el plan automático sin necesitar credenciales de nube.
 - El workflow de Terraform se ejecuta solo en pull requests a `develop` y solo cuando cambian archivos `.tf`.
 - El token de HCP Terraform se toma del secreto `TF_API_TOKEN`; no se escribe en el repositorio.
+- El workflow `Terraform Plan` se ejecutó con éxito en el pull request hacia `develop` (job `plan`, unos 20 segundos) contra el estado remoto. Solo planificó el recurso de ejemplo `random_pet`; no hubo `apply` ni se creó infraestructura real.
 - Cuando se elija el destino real de despliegue, el recurso de ejemplo se reemplaza por la base de datos y el hosting de la aplicación.
 
 ## 7.6 Limitaciones y notas de operación
 
 - El despliegue actual es de **desarrollo local**: no hay ambiente de staging ni producción automatizada.
+- Terraform se limita a `plan`: el workspace y el estado remoto funcionan, pero no se ha ejecutado `apply` y el repositorio todavía no define la infraestructura real del ERP.
 - La base de datos de desarrollo se recrea con el seeder; los salarios vuelven a `0` y la corrida de nómina debe recalcularse.
 - La corrida de nómina no se persiste; no hay tablas de corrida ni de detalle en esta entrega.
 - El contenedor `tiendaflow-sql` es el único entorno que usa la demo. No se deben borrar volúmenes ni contenedores de otros entornos.

@@ -31,10 +31,11 @@
   `dotnet test` con cobertura en cada push; las pruebas de integración se omiten
   porque el runner no tiene SQL Server. Esta revisión no consultó el resultado
   remoto de GitHub Actions.
-- **Terraform:** el workflow `.github/workflows/terraform-plan.yml` define
-  `init`, `validate` y `plan` con estado remoto en HCP Terraform; el recurso
-  actual es un *placeholder* declarado. Esta revisión no ejecutó `terraform
-  plan` real.
+- **Terraform:** el workflow `.github/workflows/terraform-plan.yml` se ejecutó en
+  verde en el pull request hacia `develop`: `init`, `validate` y `plan` con estado
+  remoto en HCP Terraform, job `plan` de unos 20 segundos. El recurso planificado
+  es el *placeholder* `random_pet`; no hubo `terraform apply` ni infraestructura
+  real.
 - **Módulos entregados:** Inventario y RR. HH. (base previa), Proveedores,
   Facturación y CRM clientes, cada uno con entidad de dominio, servicio de
   aplicación, repositorio y consulta EF Core, migración, páginas Blazor en
@@ -163,10 +164,12 @@ se dispara en pull requests hacia `develop` que modifican `**/*.tf`, ejecuta
 `infra/terraform`, y toma el token de HCP Terraform desde el secreto
 `TF_API_TOKEN`.
 
-**Limitación verificable:** el backend está declarado, pero esta entrega **no**
-creó el workspace, no configuró variables y no migró un state local. El workflow
-tampoco se ejecutó en GitHub Actions durante esta revisión; no hay evidencia en el
-repositorio de una corrida exitosa. `terraform apply` no forma parte del workflow.
+**Limitación vigente:** el backend remoto está operativo y el job `plan` del pull
+request hacia `develop` quedó en verde, por lo que sí hay evidencia de una corrida
+real de `init`, `validate` y `plan` contra HCP Terraform. Lo que **no** se ejecutó
+es `terraform apply` y, por tanto, no se creó infraestructura real: el plan solo
+cubre el recurso de ejemplo `random_pet`. `terraform apply` no forma parte del
+workflow.
 
 ## 8. Definition of Done
 
@@ -203,8 +206,8 @@ repositorio de una corrida exitosa. `terraform apply` no forma parte del workflo
 1. **Spike antes de estimar** toda HU con complejidad legal o regulatoria
    (nómina, impuestos, facturación electrónica), con la regla de la sección 6.
 2. **IaC:** mantener el pipeline de GitHub Actions que ejecuta `terraform plan`
-   en cada PR a `develop` que modifique archivos `.tf`, y aprovisionar el
-   workspace de HCP Terraform antes de intentar un `apply`.
+   en cada PR a `develop` que modifique archivos `.tf`, y definir la
+   infraestructura real antes de incorporar un `apply` con aprobación manual.
 3. **Reparto de trabajo:** asignar desde el Sprint Planning al menos una HU o
    tarea por integrante y exigir la revisión de cada PR por un compañero.
 4. **Cerrar la brecha de cobertura de integración:** definir una base SQL Server

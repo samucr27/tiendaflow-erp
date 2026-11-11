@@ -138,11 +138,11 @@ definir.
 equipo comparte un único state sin conflictos de archivos locales. Un workflow
 de GitHub Actions (`.github/workflows/terraform-plan.yml`) ejecuta
 `terraform init`, `validate` y `plan` en cada PR hacia `develop` que modifique
-archivos `.tf`. **Limitación verificable:** el workspace no se aprovisionó en
-esta entrega y el workflow no se ejecutó durante esta revisión; no se afirma una
-corrida exitosa. El recurso declarado es de relleno (`random_pet`) y no describe
-infraestructura real; la definición de la infraestructura de despliegue queda
-para el Sprint 3.
+archivos `.tf`. **Verificación:** el job `plan` se ejecutó en verde en el pull
+request de esta entrega hacia `develop`, en unos 20 segundos, contra el backend
+remoto. **Limitación vigente:** no hubo `terraform apply`, el recurso planificado
+es de relleno (`random_pet`) y no describe infraestructura real; la definición de
+la infraestructura de despliegue queda para el Sprint 3.
 
 **Adherencia al DoD.** Cobertura de líneas medida sobre `TiendaFlow.Application`
 y `TiendaFlow.Domain`: **88,4 %** (1.945 de 2.200 líneas), por encima del 80 %

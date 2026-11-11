@@ -143,6 +143,10 @@ reportgenerator -reports:"tests\**\TestResults\**\coverage.cobertura.xml" `
 
 Si no tienes `reportgenerator`, instálalo con `dotnet tool install -g dotnet-reportgenerator-globaltool`. La carpeta `coveragereport/` está ignorada por Git. Las pruebas de integración se omiten salvo que definas la variable de entorno `TIENDAFLOW_TEST_CONNECTION` (o `ConnectionStrings__DefaultConnection`) con una cadena hacia un SQL Server accesible.
 
+## Infraestructura como código
+
+`infra/terraform/main.tf` usa estado remoto en HCP Terraform (organización `Tienda-Flow`, workspace `tiendaflow-infra`) y `.github/workflows/terraform-plan.yml` ejecuta `init`, `validate` y `plan` en pull requests a `develop` que modifican archivos `.tf`. El job `plan` se ejecutó en verde en el PR de esta entrega. Todavía no hay `terraform apply`: el plan solo cubre el recurso de ejemplo `random_pet`, no infraestructura real.
+
 ## Estructura del repositorio
 
 ```text

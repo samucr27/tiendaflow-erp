@@ -54,11 +54,14 @@ cloud {
 `TF_API_TOKEN` no existe o no tiene acceso al workspace, el workflow falla en `init`;
 no llega a `validate` ni a `plan`.
 
-## Limitación documentada
+## Limitación vigente
 
-- El backend remoto **ya está declarado**, pero no se implementó ni se aprovisionó en
-  esta entrega. No se creó el workspace, no se configuraron variables ni se migró un
-  state local.
+- El workflow **se ejecutó con éxito** en el pull request de esta entrega hacia
+  `develop`: el job `plan` terminó en verde en unos 20 segundos, con `terraform init`,
+  `terraform validate` y `terraform plan` correctos contra el backend remoto de HCP
+  Terraform (organización `Tienda-Flow`, workspace `tiendaflow-infra`).
+- **No hubo `terraform apply`**: solo se planificó el recurso de ejemplo
+  `random_pet`. No se creó infraestructura real del ERP.
 - El workflow depende de un secreto de HCP Terraform. No se debe asumir que el plan
   funciona en un fork sin configurar ese secreto.
 - El recurso `random_pet` es un marcador de posición para demostrar el plan; no
@@ -67,7 +70,7 @@ no llega a `validate` ni a `plan`.
 
 ## Verificación
 
-El contenido del workflow y de `main.tf` se revisó el 10 de noviembre de 2026. No se
-ejecutó el workflow en GitHub Actions durante esta entrega, porque requiere un pull
-request hacia `develop` y el secreto `TF_API_TOKEN`; la validación local de Terraform
-tampoco se ejecutó.
+El contenido del workflow y de `main.tf` se revisó el 10 de noviembre de 2026 y la
+corrida del pull request hacia `develop` quedó en verde en el job `plan` (init,
+validate y plan). El alcance verificado es únicamente el plan del recurso de ejemplo:
+no se ejecutó `terraform apply` ni se aprovisionó infraestructura real.

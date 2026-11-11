@@ -259,7 +259,7 @@ Cada corrección va en su propio commit, con compilación y pruebas verdes antes
 - Es una revisión **automatizada**: no reemplaza la lectura de un integrante del equipo ni la aprobación formal en GitHub.
 - No se ejecutó la aplicación contra SQL Server ni se recorrió la demo; la validación funcional de rutas se apoya en el código y en el guion de `docs/sprint2/demo-script.md`.
 - No se evaluó el contenido de los 238 archivos del Sprint 1 que arrastra el diff.
-- No se ejecutó `terraform plan` real ni los workflows de GitHub Actions; solo se revisó su definición.
+- Esta revisión no ejecutó Terraform ni los workflows de GitHub Actions; solo revisó su definición. La corrida posterior del PR dejó el job `plan` en verde, sin `apply`.
 - La cobertura (87,6 % al cierre, 85,6 % en la línea base) corresponde a Application + Domain; no mide Razor ni Infrastructure.
 
 ---
