@@ -29,3 +29,4 @@ resource "random_pet" "environment" {
 output "environment_name" {
   value = "tiendaflow-${random_pet.environment.id}"
 }
+# Sprint 2: cambio de comentario para disparar terraform plan en el PR
