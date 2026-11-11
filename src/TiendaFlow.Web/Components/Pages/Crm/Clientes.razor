@@ -1,0 +1,171 @@
+@page "/crm/clientes"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmCustomersView)]
+@inject CustomerService CustomerService
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Clientes · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="Clientes"
+            Subtitle="Personas registradas para el servicio y la fidelización">
+    <Actions>
+        @if (AccessControl.Has(Permissions.CrmCustomersManage))
+        {
+            <a class="button button-primary" href="crm/clientes/nuevo">+ Registrar cliente</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_customers is null)
+{
+    <p class="muted">Cargando los clientes…</p>
+}
+else if (!_customers.Any())
+{
+    <EmptyState Title="Todavía no hay clientes"
+                Message="Registra el primer cliente para asociarlo a las facturas y al programa de fidelización." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Directorio de clientes</h2>
+                <p class="card-subtitle">@Filtered.Count() de @_customers.Count clientes</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   aria-label="Buscar clientes"
+                   placeholder="Buscar por documento, nombre o contacto"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Documento</th>
+                        <th>Nombre</th>
+                        <th>Contacto</th>
+                        <th>Dirección</th>
+                        <th>Estado</th>
+                        @if (AccessControl.Has(Permissions.CrmCustomersManage))
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var customer in Filtered)
+                    {
+                        <tr>
+                            <td>@customer.DocumentNumber</td>
+                            <td>@customer.FullName</td>
+                            <td>@(string.IsNullOrWhiteSpace(customer.Contact) ? "—" : customer.Contact)</td>
+                            <td>@(string.IsNullOrWhiteSpace(customer.Address) ? "—" : customer.Address)</td>
+                            <td>
+                                <span class="badge @(customer.Active ? "badge-success" : "badge-muted")">
+                                    @(customer.Active ? "Activo" : "Inactivo")
+                                </span>
+                            </td>
+                            @if (AccessControl.Has(Permissions.CrmCustomersManage))
+                            {
+                                <td class="table-actions">
+                                    <a class="button button-secondary button-small"
+                                       href="@($"crm/clientes/{customer.Id}")">Editar</a>
+                                    @if (customer.Active)
+                                    {
+                                        <button type="button"
+                                                class="button button-secondary button-small"
+                                                @onclick="() => Deactivate(customer)">
+                                            Desactivar
+                                        </button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "guardado")]
+    public string? Guardado { get; set; }
+
+    private IReadOnlyList<CustomerRow>? _customers;
+    private string? _search;
+    private string? _error;
+    private string? _success;
+
+    private IEnumerable<CustomerRow> Filtered =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _customers ?? Array.Empty<CustomerRow>()
+            : (_customers ?? Array.Empty<CustomerRow>()).Where(row =>
+                row.DocumentNumber.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || row.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || (row.Email?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (row.Phone?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override void OnParametersSet()
+    {
+        _success = Guardado == "1" ? "El cliente se guardó correctamente." : null;
+        Load();
+    }
+
+    private void Load()
+    {
+        try
+        {
+            _customers = CustomerService.List();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Deactivate(CustomerRow customer)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            CustomerService.Update(customer.Id, new UpdateCustomerRequest(
+                customer.FullName,
+                customer.Email,
+                customer.Phone,
+                customer.Address,
+                Active: false));
+            _success = $"El cliente {customer.FullName} quedó inactivo.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

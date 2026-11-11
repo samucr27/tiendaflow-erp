@@ -1,0 +1,208 @@
+@page "/crm/clientes/nuevo"
+@page "/crm/clientes/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmCustomersManage)]
+@using System.ComponentModel.DataAnnotations
+@inject CustomerService CustomerService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEditing ? "Editar cliente" : "Registrar cliente") · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM / Clientes"
+            Title="@(IsEditing ? "Editar cliente" : "Registrar cliente")"
+            Subtitle="Documento, nombre y datos de contacto">
+    <Actions>
+        <a class="button button-secondary" href="crm/clientes">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_form is null)
+{
+    <p class="muted">Cargando los datos del cliente…</p>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="Save" FormName="cliente" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-section">
+            <h2>Datos de la persona</h2>
+            <p class="card-subtitle">El documento debe ser único en la cadena.</p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="customer-document">Documento</label>
+                    @if (IsEditing)
+                    {
+                        <input id="customer-document" class="input" value="@_form.DocumentNumber" readonly />
+                    }
+                    else
+                    {
+                        <InputText id="customer-document" class="input" @bind-Value="_form.DocumentNumber" />
+                        <ValidationMessage For="() => _form.DocumentNumber" />
+                    }
+                </div>
+
+                <div class="field">
+                    <label for="customer-name">Nombre completo</label>
+                    <InputText id="customer-name" class="input" @bind-Value="_form.FullName" />
+                    <ValidationMessage For="() => _form.FullName" />
+                </div>
+
+                <div class="field">
+                    <label for="customer-email">Correo electrónico</label>
+                    <InputText id="customer-email" class="input" @bind-Value="_form.Email" />
+                    <ValidationMessage For="() => _form.Email" />
+                </div>
+
+                <div class="field">
+                    <label for="customer-phone">Teléfono</label>
+                    <InputText id="customer-phone" class="input" @bind-Value="_form.Phone" />
+                    <ValidationMessage For="() => _form.Phone" />
+                </div>
+
+                <div class="field">
+                    <label for="customer-address">Dirección</label>
+                    <InputText id="customer-address" class="input" @bind-Value="_form.Address" />
+                    <ValidationMessage For="() => _form.Address" />
+                </div>
+            </div>
+        </div>
+
+        @if (IsEditing)
+        {
+            <div class="form-section">
+                <h2>Estado</h2>
+                <p class="card-subtitle">
+                    Un cliente inactivo conserva su historial, pero no se ofrece para nuevas facturas.
+                </p>
+
+                <div class="field field-inline">
+                    <InputCheckbox id="customer-active" @bind-Value="_form.Active" />
+                    <label for="customer-active">Cliente activo</label>
+                </div>
+            </div>
+        }
+
+        <div class="form-actions">
+            <a class="button button-secondary" href="crm/clientes">Cancelar</a>
+            <button type="submit" class="button button-primary">
+                @(IsEditing ? "Guardar cambios" : "Registrar cliente")
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private CustomerForm? _form;
+    private string? _error;
+
+    private bool IsEditing => Id > 0;
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _form = new CustomerForm { Active = true };
+
+            if (!IsEditing)
+                return;
+
+            var customer = CustomerService.Get(Id);
+            _form = new CustomerForm
+            {
+                DocumentNumber = customer.DocumentNumber,
+                FullName = customer.FullName,
+                Email = customer.Email ?? string.Empty,
+                Phone = customer.Phone ?? string.Empty,
+                Address = customer.Address ?? string.Empty,
+                Active = customer.Active
+            };
+        }
+        catch (CustomerNotFoundException)
+        {
+            _error = "No encontramos el cliente solicitado.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+
+        try
+        {
+            if (IsEditing)
+            {
+                CustomerService.Update(Id, new UpdateCustomerRequest(
+                    _form!.FullName,
+                    NullIfEmpty(_form.Email),
+                    NullIfEmpty(_form.Phone),
+                    NullIfEmpty(_form.Address),
+                    _form.Active));
+            }
+            else
+            {
+                CustomerService.Create(new CreateCustomerRequest(
+                    _form!.DocumentNumber,
+                    _form.FullName,
+                    NullIfEmpty(_form.Email),
+                    NullIfEmpty(_form.Phone),
+                    NullIfEmpty(_form.Address)));
+            }
+
+            Navigation.NavigateTo("crm/clientes?guardado=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static string? NullIfEmpty(string value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed class CustomerForm
+    {
+        [Required(ErrorMessage = "El documento es obligatorio.")]
+        [StringLength(50, ErrorMessage = "El documento no puede superar 50 caracteres.")]
+        public string DocumentNumber { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El nombre es obligatorio.")]
+        [StringLength(200, ErrorMessage = "El nombre no puede superar 200 caracteres.")]
+        public string FullName { get; set; } = string.Empty;
+
+        [EmailAddress(ErrorMessage = "El correo no tiene un formato válido.")]
+        [StringLength(200, ErrorMessage = "El correo no puede superar 200 caracteres.")]
+        public string Email { get; set; } = string.Empty;
+
+        [StringLength(50, ErrorMessage = "El teléfono no puede superar 50 caracteres.")]
+        public string Phone { get; set; } = string.Empty;
+
+        [StringLength(200, ErrorMessage = "La dirección no puede superar 200 caracteres.")]
+        public string Address { get; set; } = string.Empty;
+
+        public bool Active { get; set; }
+    }
+}

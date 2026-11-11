@@ -48,6 +48,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedCatalogAsync(context, cancellationToken);
         await SeedSuppliersAsync(context, cancellationToken);
         await SeedInvoicesAsync(context, cancellationToken);
+        await SeedCustomersAsync(context, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -239,6 +240,21 @@ public sealed class DevDataSeeder : IHostedService
         neighbor.AddLine("SKU-1003", "Arroz 500 g", 2, 3300m);
 
         context.SalesInvoices.AddRange(counter, neighbor);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedCustomersAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.Customers.AnyAsync(cancellationToken))
+            return;
+
+        context.Customers.AddRange(
+            new Customer(0, "1010101010", "María Fernanda Rojas", "maria.rojas@example.com", "3001234567", "Calle 45 # 12-30, Bogotá"),
+            new Customer(0, "2222222222", "Cliente mostrador", null, null, null),
+            new Customer(0, "79876543", "Jorge Iván Peña", "jorge.pena@example.com", "3107654321", "Carrera 15 # 80-20, Bogotá"));
+
         await context.SaveChangesAsync(cancellationToken);
     }
 

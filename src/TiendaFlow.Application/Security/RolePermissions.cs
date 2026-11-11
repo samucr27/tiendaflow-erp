@@ -32,6 +32,7 @@ public static class RolePermissions
                 Permissions.PurchasingReportsView,
                 Permissions.HrEmployeesView,
                 Permissions.CrmCustomersView,
+                Permissions.CrmCustomersManage,
                 Permissions.CrmReportsView),
 
             [RoleNames.CorporateManager] = Set(
@@ -48,6 +49,7 @@ public static class RolePermissions
                 Permissions.PurchasingReportsView,
                 Permissions.HrEmployeesView,
                 Permissions.CrmCustomersView,
+                Permissions.CrmCustomersManage,
                 Permissions.CrmCampaignsManage,
                 Permissions.CrmReportsView),
 
@@ -75,6 +77,7 @@ public static class RolePermissions
                 Permissions.HrAttendanceManage,
                 Permissions.HrShiftsManage,
                 Permissions.CrmCustomersView,
+                Permissions.CrmCustomersManage,
                 Permissions.CrmPqrsManage),
 
             [RoleNames.Cashier] = Set(

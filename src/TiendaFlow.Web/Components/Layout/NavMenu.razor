@@ -121,8 +121,14 @@
         </NavLink>
     }
 
-    <p class="nav-section">Módulos</p>
-    <span class="nav-item nav-item-disabled">Clientes <small>Próximamente</small></span>
+    @if (AccessControl.Has(Permissions.CrmCustomersView))
+    {
+        <p class="nav-section">CRM</p>
+
+        <NavLink class="nav-item" href="crm/clientes" Match="NavLinkMatch.Prefix">
+            Clientes
+        </NavLink>
+    }
 </nav>
 
 <div class="sidebar-user">
