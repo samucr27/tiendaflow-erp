@@ -1,108 +1,97 @@
-# 5. Building Block View
+# 05 — Vista de bloques de construcción
 
-## 5.1 Level 1 - Whitebox: TiendaFlow ERP (modular monolith)
+## 5.1 Vista de nivel 1: TiendaFlow ERP (monolito modular)
 
-TiendaFlow is a single deployable Blazor Web App organised in four layers with
-a strict dependency direction: **Domain <- Application <- Infrastructure <- Web**.
-Domain and Application never reference EF Core.
+TiendaFlow es una única aplicación Blazor Web App organizada en cuatro capas con una dirección de dependencia estricta: **Domain <- Application <- Infrastructure <- Web**. Domain y Application no referencian EF Core.
 
-| Building block | Responsibility |
+| Bloque | Responsabilidad |
 |---|---|
-| **TiendaFlow.Domain** | Entities and aggregates (`Product`, `StockItem`, `Supplier`, `PurchaseOrder`, `SalesInvoice`/`InvoiceLine`, `Customer`, `Employee`), value rules, enums (for example `ContractType`, `InvoiceStatus`) and domain exceptions. No framework dependencies. |
-| **TiendaFlow.Application** | Use-case services (`StockService`, `InventoryService`, `SupplierService`, `PurchaseOrderService`, `SalesInvoiceService`, `CustomerService`, `EmployeeService`, `AuthenticationService`), read models and repository/query abstractions, the permission catalog (`Permissions`), the role matrix (`RolePermissions`), `IAccessControl`, `IAuditLog`, and the **Payroll module** (`PayrollEngine`, `PayrollRunService`, `ContractTypeLabels`). Depends only on abstractions. |
-| **TiendaFlow.Infrastructure** | EF Core 9 persistence for SQL Server (`TiendaFlowDbContext`, fluent configurations, repositories, queries, unit of work, migrations). |
-| **TiendaFlow.Web** | Blazor Web App (interactive server), cookie authentication, one authorization policy per permission, Minimal API endpoints, formatting and Spanish error translation. Inventory under `/inventario/*`, purchasing under `/proveedores`, invoicing under `/facturacion`, CRM under `/crm/clientes`, HR under `/rrhh/*`. |
+| **TiendaFlow.Domain** | Entidades y agregados (`Product`, `StockItem`, `Supplier`, `PurchaseOrder`, `SalesInvoice`/`InvoiceLine`, `Customer`, `Employee`), reglas, enums (por ejemplo `ContractType`, `InvoiceStatus`) y excepciones de dominio. Sin dependencias de framework. |
+| **TiendaFlow.Application** | Servicios de caso de uso (`StockService`, `InventoryService`, `SupplierService`, `PurchaseOrderService`, `SalesInvoiceService`, `CustomerService`, `EmployeeService`, `AuthenticationService`), modelos de lectura, abstracciones de repositorio y consulta, catálogo de permisos (`Permissions`), matriz de roles (`RolePermissions`), `IAccessControl`, `IAuditLog` y el **módulo de nómina** (`PayrollEngine`, `PayrollRunService`, `ContractTypeLabels`). Depende solo de abstracciones. |
+| **TiendaFlow.Infrastructure** | Persistencia con EF Core 9 sobre SQL Server (`TiendaFlowDbContext`, configuraciones fluent, repositorios, consultas, unidad de trabajo, migraciones). |
+| **TiendaFlow.Web** | Blazor Web App con renderizado interactivo en servidor, autenticación por cookie, una política de autorización por permiso, endpoints Minimal API, formateo y traducción de errores al español. Inventario bajo `/inventario/*`; Compras en `/proveedores`; Facturación en `/facturacion`; CRM en `/crm/clientes`; RR. HH. bajo `/rrhh/*`. |
 
-## 5.2 Level 2 - Whitebox: Payroll module (HU-04)
+## 5.2 Vista de nivel 2: módulo de nómina (HU-04)
 
-> **Architecture decision.** The lab guide refers to a "Payroll microservice".
-> We implemented payroll as a **module inside the modular monolith**, with its
-> own engine, its own contracts and its own HTTP endpoint. Reason: one
-> developer, one deployment unit and a very short sprint make a separate
-> service add operational cost (network, deployment, distributed
-> transactions) without benefit. The module is isolated behind
-> `IPayrollEngine`, so it can be extracted into a service later without
-> changing its callers.
+> **Decisión de arquitectura.** La guía del laboratorio habla de un "microservicio de nómina". Se implementó como un **módulo dentro del monolito modular**, con su propio motor, sus propios contratos y su propio endpoint HTTP. Razón: un solo desarrollador, una sola unidad de despliegue y un sprint muy corto hacen que un servicio separado agregue costo operativo (red, despliegue, transacciones distribuidas) sin beneficio. El módulo está aislado detrás de `IPayrollEngine`, por lo que puede extraerse como servicio más adelante sin cambiar a sus consumidores.
 
-| Component | Responsibility | Principle |
+| Componente | Responsabilidad | Principio |
 |---|---|---|
-| `PayrollEngine` (`IPayrollEngine`) | Validates the input, selects the strategy for the contract type and delegates. Offers `Calculate` and `CalculateBatch`. | SRP: orchestration only. DIP: depends only on abstractions. |
-| `IPayrollStrategy` | One implementation per family of contract types: `EmploymentPayrollStrategy` (indefinite, fixed term, work or service) and `ServiceProvisionPayrollStrategy` (withholding only). | Open/closed: a new contract type means a new strategy. |
-| `IWithholdingCalculator` (`WithholdingCalculator`) | Employee income-tax withholding with the simplified UVT table. | SRP: one rule, one class. |
-| `IPayrollParametersProvider` (`DefaultPayrollParametersProvider`) | Supplies `PayrollParameters` (minimum wage, transport subsidy, UVT, contribution rates, provisions). Parameters change by law, so they are configurable and never hard-coded in the logic. | DIP |
-| `PayrollInput` / `PayrollResult` | Immutable records exchanged with callers. | - |
-| Endpoint `POST /api/nomina/calculate` (Web) | Minimal API; requires permission `hr.payroll.manage`; maps domain exceptions to `400 { error }`. | - |
+| `PayrollEngine` (`IPayrollEngine`) | Valida la entrada, selecciona la estrategia según el tipo de contrato y delega. Ofrece `Calculate` y `CalculateBatch`. | SRP: solo orquesta. DIP: depende solo de abstracciones. |
+| `IPayrollStrategy` | Una implementación por familia de contratos: `EmploymentPayrollStrategy` (indefinido, término fijo, obra o labor) y `ServiceProvisionPayrollStrategy` (solo retención). | Abierto/cerrado: un tipo de contrato nuevo implica una estrategia nueva. |
+| `IWithholdingCalculator` (`WithholdingCalculator`) | Retención mensual en la fuente con la tabla simplificada de UVT. | SRP: una regla, una clase. |
+| `IPayrollParametersProvider` (`DefaultPayrollParametersProvider`) | Entrega `PayrollParameters` (salario mínimo, auxilio de transporte, UVT, tarifas de aportes, provisiones). Los parámetros cambian por ley, así que son configurables y nunca están embebidos en la lógica. | DIP |
+| `PayrollInput` / `PayrollResult` | Registros inmutables que se intercambian con los llamadores. | Contratos estables. |
+| Endpoint `POST /api/nomina/calculate` (Web) | Minimal API; exige el permiso `hr.payroll.manage`; traduce excepciones de dominio a `400 { error }`. | Autorización en el borde. |
 
-Relationships: `Endpoint -> IPayrollEngine -> IPayrollStrategy -> (IWithholdingCalculator, IPayrollParametersProvider)`.
-The sequence diagram is in `docs/uml/payroll_sequence.puml`.
+**Relaciones:** `Endpoint → IPayrollEngine → IPayrollStrategy → (IWithholdingCalculator, IPayrollParametersProvider)`.
 
-## 5.3 Level 2 - Whitebox: Employee management and payroll run (HU-04)
+**Diagramas:** el diagrama de secuencia está en `docs/uml/payroll_sequence.puml` y el de la corrida mensual en `docs/uml/payroll_run_sequence.puml`. En `docs/notion/README.md` se explica cómo convertirlos a PNG si se quieren insertar en Notion.
 
-| Component | Responsibility | Principle |
+## 5.3 Vista de nivel 2: empleados y corrida de nómina (HU-04)
+
+| Componente | Responsabilidad | Principio |
 |---|---|---|
-| `EmployeeService` (Application) | Lists and edits employees for the HR screens. Reading requires `hr.employees.view`; only callers with `hr.employees.manage` receive the salary, otherwise the row exposes `null` and the UI shows "—". Validates the contract type, store, salary and duplicate document, and audits every write with module `hr` without names or amounts. | SRP; Ley 1581 de 2012 data minimisation. |
-| `PayrollRunService` (Application) | Runs the monthly payroll for every **active** employee. Validates days worked (1-30) and ARL risk class (1-5), then delegates each employee to `IPayrollEngine`. A missing salary, unknown contract or engine rejection becomes a per-line `Problem` in Spanish instead of failing the whole run. Returns totals only over calculated lines and audits the employee count and days. | SRP: orchestration and resilience. Depends on abstractions (DIP). |
-| `ContractTypeLabels` (Application) | Translates between the `ContractType` enum and the Spanish labels stored in `Employees.ContractType` (`Indefinido`, `Término fijo`, `Obra o labor`, `Prestación de servicios`). Accepts unaccented variants and enum names when parsing. | Keeps persistence labels and payroll enum decoupled. |
-| Pages `/rrhh/empleados`, `/rrhh/empleados/nuevo`, `/rrhh/empleados/{id}`, `/rrhh/nomina` (Web) | Employee list, create/edit form and monthly run screen. Policies: `hr.employees.view`, `hr.employees.manage` and `hr.payroll.manage`. The run screen shows a visible warning that the parameters are reference values pending legal validation. | Defence in depth: page policy + UI visibility + service `Demand`. |
+| `EmployeeService` (Application) | Lista y edita empleados para las pantallas de RR. HH. La lectura exige `hr.employees.view`; solo quien tiene `hr.employees.manage` recibe el salario; en caso contrario la fila expone `null` y la interfaz muestra "—". Valida el tipo de contrato, la tienda, el salario y el documento duplicado. Audita cada escritura con módulo `hr` sin nombres ni montos. | SRP; minimización de datos de la Ley 1581 de 2012. |
+| `PayrollRunService` (Application) | Calcula la nómina mensual de todos los empleados **activos**. Valida los días trabajados (1 a 30) y la clase de riesgo ARL (1 a 5), y delega cada empleado a `IPayrollEngine`. Un salario faltante, un contrato desconocido o un rechazo del motor se convierten en una línea con `Problem` en español, sin tumbar la corrida. Suma totales solo sobre las líneas calculadas y audita la cantidad de empleados y los días. | SRP: orquestación y resiliencia. DIP: depende de abstracciones. |
+| `ContractTypeLabels` (Application) | Traduce entre el enum `ContractType` y las etiquetas en español guardadas en `Employees.ContractType` (`Indefinido`, `Término fijo`, `Obra o labor`, `Prestación de servicios`). Al parsear acepta variantes sin tilde y nombres del enum. | Mantiene desacopladas las etiquetas de persistencia y el enum de nómina. |
+| Páginas `/rrhh/empleados`, `/rrhh/empleados/nuevo`, `/rrhh/empleados/{id}` y `/rrhh/nomina` (Web) | Listado de empleados, formulario de alta/edición y pantalla de corrida mensual. Políticas: `hr.employees.view`, `hr.employees.manage` y `hr.payroll.manage`. La pantalla de nómina muestra un aviso visible de que los parámetros son de referencia y están pendientes de validación legal. | Defensa en profundidad: política de página, visibilidad en la interfaz y `Demand` en el servicio. |
 
-**Explicit limitation:** payroll runs are **not persisted**. `PayrollRunService`
-calculates and returns an in-memory result; closing or recalculating the page
-discards it. Persisting runs, their lines and a period close is left for a
-later sprint and would require new tables (and therefore a migration).
+**Limitación explícita:** las corridas de nómina **no se persisten**. `PayrollRunService` calcula y devuelve un resultado en memoria; al cerrar o recalcular la página se descarta. Persistir corridas, sus líneas y un cierre de período queda para un sprint posterior y requeriría tablas nuevas (y por tanto una migración).
 
-## 5.4 Level 2 - Whitebox: Supplier registry and purchase orders (Sprint 2)
+## 5.4 Vista de nivel 2: proveedores y órdenes de compra (Sprint 2)
 
-| Component | Responsibility | Principle |
+| Componente | Responsabilidad | Principio |
 |---|---|---|
-| `Supplier` (Domain) | NIT (business key), business name, address, rating (0-100) and active flag. Rejects invalid data and exposes the rating label used by the screen. | One aggregate, one set of invariants. |
-| `PurchaseOrder` / `PurchaseOrderLine` (Domain) | Draft, approval, send, confirm, receive and cancel flow; total is derived from its lines. Cancelled orders keep their history. | State changes only through intention-revealing methods. |
-| `SupplierService` (Application) | Lists, creates, updates and deactivates suppliers. Reading demands `purchasing.suppliers.view`; writing demands `purchasing.suppliers.manage`; every write is audited with module `purchasing`. | Defence in depth; SRP. |
-| `PurchaseOrderService` (Application) | Creates and advances the order flow with `purchasing.orders.*` permissions and audited transitions. | One service per use-case family. |
-| `ISupplierRepository` / `ISupplierQuery` (Application) | Write side and read side separated; the query returns `SupplierRow` instead of entities. | DIP; read models. |
-| `EfSupplierRepository`, `EfSupplierQuery`, `SupplierConfiguration` (Infrastructure) | EF Core mapping for `supplier` and `purchase_order*` tables, generated by migration `20261109011701_Phase3Purchasing`. | Persistence ignorance in Domain/Application. |
-| Pages `/proveedores`, `/proveedores/nuevo`, `/proveedores/{id:int}` (Web) | Spanish list with search, create form, edit form and deactivate action. `[Authorize]` uses the same permission codes as the service. | Page policy + UI visibility + service `Demand`. |
+| `Supplier` (Domain) | NIT como clave de negocio, razón social, dirección, calificación de 0 a 100 y estado activo. Rechaza datos inválidos y expone la etiqueta de calificación que usa la pantalla. | Un agregado, un conjunto de invariantes. |
+| `PurchaseOrder` / `PurchaseOrderLine` (Domain) | Flujo de borrador, aprobación, envío, confirmación, recepción y cancelación; el total se deriva de las líneas. Una orden cancelada conserva su historial. | Los cambios de estado solo ocurren por métodos con intención. |
+| `SupplierService` (Application) | Lista, crea, actualiza y desactiva proveedores. La lectura exige `purchasing.suppliers.view`; la escritura exige `purchasing.suppliers.manage`; cada escritura se audita con módulo `purchasing`. | Defensa en profundidad; SRP. |
+| `PurchaseOrderService` (Application) | Crea y avanza el flujo de órdenes con permisos `purchasing.orders.*` y transiciones auditadas. | Un servicio por familia de casos de uso. |
+| `ISupplierRepository` / `ISupplierQuery` (Application) | Separación entre escritura y lectura; la consulta devuelve `SupplierRow` en lugar de entidades. | DIP; modelos de lectura. |
+| `EfSupplierRepository`, `EfSupplierQuery`, `SupplierConfiguration` (Infrastructure) | Mapeo EF Core de las tablas `supplier` y `purchase_order*`, generado por la migración `20261109011701_Phase3Purchasing`. | Ignorancia de la persistencia en Domain/Application. |
+| Páginas `/proveedores`, `/proveedores/nuevo`, `/proveedores/{id:int}` (Web) | Lista en español con búsqueda, formulario de alta, formulario de edición y acción de desactivación. `[Authorize]` usa los mismos códigos de permiso que el servicio. | Política de página + visibilidad en la interfaz + `Demand` en el servicio. |
 
-## 5.5 Level 2 - Whitebox: Invoicing (Sprint 2)
+## 5.5 Vista de nivel 2: facturación (Sprint 2)
 
-| Component | Responsibility | Principle |
+| Componente | Responsabilidad | Principio |
 |---|---|---|
-| `SalesInvoice` / `InvoiceLine` (Domain) | Invoice with customer name and document stored as a **snapshot**, issue date, status (`Issued`/`Cancelled`) and lines. Each line copies the SKU, description, quantity and unit price; the total is derived. A cancelled invoice cannot be edited or cancelled again. | Aggregate root guards its lines; issued documents never depend on the current catalog. |
-| `SalesInvoiceService` (Application) | Lists and reads invoices (`sales.invoices.view`), creates, edits and cancels them (`sales.invoices.manage`). Cancellation replaces physical deletion so numbering and history stay intact. Every write is audited with module `sales`. | SRP; audit; DIP. |
-| `IInvoiceRepository` / `IInvoiceQuery`, `InvoiceRow` / `InvoiceDetail` (Application) | Write side loads the aggregate with its lines; the read side projects rows and detail without tracking. | Separation of reads and writes. |
-| `EfInvoiceRepository`, `EfInvoiceQuery`, `SalesInvoiceConfiguration`, `InvoiceLineConfiguration` (Infrastructure) | EF Core mapping for `sales_invoice` and `sales_invoice_line`, migration `20261111005733_Phase4Invoicing`. Line identity plus a non-unique `(invoice_id, product_sku)` index allows replacing lines on edit. | Persistence detail stays outside the domain. |
-| Pages `/facturacion`, `/facturacion/nueva`, `/facturacion/{id:int}` (Web) | List with search and cancel action, create/edit form with dynamic lines and read-only view for cancelled invoices. | Page policy + UI visibility + service `Demand`. |
+| `SalesInvoice` / `InvoiceLine` (Domain) | Factura con nombre y documento del cliente guardados como **copia histórica**, fecha de emisión, estado (`Issued`/`Cancelled`) y líneas. Cada línea copia SKU, descripción, cantidad y precio unitario; el total se deriva. Una factura anulada no se puede editar ni volver a anular. | El agregado protege sus líneas; un documento emitido no depende del catálogo actual. |
+| `SalesInvoiceService` (Application) | Lista y lee facturas (`sales.invoices.view`), las crea, edita y anula (`sales.invoices.manage`). La anulación reemplaza el borrado físico para conservar numeración e historial. Cada escritura se audita con módulo `sales`. | SRP; auditoría; DIP. |
+| `IInvoiceRepository` / `IInvoiceQuery`, `InvoiceRow` / `InvoiceDetail` (Application) | La escritura carga el agregado con sus líneas; la lectura proyecta filas y detalle sin tracking. | Separación de lecturas y escrituras. |
+| `EfInvoiceRepository`, `EfInvoiceQuery`, `SalesInvoiceConfiguration`, `InvoiceLineConfiguration` (Infrastructure) | Mapeo EF Core de `sales_invoice` y `sales_invoice_line`, migración `20261111005733_Phase4Invoicing`. La identidad de línea y un índice no único `(invoice_id, product_sku)` permiten reemplazar líneas al editar. | El detalle de persistencia queda fuera del dominio. |
+| Páginas `/facturacion`, `/facturacion/nueva`, `/facturacion/{id:int}` (Web) | Lista con búsqueda y acción de anulación, formulario de alta/edición con líneas dinámicas y vista de solo lectura para facturas anuladas. | Política de página + visibilidad en la interfaz + `Demand` en el servicio. |
 
-**Explicit limitation:** electronic invoicing (DIAN), payments and tax calculation are
-**out of scope** for this sprint. The document stores the data needed to display and
-audit a sale, not a fiscal document.
+**Limitación explícita:** la facturación electrónica (DIAN), los pagos y el cálculo de impuestos quedan **fuera de alcance** en este sprint. El documento guarda los datos necesarios para mostrar y auditar una venta, no un documento fiscal.
 
-## 5.6 Level 2 - Whitebox: CRM customer registry (Sprint 2)
+## 5.6 Vista de nivel 2: registro de clientes para CRM (Sprint 2)
 
-| Component | Responsibility | Principle |
+| Componente | Responsabilidad | Principio |
 |---|---|---|
-| `Customer` (Domain) | Unique document number, full name, optional email/phone/address and active flag. Trims and nulls blank optional values; rejects a missing document or name. | One aggregate, one set of invariants. |
-| `CustomerService` (Application) | Lists and reads customers (`crm.customers.view`), creates and updates them (`crm.customers.manage`), checks the document is unique and audits every write with module `crm`. | SRP; defence in depth. |
-| `ICustomerRepository` / `ICustomerQuery`, `CustomerRow` (Application) | Write side and read side separated; the row exposes a formatted `Contact` value for the table. | DIP; read models. |
-| `EfCustomerRepository`, `EfCustomerQuery`, `CustomerConfiguration` (Infrastructure) | EF Core mapping for `customer` with a unique index on `document_number`; migration `20261111010125_Phase5Crm`. | Persistence ignorance. |
-| Pages `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id:int}` (Web) | List with search and deactivate action, create/edit form with contact data and active flag. | Page policy + UI visibility + service `Demand`. |
+| `Customer` (Domain) | Documento único, nombre completo, correo, teléfono y dirección opcionales, y estado activo. Recorta y convierte en `null` los campos opcionales vacíos; rechaza documento o nombre ausentes. | Un agregado, un conjunto de invariantes. |
+| `CustomerService` (Application) | Lista y lee clientes (`crm.customers.view`), los crea y actualiza (`crm.customers.manage`), verifica que el documento sea único y audita cada escritura con módulo `crm`. | SRP; defensa en profundidad. |
+| `ICustomerRepository` / `ICustomerQuery`, `CustomerRow` (Application) | Separación entre escritura y lectura; la fila expone un valor `Contact` formateado para la tabla. | DIP; modelos de lectura. |
+| `EfCustomerRepository`, `EfCustomerQuery`, `CustomerConfiguration` (Infrastructure) | Mapeo EF Core de `customer` con índice único en `document_number`; migración `20261111010125_Phase5Crm`. | Ignorancia de la persistencia. |
+| Páginas `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id:int}` (Web) | Lista con búsqueda y acción de desactivación, formulario de alta/edición con datos de contacto y estado activo. | Política de página + visibilidad en la interfaz + `Demand` en el servicio. |
 
-**Explicit limitation:** segmentation, campaigns, points and PQRS are **out of scope**
-for this sprint. The module covers the customer registry the other screens need.
+**Limitación explícita:** segmentación, campañas, puntos y PQRS quedan **fuera de alcance** en este sprint. El módulo cubre el registro de clientes que necesitan las demás pantallas.
 
-## 5.7 Cross-reference with Section 10
+## 5.7 Coherencia con la Sección 10
 
-The payroll endpoint is protected by `hr.payroll.manage`, which the role matrix
-(Section 10.2) grants only to the **HR Officer**. Payroll data is therefore
-reachable by one role, and every denied attempt is audited.
+El endpoint de nómina está protegido por `hr.payroll.manage`, que la matriz de la Sección 10.2 concede únicamente al **Oficial de RR. HH.** Los datos de nómina solo son alcanzables por un rol y cada intento denegado queda auditado. La misma matriz protege las pantallas de empleados: el Administrador puede ver el listado con `hr.employees.view`, pero no administra salarios ni ejecuta la nómina porque no tiene `hr.employees.manage` ni `hr.payroll.manage`.
 
-The Sprint 2 modules follow the same rule:
+Los módulos del Sprint 2 siguen la misma regla:
 
-- Suppliers: `purchasing.suppliers.view` is granted to ADM, CM, SM and LC;
-  `purchasing.suppliers.manage` only to LC. The page hides the create, edit and
-  deactivate controls from the other roles and the service rejects the call.
-- Invoicing: `sales.invoices.view` and `sales.invoices.manage` are granted to
-  ADM, CM, SM and CSH, so the store can issue and cancel invoices while SC and
-  HR cannot reach the page.
-- CRM customers: `crm.customers.view` is granted to ADM, CM, SM and CSH;
-  `crm.customers.manage` to the same four roles. The seed users for SC, LC and
-  HR therefore see no "CRM" menu entry.
+- **Proveedores:** `purchasing.suppliers.view` se concede a ADM, CM, SM y LC; `purchasing.suppliers.manage` solo a LC. La página oculta los controles de alta, edición y desactivación a los demás roles y el servicio rechaza la llamada.
+- **Facturación:** `sales.invoices.view` y `sales.invoices.manage` se conceden a ADM, CM, SM y CSH, de modo que la tienda puede emitir y anular facturas mientras SC y HR no alcanzan la página.
+- **CRM clientes:** `crm.customers.view` y `crm.customers.manage` se conceden a ADM, CM, SM y CSH. Los usuarios sembrados para SC, LC y HR no ven la entrada **CRM** en el menú.
+
+## 5.8 Trazabilidad de la entrega
+
+| Historia o módulo | Componente principal | Pruebas | Documento de referencia |
+|---|---|---|---|
+| HU-04 | `PayrollEngine`, `PayrollRunService`, `EmployeeService`, páginas `/rrhh/*` | `PayrollEngineTests`, `PayrollRunServiceTests`, `EmployeeServiceTests` | `docs/sprint2/payroll-parameters-validation.md` |
+| HU-05 | `StockService`, `InventoryDashboardService`, páginas `/inventario/*` | `InventoryDashboardServiceTests`, escenario de aceptación de stock | `docs/sprint2/demo-script.md` |
+| HU-06 | `UserService`, `RoleCatalogService`, `AuditTrailService`, páginas `/seguridad/*` | `UserServiceTests`, `AuthenticationServiceTests` | `docs/sprint2/code-review.md` |
+| Proveedores | `SupplierService`, `PurchaseOrderService`, páginas `/proveedores` | `SupplierServiceTests`, `PurchaseOrderServiceTests` | `docs/sprint2/demo-script.md` |
+| Facturación | `SalesInvoiceService`, páginas `/facturacion` | `SalesInvoiceTests`, `SalesInvoiceServiceTests` | `docs/sprint2/demo-script.md` |
+| CRM clientes | `CustomerService`, páginas `/crm/clientes` | `CustomerTests`, `CustomerServiceTests` | `docs/sprint2/demo-script.md` |

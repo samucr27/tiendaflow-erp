@@ -1,69 +1,51 @@
-# 7. Deployment View
+# 07 — Vista de despliegue
 
-## 7.1 Infrastructure level 1
+## 7.1 Nivel 1 de infraestructura
 
-| Node | Technology | Content |
+| Nodo | Tecnología | Contenido |
 |---|---|---|
-| Application server | .NET 9, Kestrel (`http://localhost:5212` in development) | Blazor Web App `TiendaFlow.Web` (interactive server render mode): UI, Minimal API endpoints, cookie authentication |
-| Database server | SQL Server 2022 in a Docker container (`tiendaflow-sql`, port 1433) | Database `TiendaFlow_OpenCode`, created from EF Core migrations |
-| Continuous integration | GitHub Actions (`.github/workflows/ci.yml`, .NET 9.0.x) | Restore, build and test with XPlat Code Coverage on every push |
-| Infrastructure as code | Terraform with remote state in HCP Terraform (`.github/workflows/terraform-plan.yml`, `infra/terraform/main.tf`) | `terraform init`, `validate` and `plan` on pull requests to `develop`; the plan ran green against the remote backend. The current resource is a placeholder and there was no `apply` |
+| Servidor de aplicación | .NET 9, Kestrel (`http://localhost:5212` en desarrollo) | Blazor Web App `TiendaFlow.Web` con renderizado interactivo en servidor: interfaz, endpoints Minimal API y autenticación por cookie. |
+| Servidor de base de datos | SQL Server 2022 en un contenedor Docker (`tiendaflow-sql`, puerto 1433) | Base de datos `TiendaFlow_OpenCode`, creada a partir de las migraciones de EF Core. |
+| Integración continua | GitHub Actions (`.github/workflows/ci.yml`, .NET 9.0.x) | Restore, build y test con cobertura XPlat en cada push. |
+| Infraestructura como código | Terraform con estado remoto en HCP Terraform (`.github/workflows/terraform-plan.yml`, `infra/terraform/main.tf`) | `terraform init`, `validate` y `plan` en pull requests a `develop`; el plan se ejecutó en verde contra el backend remoto. El recurso actual es un *placeholder* y no hubo `apply`. |
 
-## 7.2 Configuration and secrets
+## 7.2 Configuración y secretos
 
-- The connection string and the demo user passwords live only in
-  `dotnet user-secrets` (development). They are never committed.
-- In Development, a hosted seeder creates the administrator and one demo user
-  per role on an empty database.
-- Integration tests run only when `TIENDAFLOW_TEST_CONNECTION` is set; on
-  GitHub Actions (no SQL Server) they are skipped and unit and acceptance
-  tests still run.
+- La cadena de conexión y las contraseñas de los usuarios de demostración viven solo en `dotnet user-secrets` durante el desarrollo. Nunca se versionan.
+- En Development, un seeder hospedado crea el administrador y un usuario de demostración por rol cuando la base está vacía.
+- Las pruebas de integración solo se ejecutan si existe la variable `TIENDAFLOW_TEST_CONNECTION`. En GitHub Actions, donde no hay SQL Server, se omiten y las pruebas unitarias y de aceptación siguen ejecutándose.
+- Los nombres de los secretos de desarrollo son `Seed:AdminPassword` y `Seed:DemoPassword`. Sus valores no se escriben en la documentación.
 
-## 7.3 Deployment flow
+## 7.3 Flujo de despliegue
 
-1. Developer works on a feature branch and runs build and tests locally.
-2. Push triggers CI: build and tests with coverage.
-3. `dotnet ef database update` applies the migrations (one migration per phase).
-4. The infrastructure automation (Terraform with remote state) runs `init`,
-   `validate` and `plan` on pull requests to `develop`; the plan was verified in
-   green. There is no `apply` yet, so no real infrastructure is created.
+1. El equipo trabaja en una rama de feature y ejecuta build y pruebas en local.
+2. El push dispara el CI: build y pruebas con cobertura.
+3. `dotnet ef database update` aplica las migraciones, una por fase.
+4. La automatización de infraestructura con Terraform y estado remoto ejecuta `init`, `validate` y `plan` en pull requests a `develop`; el plan se verificó en verde. Todavía no hay `apply`, así que no se crea infraestructura real.
 
-## 7.4 Continuous integration
+## 7.4 Integración continua
 
-| Step | Command or action | Expected result |
+| Paso | Comando o acción | Resultado esperado |
 |---|---|---|
-| Checkout | `actions/checkout@v4` | Branch code |
-| SDK | `actions/setup-dotnet@v4` with .NET 9.0.x | SDK available |
-| Restore | `dotnet restore` | Packages restored |
-| Build | `dotnet build --no-restore` | 0 warnings and 0 errors |
-| Test | `dotnet test --no-build --collect:"XPlat Code Coverage"` | Unit and acceptance tests; integration tests skipped without SQL Server |
+| Checkout | `actions/checkout@v4` | Código de la rama |
+| SDK | `actions/setup-dotnet@v4` con .NET 9.0.x | SDK disponible |
+| Restore | `dotnet restore` | Paquetes restaurados |
+| Build | `dotnet build --no-restore` | 0 advertencias y 0 errores |
+| Test | `dotnet test --no-build --collect:"XPlat Code Coverage"` | Pruebas unitarias y de aceptación; integración omitida sin SQL Server |
 
-## 7.5 Infrastructure as code
+## 7.5 Infraestructura como código
 
-- `infra/terraform/main.tf` declares remote state in organization `Tienda-Flow`,
-  workspace `tiendaflow-infra`.
-- The `random` provider and the `random_pet` resource demonstrate the remote
-  state flow and the automatic plan without needing cloud credentials.
-- The Terraform workflow runs only on pull requests to `develop` and only when
-  `.tf` files change.
-- The HCP Terraform token comes from the `TF_API_TOKEN` secret; it is never
-  written to the repository.
-- The `Terraform Plan` workflow ran successfully in the pull request to
-  `develop` (job `plan`, about 20 seconds) against the remote state. It only
-  planned the example `random_pet`; there was no `apply` and no real
-  infrastructure was created.
-- When the real deployment target is chosen, the example resource is replaced by
-  the database and the application hosting.
+- `infra/terraform/main.tf` declara el estado remoto en la organización `Tienda-Flow`, workspace `tiendaflow-infra`.
+- El proveedor `random` y el recurso `random_pet` demuestran el flujo de estado remoto y el plan automático sin necesitar credenciales de nube.
+- El workflow de Terraform se ejecuta solo en pull requests a `develop` y solo cuando cambian archivos `.tf`.
+- El token de HCP Terraform se toma del secreto `TF_API_TOKEN`; no se escribe en el repositorio.
+- El workflow `Terraform Plan` se ejecutó con éxito en el pull request hacia `develop` (job `plan`, unos 20 segundos) contra el estado remoto. Solo planificó el recurso de ejemplo `random_pet`; no hubo `apply` ni se creó infraestructura real.
+- Cuando se elija el destino real de despliegue, el recurso de ejemplo se reemplaza por la base de datos y el hosting de la aplicación.
 
-## 7.6 Limitations and operational notes
+## 7.6 Limitaciones y notas de operación
 
-- The current deployment is **local development**: there is no automated staging
-  or production environment.
-- Terraform is limited to `plan`: the workspace and remote state work, but no
-  `apply` has run and the repository does not define real ERP infrastructure yet.
-- The development database is recreated by the seeder; salaries return to `0`
-  and the payroll run must be recalculated.
-- The payroll run is not persisted; there are no run or detail tables in this
-  delivery.
-- The `tiendaflow-sql` container is the only environment used by the demo. Do
-  not delete volumes or containers from other environments.
+- El despliegue actual es de **desarrollo local**: no hay ambiente de staging ni producción automatizada.
+- Terraform se limita a `plan`: el workspace y el estado remoto funcionan, pero no se ha ejecutado `apply` y el repositorio todavía no define la infraestructura real del ERP.
+- La base de datos de desarrollo se recrea con el seeder; los salarios vuelven a `0` y la corrida de nómina debe recalcularse.
+- La corrida de nómina no se persiste; no hay tablas de corrida ni de detalle en esta entrega.
+- El contenedor `tiendaflow-sql` es el único entorno que usa la demo. No se deben borrar volúmenes ni contenedores de otros entornos.

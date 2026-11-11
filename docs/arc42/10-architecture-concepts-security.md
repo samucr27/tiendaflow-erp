@@ -1,42 +1,22 @@
-# 10. Architecture Concepts - Security and Roles (HU-06, HU-08)
+# 10 — Conceptos de arquitectura: seguridad y roles
 
-## 10.1 Concepts
+## 10.1 Conceptos
 
-- **Authentication:** ASP.NET Core cookie authentication (`TiendaFlow.Auth`,
-  HttpOnly, SameSite Lax, 8 hours sliding expiration). Passwords are stored
-  only as hashes behind `IPasswordHasher`; never in plain text.
-- **Roles and permissions:** each user has exactly one of 7 roles. Every ERP
-  function has one permission code (`Permissions`), and the role-permission
-  matrix lives in code (`RolePermissions`) so authorization is deterministic
-  across deployments. The database stores users and roles only.
-- **Authorization at three levels (defence in depth):**
-  1. **Page / endpoint:** one authorization policy per permission, applied with
-     `[Authorize(Policy=...)]` or `RequireAuthorization(permission)`.
-  2. **UI:** menu entries and buttons are shown only when the user has the
-     permission. This is convenience, never the real control.
-  3. **Service:** `IAccessControl.Demand(permission)` throws
-     `AccessDeniedException` inside the application services.
-- **Audit:** the audit log stores the real user id, module, action and IP.
-  Denied access attempts are recorded both at page level and at service level.
-  HR writes use module `hr` and record only ids, counts and actions; employee
-  names, documents and amounts never appear in the detail.
-- **Personal data (Ley 1581 de 2012):** minimum data is collected, personal
-  data is not logged, and payroll data is restricted to the HR Officer.
-  In the employee list, the salary is only returned when the caller has
-  `hr.employees.manage`; a user with only `hr.employees.view` receives `null`
-  from `EmployeeService` and the page shows "—". This is a data-protection
-  control, not just a visual rule, because the value never leaves the service.
-- **Separation of duties:** the Administrator manages users, roles and
-  parameters and can read most modules, but holds no operational permissions
-  (no POS, no purchase orders, no payroll).
+- **Autenticación:** autenticación por cookie de ASP.NET Core (`TiendaFlow.Auth`, HttpOnly, SameSite Lax, expiración deslizante de 8 horas). Las contraseñas se guardan solo como hash detrás de `IPasswordHasher`; nunca en texto plano.
+- **Roles y permisos:** cada usuario tiene exactamente uno de 7 roles. Cada función del ERP tiene un código de permiso (`Permissions`) y la matriz rol-permiso vive en código (`RolePermissions`), de modo que la autorización es determinista entre despliegues. La base de datos solo guarda usuarios, roles y su asignación.
+- **Autorización en tres niveles (defensa en profundidad):**
+  1. **Página o endpoint:** una política de autorización por permiso, aplicada con `[Authorize(Policy=...)]` o `RequireAuthorization(permission)`.
+  2. **Interfaz:** las entradas de menú y los botones se muestran solo cuando el usuario tiene el permiso. Es comodidad, nunca el control real.
+  3. **Servicio:** `IAccessControl.Demand(permission)` lanza `AccessDeniedException` dentro de los servicios de aplicación.
+- **Auditoría:** el registro de auditoría guarda el id real del usuario, el módulo, la acción y la IP. Los accesos denegados se registran tanto en la capa de página como en la de servicio. Las escrituras de RR. HH. usan el módulo `hr` y registran solo ids, conteos y acciones; los nombres, documentos y montos de los empleados nunca aparecen en el detalle.
+- **Datos personales (Ley 1581 de 2012):** se recolecta el mínimo de datos, no se registran datos personales y los datos de nómina quedan restringidos al Oficial de RR. HH. En el listado de empleados, el salario solo se devuelve cuando quien consulta tiene `hr.employees.manage`; un usuario con solo `hr.employees.view` recibe `null` desde `EmployeeService` y la página muestra "—". Es un control de protección de datos, no una regla visual, porque el valor nunca sale del servicio.
+- **Separación de funciones:** el Administrador gestiona usuarios, roles y parámetros y puede leer la mayoría de los módulos, pero no tiene permisos operativos (ni punto de venta, ni órdenes de compra, ni nómina).
 
-## 10.2 Role-permission matrix
+## 10.2 Matriz de roles y permisos
 
-Roles: **ADM** Administrator, **CM** Corporate Manager, **SM** Store Manager,
-**CSH** Cashier, **SC** Stock Clerk, **LC** Logistics Coordinator,
-**HR** HR Officer.
+Roles: **ADM** Administrator, **CM** Corporate Manager, **SM** Store Manager, **CSH** Cashier, **SC** Stock Clerk, **LC** Logistics Coordinator, **HR** HR Officer.
 
-| Permission | ADM | CM | SM | CSH | SC | LC | HR |
+| Permiso | ADM | CM | SM | CSH | SC | LC | HR |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | security.users.view | ✓ | | | | | | |
 | security.users.manage | ✓ | | | | | | |
@@ -82,9 +62,45 @@ Roles: **ADM** Administrator, **CM** Corporate Manager, **SM** Store Manager,
 | crm.campaigns.manage | | ✓ | | | | | |
 | crm.reports.view | ✓ | ✓ | | | | | |
 
-## 10.3 Role assignment (HU-06)
+## 10.3 Aplicación de los permisos en las tres capas
 
-The administrator assigns a role from `/seguridad/usuarios`. The role matrix
-is shown read-only in `/seguridad/roles`. On the next sign-in the user's
-permission claims are built from the matrix, so the user can reach only the
-allowed pages, menu entries and services.
+| Pantalla o endpoint | Capa 1: página o endpoint | Capa 2: interfaz | Capa 3: servicio |
+|---|---|---|---|
+| `/rrhh/empleados` | `hr.employees.view` | Alta y nómina ocultas sin `hr.employees.manage` o `hr.payroll.manage` | `EmployeeService` exige vista; el salario solo se expone con `hr.employees.manage` |
+| `/rrhh/empleados/nuevo` y `/{id}` | `hr.employees.manage` | Formulario completo solo para quien administra | `Create` y `Update` exigen `hr.employees.manage` |
+| `/rrhh/nomina` | `hr.payroll.manage` | Página completa solo con el permiso | `PayrollRunService.Calculate` exige `hr.payroll.manage` |
+| `POST /api/nomina/calculate` | `hr.payroll.manage` | No aplica: es un endpoint | La autorización se exige en el borde; el motor no tiene permisos propios |
+| `/seguridad/usuarios` | `security.users.view` | Alta y edición ocultas sin `security.users.manage` | `UserService` exige `security.users.manage` en cada escritura |
+| `/seguridad/roles` | `security.roles.view` | Matriz de solo lectura | `RoleCatalogService.GetMatrix` exige `security.roles.view` |
+| `/seguridad/auditoria` | `security.audit.view` | Sin acciones de escritura | `AuditTrailService.Recent` exige `security.audit.view` |
+| `/inventario/alertas` | `inventory.alerts.view` | Acciones según `inventory.stock.receive` | `InventoryDashboardService.Get` exige `inventory.stock.view` |
+| `/proveedores` | `purchasing.suppliers.view` | Alta, edición y desactivación ocultas sin `purchasing.suppliers.manage` | `SupplierService.List` exige vista; `Create`, `Update` y el cambio de estado exigen `purchasing.suppliers.manage` |
+| `/proveedores/nuevo` y `/{id}` | `purchasing.suppliers.manage` | Formulario completo solo para quien administra | `SupplierService.Create` y `Update` exigen `purchasing.suppliers.manage` |
+| `/facturacion` | `sales.invoices.view` | Nueva factura y anulación ocultas sin `sales.invoices.manage` | `SalesInvoiceService.List` exige vista; `Create`, `Update` y `Cancel` exigen `sales.invoices.manage` |
+| `/facturacion/nueva` y `/{id}` | `sales.invoices.manage` | Formulario completo solo para quien administra | `SalesInvoiceService` exige `sales.invoices.manage` en cada escritura |
+| `/crm/clientes` | `crm.customers.view` | Alta, edición y desactivación ocultas sin `crm.customers.manage` | `CustomerService.List` exige vista; `Create` y `Update` exigen `crm.customers.manage` |
+| `/crm/clientes/nuevo` y `/{id}` | `crm.customers.manage` | Formulario completo solo para quien administra | `CustomerService.Create` y `Update` exigen `crm.customers.manage` |
+
+## 10.4 Asignación de roles (HU-06)
+
+El administrador asigna un rol desde `/seguridad/usuarios`. La matriz se muestra en solo lectura en `/seguridad/roles`. En el siguiente inicio de sesión, los permisos del usuario se construyen a partir de la matriz, de modo que solo alcanza las páginas, entradas de menú y servicios permitidos.
+
+## 10.5 Auditoría y datos personales
+
+| Operación | Contenido auditado | ¿Datos personales? |
+|---|---|---|
+| Crear o actualizar empleado | id del empleado, estado activo y tienda | No |
+| Corrida de nómina | cantidad de empleados activos y días trabajados | No |
+| Crear, actualizar o desactivar usuario | id del usuario, rol y estado | No |
+| Crear o actualizar proveedor | id del proveedor, NIT y estado | No |
+| Crear, actualizar o anular factura | id de la factura, cliente y total | Sí, nombre y documento del cliente en el detalle; decisión pendiente |
+| Crear o actualizar cliente CRM | id del cliente y estado | No; el detalle usa el nombre, no el documento |
+| Inicio de sesión correcto | id del usuario y texto fijo | No |
+| Inicio de sesión fallido | correo intentado como `EntityId` | Sí, decisión pendiente |
+| Acceso denegado | id del usuario, permiso o política y ruta | No |
+
+## 10.6 Coherencia con la Sección 5
+
+El bloque de nómina de la Sección 5 queda protegido por esta matriz: `hr.payroll.manage` solo está marcado para **HR Officer**, y el endpoint y la pantalla de nómina exigen ese permiso. El Administrador puede leer el listado de empleados con `hr.employees.view`, pero no ve salarios ni ejecuta la nómina. Cada rechazo se audita sin nombres, documentos ni montos.
+
+Los módulos del Sprint 2 repiten el patrón: la fila de permisos de la tabla 10.2 coincide con la política de la página, con la visibilidad del menú y con el `Demand` del servicio. Proveedores queda administrado solo por LC; Facturación y CRM clientes quedan disponibles para ADM, CM, SM y CSH.
