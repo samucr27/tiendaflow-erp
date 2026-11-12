@@ -3,28 +3,74 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using TiendaFlow.Application;
 using TiendaFlow.Application.Payroll;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure;
+using TiendaFlow.Infrastructure.Persistence;
 using TiendaFlow.Web.Components;
 using TiendaFlow.Web.Persistence;
 using TiendaFlow.Web.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// App Service captures stdout/stderr, so console logging is the production
+// transport. No file sink is needed and no log file is written to wwwroot.
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// App Service terminates TLS and forwards the original protocol and client IP.
+// The platform front end is not a fixed proxy address, so the known networks
+// list is cleared; this is the configuration the ASP.NET Core App Service
+// guidance documents.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
         "Connection string 'ConnectionStrings:DefaultConnection' is not configured. " +
-        "Set it with dotnet user-secrets on the Web project.");
+        "Set it with dotnet user-secrets on the Web project, with " +
+        "ConnectionStrings__DefaultConnection in App Service, or with " +
+        "`terraform` app settings.");
+
+// Azure SQL requires encryption. The Terraform connection string already sets
+// Encrypt=True; forcing it for every non-development environment keeps a
+// manually configured deployment from silently connecting without TLS.
+if (!builder.Environment.IsDevelopment())
+{
+    var sqlBuilder = new SqlConnectionStringBuilder(connectionString) { Encrypt = true };
+    connectionString = sqlBuilder.ConnectionString;
+}
 
 builder.Services.AddTiendaFlowPersistence(connectionString);
+
+// Data Protection keys must survive a restart and a slot swap. /home is the
+// only durable, writable path on a Linux App Service plan.
+var dataProtectionPath = builder.Configuration["DataProtection:KeysPath"];
+if (string.IsNullOrWhiteSpace(dataProtectionPath) && builder.Environment.IsProduction())
+    dataProtectionPath = "/home/.tiendaflow/keys";
+
+if (!string.IsNullOrWhiteSpace(dataProtectionPath))
+{
+    Directory.CreateDirectory(dataProtectionPath);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
+        .SetApplicationName("TiendaFlow");
+}
 
 // Payroll module (HU-04): the engine depends only on abstractions (DIP) and
 // each strategy owns the rules of one family of contract types (SRP).
@@ -51,6 +97,9 @@ builder.Services
         options.Cookie.Name = "TiendaFlow.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
         options.Events = new CookieAuthenticationEvents
         {
             OnRedirectToAccessDenied = context =>
@@ -72,10 +121,23 @@ builder.Services.AddAuthorization(options =>
     }
 });
 
-if (builder.Environment.IsDevelopment())
+// The demo seeder is opt-in. It never runs unless Seed:Enabled is explicitly
+// true, and it reads the user passwords from configuration (Seed:AdminPassword
+// and Seed:DemoPassword), never from code.
+if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     builder.Services.AddHostedService<DevDataSeeder>();
 
 var app = builder.Build();
+
+// Migrations run only when Database:MigrateOnStartup is true. The default is
+// false: production schema changes go through the EF migration bundle that the
+// deployment guide runs explicitly.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    await using var migrationScope = app.Services.CreateAsyncScope();
+    var dbContext = migrationScope.ServiceProvider.GetRequiredService<TiendaFlowDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 // The store employees work in Colombian Spanish and pesos.
 var supportedCultures = new[] { new CultureInfo("es-CO") };
@@ -87,6 +149,8 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 });
 
 // Configure the HTTP request pipeline.
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -149,10 +213,34 @@ app.MapPost("/api/nomina/calculate", (PayrollInput input, IPayrollEngine engine)
     }
 }).RequireAuthorization(Permissions.HrPayrollManage);
 
+// Liveness/readiness probe for App Service. It returns 503 when the database
+// is unreachable so a bad deployment is visible in the platform health check.
+app.MapGet("/healthz", HealthCheckAsync).AllowAnonymous();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+static async Task<IResult> HealthCheckAsync(
+    TiendaFlowDbContext dbContext,
+    CancellationToken cancellationToken)
+{
+    try
+    {
+        if (await dbContext.Database.CanConnectAsync(cancellationToken))
+            return Results.Ok(new { status = "healthy" });
+    }
+    catch
+    {
+        // The database is down or the connection string is wrong; answer 503
+        // instead of leaking the exception through the health endpoint.
+    }
+
+    return Results.Json(
+        new { status = "unhealthy" },
+        statusCode: StatusCodes.Status503ServiceUnavailable);
+}
 
 static bool IsLocalUrl(string? value) =>
     !string.IsNullOrWhiteSpace(value)

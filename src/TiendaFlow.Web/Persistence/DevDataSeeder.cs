@@ -7,9 +7,11 @@ namespace TiendaFlow.Web.Persistence;
 
 /// <summary>
 /// Seeds the catalog, the store, the seven roles and one demo user per role.
-/// Registered only in the Development environment (see Program.cs).
-/// Passwords are read from user-secrets or configuration and are never stored
-/// in this file, in logs or in the repository.
+/// It is registered only when Seed:Enabled is true (see Program.cs), so a
+/// production deployment never creates demo accounts by accident. Passwords
+/// are read from configuration (Seed:AdminPassword and Seed:DemoPassword) and
+/// are never stored in this file, in logs or in the repository. The schema is
+/// migrated separately through Database:MigrateOnStartup or the EF bundle.
 /// </summary>
 public sealed class DevDataSeeder : IHostedService
 {
@@ -39,8 +41,6 @@ public sealed class DevDataSeeder : IHostedService
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<TiendaFlowDbContext>();
-
-        await context.Database.MigrateAsync(cancellationToken);
 
         await SeedStoreAsync(context, cancellationToken);
         await SeedRolesAsync(context, cancellationToken);
