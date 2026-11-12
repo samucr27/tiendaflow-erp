@@ -105,6 +105,9 @@ encontró ninguna ruta que sirviera contenido protegido de forma anónima.
   `/inventario` 200; `/inventario/alertas` 302 A; las tres rutas de Seguridad
   302 A; `/rrhh/empleados`, `/rrhh/empleados/nuevo`, `/rrhh/nomina` y la API
   302 A.
+- **Cerrado el 11 de noviembre de 2026:** con una base de datos recién sembrada
+  el cajero inicia sesión y su fila coincide con la matriz (ver la sección 5).
+  Confirma que E-01 era un dato de la base de desarrollo y no un defecto.
 
 ### E-02 - El destino posterior al inicio de sesión no siempre es accesible
 
@@ -151,3 +154,83 @@ encontró ninguna ruta que sirviera contenido protegido de forma anónima.
   E-01 documenta la causa y los valores esperados.
 - Durante la prueba de la Fase E no se modificó código, base de datos ni
   configuración. La corrección de E-02 llegó después, en `1a80602`.
+
+## 5. Repetición sobre `develop` — 11 de noviembre de 2026
+
+**Rama:** `develop` en `0e6b12d` (incluye los PR #2, #3 y #4)
+**Aplicación:** la misma, en `http://localhost:5212`, con el contenedor
+`tiendaflow-sql` (SQL Server 2022) y una base de datos nueva sembrada por
+`DevDataSeeder`.
+**Alcance ampliado:** las 7 cuentas demo contra 21 peticiones (20 páginas de
+Inventario, Proveedores, Facturación, CRM, RR. HH. y Seguridad, más
+`POST /api/nomina/calculate`). Son 147 comprobaciones.
+
+El método es el de la sección 1, con dos cambios: el resultado esperado de cada
+celda se obtuvo leyendo directamente la matriz de `RolePermissions.cs`, y en
+cada respuesta `200` se revisó que el cuerpo no mostrara un error ni un aviso
+de permiso. Las contraseñas se leyeron en memoria desde `dotnet user-secrets`;
+el script y el CSV quedaron fuera del repositorio.
+
+### 5.1 Inicio de sesión
+
+Las 7 cuentas inician sesión. RR. HH. aterriza en `/rrhh/empleados` y las otras
+seis en `/inventario`, como define `LandingPage` (E-02).
+
+### 5.2 Resultados
+
+Convenciones: **200** = servida; **A** = `302` a `/acceso-denegado`.
+
+| Petición | Permiso | Admin | Gerente | Jefe tienda | Cajero | Bodega | Logística | RR. HH. |
+|---|---|---|---|---|---|---|---|---|
+| `GET /inventario` | `InventoryStockView` | 200 | 200 | 200 | 200 | 200 | 200 | A |
+| `GET /inventario/stock` | `InventoryStockView` | 200 | 200 | 200 | 200 | 200 | 200 | A |
+| `GET /inventario/alertas` | `InventoryAlertsView` | 200 | 200 | 200 | A | 200 | 200 | A |
+| `GET /inventario/productos` | `InventoryProductsView` | 200 | 200 | 200 | A | 200 | 200 | A |
+| `GET /inventario/productos/nuevo` | `InventoryProductsManage` | A | A | 200 | A | A | A | A |
+| `GET /inventario/recibir` | `InventoryStockReceive` | A | A | 200 | A | 200 | 200 | A |
+| `GET /inventario/ventas` | `SalesPosUse` | A | A | 200 | 200 | A | A | A |
+| `GET /proveedores` | `PurchasingSuppliersView` | 200 | 200 | 200 | A | A | 200 | A |
+| `GET /proveedores/nuevo` | `PurchasingSuppliersManage` | A | A | A | A | A | 200 | A |
+| `GET /facturacion` | `SalesInvoicesView` | 200 | 200 | 200 | 200 | A | A | A |
+| `GET /facturacion/nueva` | `SalesInvoicesManage` | 200 | 200 | 200 | 200 | A | A | A |
+| `GET /crm/clientes` | `CrmCustomersView` | 200 | 200 | 200 | 200 | A | A | A |
+| `GET /crm/clientes/nuevo` | `CrmCustomersManage` | 200 | 200 | 200 | 200 | A | A | A |
+| `GET /rrhh/empleados` | `HrEmployeesView` | 200 | 200 | 200 | A | A | A | 200 |
+| `GET /rrhh/empleados/nuevo` | `HrEmployeesManage` | A | A | A | A | A | A | 200 |
+| `GET /rrhh/nomina` | `HrPayrollManage` | A | A | A | A | A | A | 200 |
+| `GET /seguridad/usuarios` | `SecurityUsersView` | 200 | A | A | A | A | A | A |
+| `GET /seguridad/usuarios/nuevo` | `SecurityUsersManage` | 200 | A | A | A | A | A | A |
+| `GET /seguridad/roles` | `SecurityRolesView` | 200 | A | A | A | A | A | A |
+| `GET /seguridad/auditoria` | `SecurityAuditView` | 200 | A | A | A | A | A | A |
+| `POST /api/nomina/calculate` | `HrPayrollManage` | A | A | A | A | A | A | 200 |
+
+**Diferencias con `RolePermissions`: 0 de 147.**
+
+Sin sesión, `/inventario`, `/proveedores`, `/facturacion`, `/crm/clientes`,
+`/rrhh/nomina` y `/seguridad/usuarios` redirigen a `/login`.
+
+La revisión de cuerpos solo marcó `/seguridad/auditoria` para Admin. Es
+esperado: la página lista los eventos `AccessDenied` que la propia prueba
+generó en las demás cuentas.
+
+### 5.3 Comprobación funcional de las HU
+
+- **HU-04:** con RR. HH., `POST /api/nomina/calculate` con salario base
+  2.000.000 y 30 días devuelve el cálculo completo (neto 2.089.095; costo total
+  para el empleador 3.060.126). Un salario no positivo devuelve `400` con el
+  mensaje de validación del motor.
+- **HU-05:** `/inventario/alertas` carga, pero con la base recién sembrada
+  muestra "Sin alertas de stock" porque ningún producto empieza por debajo de
+  su mínimo. Para la demo hay que vender o retirar unidades desde
+  `/inventario/ventas` hasta llegar al mínimo.
+- **HU-06:** `/seguridad/roles` muestra la matriz de 7 roles y 43 permisos, y
+  `/seguridad/auditoria` registra los accesos denegados.
+
+Las 17 pruebas de integración también pasaron contra el mismo SQL Server
+(`TIENDAFLOW_TEST_CONNECTION`).
+
+### 5.4 Conclusión de la repetición
+
+La autorización por HTTP coincide con la matriz para los 7 roles y las 21
+peticiones. E-01 queda cerrado. E-03 sigue abierto como observación de
+endurecimiento. No se modificó código ni configuración durante la repetición.
