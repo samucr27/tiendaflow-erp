@@ -1,0 +1,343 @@
+@page "/compras/ordenes/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.PurchasingOrdersView)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject IPurchaseOrderQuery OrderQuery
+@inject PurchaseOrderService PurchaseOrderService
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Orden de compra · TiendaFlow</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_detail is null)
+{
+    <PageHeader Eyebrow="Compras / Órdenes"
+                Title="Orden de compra"
+                Subtitle="No encontramos la orden solicitada">
+        <Actions>
+            <a class="button button-secondary" href="compras/ordenes">Volver</a>
+        </Actions>
+    </PageHeader>
+}
+else
+{
+    var header = _detail.Header;
+
+    <PageHeader Eyebrow="Compras / Órdenes"
+                Title="@($"OC-{header.Id:D5}")"
+                Subtitle="@($"{header.SupplierName} · {header.StoreName} · {Formatters.ShortDate(header.OrderDate)}")">
+        <Actions>
+            <a class="button button-secondary" href="compras/ordenes">Volver</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="kpi-grid">
+        <KpiCard Label="Estado"
+                 Value="@PurchasingText.Status(header.Status)"
+                 Hint="Flujo de la orden"
+                 Tone="@PurchasingText.Tone(header.Status)" />
+        <KpiCard Label="Total"
+                 Value="@Formatters.Money(header.Total)"
+                 Hint="@($"{header.LineCount} líneas")"
+                 Tone="neutral" />
+        <KpiCard Label="Unidades pedidas"
+                 Value="@Formatters.Quantity(_detail.Lines.Sum(line => line.Quantity))"
+                 Hint="En todas las líneas"
+                 Tone="info" />
+        <KpiCard Label="Unidades pendientes"
+                 Value="@Formatters.Quantity(_detail.Lines.Sum(line => line.PendingQuantity))"
+                 Hint="Por recibir"
+                 Tone="alert" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Líneas de la orden</h2>
+                <p class="card-subtitle">Cantidad pedida, recibida y pendiente por producto</p>
+            </div>
+            <StatusBadge Text="@PurchasingText.Status(header.Status)"
+                         Tone="@PurchasingText.Tone(header.Status)" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="num">Pedido</th>
+                        <th class="num">Recibido</th>
+                        <th class="num">Pendiente</th>
+                        <th class="num">Costo unitario</th>
+                        <th class="num">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _detail.Lines)
+                    {
+                        <tr>
+                            <td>
+                                <span>@line.ProductName</span>
+                                <span class="table-meta">@line.ProductSku</span>
+                            </td>
+                            <td class="num">@Formatters.Quantity(line.Quantity)</td>
+                            <td class="num">@Formatters.Quantity(line.ReceivedQuantity)</td>
+                            <td class="num">@Formatters.Quantity(line.PendingQuantity)</td>
+                            <td class="num">@Formatters.Money(line.UnitCost)</td>
+                            <td class="num">@Formatters.Money(line.LineTotal)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="5">Total de la orden</th>
+                        <td class="num">@Formatters.Money(header.Total)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+    @if (HasActions(header.Status))
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Avanzar la orden</h2>
+                    <p class="card-subtitle">
+                        Borrador → aprobación → enviada → confirmada → recibida.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                @if (header.Status == PurchaseOrderStatus.Draft
+                     && AccessControl.Has(Permissions.PurchasingOrdersCreate))
+                {
+                    <button type="button" class="button button-secondary" @onclick="Submit">
+                        Enviar a aprobación
+                    </button>
+                }
+
+                @if (header.Status is PurchaseOrderStatus.Draft or PurchaseOrderStatus.PendingApproval
+                     && AccessControl.Has(Permissions.PurchasingOrdersApprove))
+                {
+                    <button type="button" class="button button-primary" @onclick="Approve">
+                        Aprobar orden
+                    </button>
+                }
+
+                @if (header.Status == PurchaseOrderStatus.Approved
+                     && AccessControl.Has(Permissions.PurchasingOrdersSend))
+                {
+                    <button type="button" class="button button-primary" @onclick="Send">
+                        Enviar al proveedor
+                    </button>
+                }
+
+                @if (header.Status == PurchaseOrderStatus.Sent
+                     && AccessControl.Has(Permissions.PurchasingOrdersReceive))
+                {
+                    <button type="button" class="button button-secondary" @onclick="Confirm">
+                        Confirmar con el proveedor
+                    </button>
+                }
+
+                @if (header.Status is not (PurchaseOrderStatus.Received or PurchaseOrderStatus.Cancelled)
+                     && _detail.Lines.All(line => line.ReceivedQuantity == 0)
+                     && AccessControl.Has(Permissions.PurchasingOrdersCancel))
+                {
+                    <button type="button" class="button button-secondary" @onclick="Cancel">
+                        Cancelar orden
+                    </button>
+                }
+            </div>
+        </section>
+    }
+
+    @if (PurchasingText.CanReceive(header.Status)
+         && AccessControl.Has(Permissions.PurchasingOrdersReceive))
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Recibir mercancía</h2>
+                    <p class="card-subtitle">
+                        Las unidades recibidas entran al inventario de la tienda en la misma operación.
+                    </p>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="num">Pendiente</th>
+                            <th class="num">Recibir ahora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _detail.Lines.Where(line => line.PendingQuantity > 0))
+                        {
+                            <tr>
+                                <td>
+                                    <span>@line.ProductName</span>
+                                    <span class="table-meta">@line.ProductSku</span>
+                                </td>
+                                <td class="num">@Formatters.Quantity(line.PendingQuantity)</td>
+                                <td class="num">
+                                    <input class="input"
+                                           type="number"
+                                           min="0"
+                                           max="@line.PendingQuantity"
+                                           aria-label="@($"Cantidad a recibir de {line.ProductName}")"
+                                           value="@QuantityFor(line.ProductSku)"
+                                           @onchange="args => SetQuantity(line.ProductSku, args)" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button-primary" @onclick="Receive">
+                    Registrar recepción
+                </button>
+            </div>
+        </section>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "creada")]
+    public string? Creada { get; set; }
+
+    private PurchaseOrderDetail? _detail;
+    private Dictionary<string, int> _receiveQuantities = new(StringComparer.Ordinal);
+    private string? _error;
+    private string? _success;
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _detail = OrderQuery.GetById(Id);
+
+            if (_detail is null)
+            {
+                _error = "No encontramos la orden de compra solicitada.";
+                return;
+            }
+
+            if (Creada == "1")
+                _success = "La orden se creó en borrador.";
+
+            _receiveQuantities = _detail.Lines
+                .Where(line => line.PendingQuantity > 0)
+                .ToDictionary(line => line.ProductSku, line => line.PendingQuantity, StringComparer.Ordinal);
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static bool HasActions(PurchaseOrderStatus status) =>
+        status is not (PurchaseOrderStatus.Received or PurchaseOrderStatus.Cancelled);
+
+    private int QuantityFor(string sku) =>
+        _receiveQuantities.TryGetValue(sku, out var quantity) ? quantity : 0;
+
+    private void SetQuantity(string sku, ChangeEventArgs args)
+    {
+        _receiveQuantities[sku] = int.TryParse(args.Value?.ToString(), out var quantity)
+            ? Math.Max(quantity, 0)
+            : 0;
+    }
+
+    private void Receive()
+    {
+        _error = null;
+        _success = null;
+
+        var lines = _receiveQuantities
+            .Where(pair => pair.Value > 0)
+            .Select(pair => new ReceivePurchaseOrderLine(pair.Key, pair.Value))
+            .ToList();
+
+        if (lines.Count == 0)
+        {
+            _error = "Indica al menos una cantidad mayor que cero para recibir.";
+            return;
+        }
+
+        try
+        {
+            PurchaseOrderService.Receive(Id, lines, DateTime.UtcNow);
+            _success = "La recepción se registró y el inventario quedó actualizado.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Submit() =>
+        Run(() => PurchaseOrderService.SubmitForApproval(Id), "La orden quedó en aprobación.");
+
+    private void Approve() =>
+        Run(() => PurchaseOrderService.Approve(Id), "La orden fue aprobada.");
+
+    private void Send() =>
+        Run(() => PurchaseOrderService.Send(Id), "La orden fue enviada al proveedor.");
+
+    private void Confirm() =>
+        Run(() => PurchaseOrderService.Confirm(Id), "La orden quedó confirmada por el proveedor.");
+
+    private void Cancel() =>
+        Run(() => PurchaseOrderService.Cancel(Id), "La orden fue cancelada.");
+
+    private void Run(Action action, string successMessage)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            action();
+            _success = successMessage;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

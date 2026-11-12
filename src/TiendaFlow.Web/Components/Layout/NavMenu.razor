@@ -103,13 +103,23 @@
         }
     }
 
-    @if (AccessControl.Has(Permissions.PurchasingSuppliersView))
+    @if (AccessControl.Has(Permissions.PurchasingSuppliersView)
+         || AccessControl.Has(Permissions.PurchasingOrdersView))
     {
         <p class="nav-section">Compras</p>
 
-        <NavLink class="nav-item" href="proveedores" Match="NavLinkMatch.Prefix">
-            Proveedores
-        </NavLink>
+        @if (AccessControl.Has(Permissions.PurchasingSuppliersView))
+        {
+            <NavLink class="nav-item" href="proveedores" Match="NavLinkMatch.Prefix">
+                Proveedores
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.PurchasingOrdersView))
+        {
+            <NavLink class="nav-item" href="compras/ordenes" Match="NavLinkMatch.Prefix">
+                Órdenes de compra
+            </NavLink>
+        }
     }
 
     @if (AccessControl.Has(Permissions.SalesInvoicesView))

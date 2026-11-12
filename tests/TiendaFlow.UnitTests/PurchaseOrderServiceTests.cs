@@ -186,6 +186,28 @@ public class PurchaseOrderServiceTests
     }
 
     [Fact]
+    public void Confirm_MovesTheOrderAndAudits()
+    {
+        var order = GivenOrder(Send);
+
+        CreateService().Confirm(7);
+
+        Assert.Equal(PurchaseOrderStatus.Confirmed, order.Status);
+        Assert.Equal("PurchaseOrderConfirmed", _audit.Entries.Single().Action);
+    }
+
+    [Fact]
+    public void Confirm_WhenTheOrderWasNotSent_ThrowsAndDoesNotSave()
+    {
+        GivenOrder(o => o.Approve());
+
+        Assert.Throws<InvalidPurchaseOrderException>(() => CreateService().Confirm(7));
+
+        _orders.Verify(o => o.Update(It.IsAny<PurchaseOrder>()), Times.Never);
+        Assert.Empty(_audit.Entries);
+    }
+
+    [Fact]
     public void Cancel_MovesTheOrderAndAudits()
     {
         var order = GivenOrder();

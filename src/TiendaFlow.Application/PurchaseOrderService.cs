@@ -116,6 +116,18 @@ public sealed class PurchaseOrderService
         Transition(id, order => order.Send(), "PurchaseOrderSent", "enviada al proveedor");
     }
 
+    /// <summary>
+    /// Records the supplier confirmation. It uses the receiving permission
+    /// because the person who tracks the delivery is the one who knows that
+    /// the supplier accepted the order.
+    /// </summary>
+    public void Confirm(int id)
+    {
+        _accessControl.Demand(Permissions.PurchasingOrdersReceive);
+
+        Transition(id, order => order.Confirm(), "PurchaseOrderConfirmed", "confirmada por el proveedor");
+    }
+
     public void Cancel(int id)
     {
         _accessControl.Demand(Permissions.PurchasingOrdersCancel);

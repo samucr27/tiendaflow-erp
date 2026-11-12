@@ -1,0 +1,333 @@
+@page "/compras/ordenes/nueva"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.PurchasingOrdersCreate)]
+@using System.ComponentModel.DataAnnotations
+@inject SupplierService SupplierService
+@inject PurchaseOrderService PurchaseOrderService
+@inject IProductCatalogQuery ProductQuery
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Nueva orden de compra · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Compras / Órdenes"
+            Title="Nueva orden de compra"
+            Subtitle="@($"Solicitud a un proveedor para la tienda {CurrentUser.StoreName}")">
+    <Actions>
+        <a class="button button-secondary" href="compras/ordenes">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_form is null)
+{
+    <p class="muted">Cargando proveedores y productos…</p>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="Save" FormName="orden-compra" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-section">
+            <h2>Datos de la orden</h2>
+            <p class="card-subtitle">
+                El proveedor debe estar activo. La orden nace en borrador y luego se aprueba y envía.
+            </p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="order-supplier">Proveedor</label>
+                    <InputSelect id="order-supplier" class="input" @bind-Value="_form.SupplierId">
+                        <option value="0">Selecciona un proveedor</option>
+                        @foreach (var supplier in _suppliers)
+                        {
+                            <option value="@supplier.Id">@supplier.BusinessName · @supplier.Nit</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => _form.SupplierId" />
+                </div>
+
+                <div class="field">
+                    <label for="order-date">Fecha de la orden</label>
+                    <InputDate id="order-date" class="input" @bind-Value="_form.OrderDate" />
+                    <ValidationMessage For="() => _form.OrderDate" />
+                </div>
+
+                <div class="field">
+                    <label>Tienda</label>
+                    <input class="input" value="@CurrentUser.StoreName" readonly />
+                </div>
+            </div>
+
+            @if (!_suppliers.Any())
+            {
+                <div class="alert alert-warning" role="note">
+                    No hay proveedores activos. Registra uno antes de crear la orden.
+                </div>
+            }
+        </div>
+
+        <div class="form-section">
+            <h2>Líneas de la orden</h2>
+            <p class="card-subtitle">
+                El costo unitario es el valor de compra negociado con el proveedor.
+            </p>
+
+            @if (_suggestions.Count > 0)
+            {
+                <div class="alert alert-info" role="status">
+                    Hay @_suggestions.Count productos por debajo del mínimo. Usa la sugerencia para
+                    precargar una propuesta de reposición.
+                </div>
+            }
+
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="num">Cantidad</th>
+                            <th class="num">Costo unitario</th>
+                            <th class="num">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _form.Lines)
+                        {
+                            <tr>
+                                <td>
+                                    <select class="input"
+                                            aria-label="Producto"
+                                            value="@line.ProductSku"
+                                            @onchange="args => OnProductChanged(line, args)">
+                                        <option value="">Selecciona un producto</option>
+                                        @foreach (var product in _products)
+                                        {
+                                            <option value="@product.Sku">@product.Sku · @product.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td class="num">
+                                    <InputNumber class="input" @bind-Value="line.Quantity" />
+                                </td>
+                                <td class="num">
+                                    <InputNumber class="input" @bind-Value="line.UnitCost" />
+                                </td>
+                                <td class="num">@Formatters.Money(line.Quantity * line.UnitCost)</td>
+                                <td>
+                                    <button type="button"
+                                            class="button button-secondary button-small"
+                                            @onclick="() => RemoveLine(line)">
+                                        Quitar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button-secondary" @onclick="AddLine">
+                    + Agregar línea
+                </button>
+                @if (AccessControl.Has(Permissions.PurchasingOrdersCreate))
+                {
+                    <button type="button" class="button button-secondary" @onclick="Suggest">
+                        Sugerir reposición por stock bajo
+                    </button>
+                }
+                <strong>Total: @Formatters.Money(Total)</strong>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a class="button button-secondary" href="compras/ordenes">Cancelar</a>
+            <button type="submit" class="button button-primary">Crear orden en borrador</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Inject]
+    private IAccessControl AccessControl { get; set; } = default!;
+
+    private OrderForm? _form;
+    private IReadOnlyList<SupplierRow> _suppliers = Array.Empty<SupplierRow>();
+    private IReadOnlyList<ProductListItem> _products = Array.Empty<ProductListItem>();
+    private IReadOnlyList<ReorderSuggestion> _suggestions = Array.Empty<ReorderSuggestion>();
+    private string? _error;
+    private string? _success;
+
+    private decimal Total => _form?.Lines.Sum(line => line.Quantity * line.UnitCost) ?? 0m;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _suppliers = SupplierService.List()
+                .Where(supplier => supplier.Active)
+                .OrderBy(supplier => supplier.BusinessName)
+                .ToList();
+            _products = ProductQuery.Search(null)
+                .OrderBy(product => product.Name)
+                .ToList();
+
+            var storeId = CurrentUser.StoreId ?? 0;
+            _suggestions = storeId > 0
+                ? PurchaseOrderService.SuggestReorder(storeId)
+                : Array.Empty<ReorderSuggestion>();
+
+            _form = new OrderForm
+            {
+                OrderDate = DateTime.Today,
+                Lines = new List<OrderLineForm> { new() }
+            };
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void AddLine() => _form?.Lines.Add(new OrderLineForm());
+
+    private void RemoveLine(OrderLineForm line)
+    {
+        if (_form is null)
+            return;
+
+        _form.Lines.Remove(line);
+
+        if (_form.Lines.Count == 0)
+            _form.Lines.Add(new OrderLineForm());
+    }
+
+    private void OnProductChanged(OrderLineForm line, ChangeEventArgs args)
+    {
+        line.ProductSku = args.Value?.ToString() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(line.ProductSku))
+            return;
+
+        var product = _products.FirstOrDefault(item => item.Sku == line.ProductSku);
+        if (product is not null && line.UnitCost <= 0m)
+            line.UnitCost = product.SalePrice;
+    }
+
+    private void Suggest()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            var storeId = CurrentUser.StoreId ?? 0;
+            var suggestions = PurchaseOrderService.SuggestReorder(storeId).ToList();
+
+            if (suggestions.Count == 0)
+            {
+                _success = "No hay productos por debajo del mínimo en este momento.";
+                return;
+            }
+
+            _form!.Lines = suggestions.Select(suggestion => new OrderLineForm
+            {
+                ProductSku = suggestion.Sku,
+                Quantity = suggestion.SuggestedQuantity,
+                UnitCost = suggestion.ReferenceUnitCost
+            }).ToList();
+
+            _success = $"Se precargaron {suggestions.Count} líneas con la reposición sugerida.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+        _success = null;
+
+        if (_form is null)
+            return;
+
+        if (_form.SupplierId <= 0)
+        {
+            _error = "Selecciona un proveedor para la orden.";
+            return;
+        }
+
+        var lines = _form.Lines
+            .Where(line => !string.IsNullOrWhiteSpace(line.ProductSku))
+            .Select(line => new CreatePurchaseOrderLine(line.ProductSku, line.Quantity, line.UnitCost))
+            .ToList();
+
+        if (lines.Count == 0)
+        {
+            _error = "Agrega al menos una línea con producto, cantidad y costo.";
+            return;
+        }
+
+        try
+        {
+            var id = PurchaseOrderService.Create(new CreatePurchaseOrderRequest(
+                _form.SupplierId,
+                CurrentUser.StoreId ?? 0,
+                _form.OrderDate,
+                lines));
+
+            Navigation.NavigateTo($"compras/ordenes/{id}?creada=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private sealed class OrderForm
+    {
+        [Range(1, int.MaxValue, ErrorMessage = "Selecciona un proveedor.")]
+        public int SupplierId { get; set; }
+
+        [Required(ErrorMessage = "La fecha es obligatoria.")]
+        public DateTime OrderDate { get; set; } = DateTime.Today;
+
+        public List<OrderLineForm> Lines { get; set; } = new();
+    }
+
+    private sealed class OrderLineForm
+    {
+        public string ProductSku { get; set; } = string.Empty;
+
+        [Range(1, int.MaxValue, ErrorMessage = "La cantidad debe ser mayor que cero.")]
+        public int Quantity { get; set; } = 1;
+
+        [Range(1, double.MaxValue, ErrorMessage = "El costo debe ser mayor que cero.")]
+        public decimal UnitCost { get; set; }
+    }
+}
