@@ -1,0 +1,186 @@
+@page "/proveedores/ranking"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.PurchasingReportsView)]
+@using TiendaFlow.Application
+@inject SupplierService SupplierService
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Ranking de proveedores · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Compras / Proveedores"
+            Title="Ranking de proveedores"
+            Subtitle="Calificación, historial de órdenes y volumen comprado">
+    <Actions>
+        <a class="button button-secondary" href="proveedores">Volver a proveedores</a>
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_suppliers is null)
+{
+    <p class="muted">Cargando el ranking…</p>
+}
+else if (!_suppliers.Any())
+{
+    <EmptyState Title="Sin proveedores"
+                Message="Registra proveedores para poder evaluarlos y compararlos." />
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Proveedores"
+                 Value="@Formatters.Number(_suppliers.Count)"
+                 Hint="En el ranking"
+                 Tone="primary" />
+        <KpiCard Label="Calificación promedio"
+                 Value="@($"{_suppliers.Average(supplier => supplier.Rating):0} %")"
+                 Hint="Evaluación vigente"
+                 Tone="info" />
+        <KpiCard Label="Mejor calificado"
+                 Value="@_suppliers[0].BusinessName"
+                 Hint="@_suppliers[0].RatingLabel"
+                 Tone="ok" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Desempeño por proveedor</h2>
+                <p class="card-subtitle">
+                    La calificación es manual. La evaluación de puntualidad y calidad con datos de
+                    recepción queda documentada como pendiente en docs/final.
+                </p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="num">#</th>
+                        <th>Proveedor</th>
+                        <th>NIT</th>
+                        <th class="num">Calificación</th>
+                        <th class="num">Órdenes</th>
+                        <th class="num">Comprado</th>
+                        <th>Estado</th>
+                        @if (AccessControl.Has(Permissions.PurchasingEvaluationsManage))
+                        {
+                            <th class="actions">Evaluar</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var index = 0; index < _suppliers.Count; index++)
+                    {
+                        var supplier = _suppliers[index];
+                        <tr>
+                            <td class="num">@(index + 1)</td>
+                            <td>
+                                <span>@supplier.BusinessName</span>
+                                <span class="table-meta">@supplier.Address</span>
+                            </td>
+                            <td>@supplier.Nit</td>
+                            <td class="num">@supplier.RatingLabel</td>
+                            <td class="num">@Formatters.Number(supplier.OrderCount)</td>
+                            <td class="num">@Formatters.Money(supplier.PurchasedTotal)</td>
+                            <td>
+                                <StatusBadge Text="@(supplier.Active ? "Activo" : "Inactivo")"
+                                             Tone="@(supplier.Active ? "ok" : "neutral")" />
+                            </td>
+                            @if (AccessControl.Has(Permissions.PurchasingEvaluationsManage))
+                            {
+                                <td class="actions">
+                                    <div class="inline-form">
+                                        <input class="input"
+                                               type="number"
+                                               min="0"
+                                               max="100"
+                                               step="1"
+                                               aria-label="@($"Calificación de {supplier.BusinessName}")"
+                                               value="@RatingFor(supplier.Id)"
+                                               @onchange="args => SetRating(supplier.Id, args)" />
+                                        <button type="button"
+                                                class="button button-secondary button-small"
+                                                @onclick="() => Evaluate(supplier.Id)">
+                                            Guardar
+                                        </button>
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<SupplierRow>? _suppliers;
+    private readonly Dictionary<int, decimal> _ratings = new();
+    private string? _error;
+    private string? _success;
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _suppliers = SupplierService.Ranking();
+            _ratings.Clear();
+
+            foreach (var supplier in _suppliers)
+                _ratings[supplier.Id] = supplier.Rating;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private decimal RatingFor(int supplierId) =>
+        _ratings.TryGetValue(supplierId, out var rating) ? rating : 0m;
+
+    private void SetRating(int supplierId, ChangeEventArgs args)
+    {
+        _ratings[supplierId] = decimal.TryParse(args.Value?.ToString(), out var rating)
+            ? rating
+            : 0m;
+    }
+
+    private void Evaluate(int supplierId)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            SupplierService.Evaluate(supplierId, RatingFor(supplierId));
+            _success = "La calificación del proveedor se actualizó.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

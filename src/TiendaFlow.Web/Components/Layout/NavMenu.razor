@@ -146,6 +146,12 @@
                 Órdenes de compra
             </NavLink>
         }
+        @if (AccessControl.Has(Permissions.PurchasingReportsView))
+        {
+            <NavLink class="nav-item" href="proveedores/ranking" Match="NavLinkMatch.Prefix">
+                Ranking de proveedores
+            </NavLink>
+        }
     }
 
     @if (AccessControl.Has(Permissions.SalesInvoicesView))
