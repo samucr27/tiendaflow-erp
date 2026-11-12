@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TiendaFlow.Application;
+using TiendaFlow.Application.Reporting;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure.Persistence;
 
@@ -51,6 +52,8 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<InventoryDashboardService>();
         services.AddScoped<BusinessDashboardService>();
+        services.AddScoped<InventoryReportService>();
+        services.AddScoped<SalesReportService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<StockService>();
         services.AddScoped<ProductPriceService>();

@@ -27,6 +27,35 @@ public class FinalScreenAuthorizationTests
         Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
     }
 
+    [Theory]
+    [InlineData("Reportes/Inventario.razor", "/reportes/inventario", "InventoryReportsView")]
+    [InlineData("Reportes/Ventas.razor", "/reportes/ventas", "SalesReportsView")]
+    [InlineData("Reportes/Nomina.razor", "/reportes/nomina", "HrPayrollManage")]
+    public void ReportRoutesDeclareThePolicyOfTheMatrix(
+        string file,
+        string route,
+        string permission)
+    {
+        var source = ReadPage(file);
+
+        Assert.Contains($"@page \"{route}\"", source);
+        Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
+    }
+
+    [Fact]
+    public void MenuShowsReportsOnlyWithTheReportPermissions()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"reportes/inventario\"", menu);
+        Assert.Contains("href=\"reportes/ventas\"", menu);
+        Assert.Contains("href=\"reportes/nomina\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.InventoryReportsView)", menu);
+        Assert.Contains("AccessControl.Has(Permissions.SalesReportsView)", menu);
+        Assert.Contains("AccessControl.Has(Permissions.HrPayrollManage)", menu);
+    }
+
     [Fact]
     public void MenuShowsPurchaseOrdersOnlyWithTheViewPermission()
     {

@@ -1,0 +1,160 @@
+@page "/reportes/ventas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SalesReportsView)]
+@using TiendaFlow.Application.Reporting
+@using TiendaFlow.Domain
+@inject SalesReportService ReportService
+
+<PageTitle>Reporte de ventas · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Reportes"
+            Title="Reporte de ventas"
+            Subtitle="Facturas emitidas y anuladas en el rango de fechas seleccionado">
+    <Actions>
+        <a class="button button-primary" href="@ExportUrl">Exportar CSV</a>
+    </Actions>
+</PageHeader>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Rango del reporte</h2>
+            <p class="card-subtitle">Las fechas se interpretan en la zona horaria de la tienda.</p>
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="report-from">Desde</label>
+            <input id="report-from" class="input" type="date" @bind="_from" />
+        </div>
+        <div class="field">
+            <label for="report-to">Hasta</label>
+            <input id="report-to" class="input" type="date" @bind="_to" />
+        </div>
+        <div class="field">
+            <label>&nbsp;</label>
+            <button type="button" class="button button-secondary" @onclick="Load">Actualizar reporte</button>
+        </div>
+    </div>
+</section>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_report is null)
+{
+    <p class="muted">Cargando el reporte de ventas…</p>
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Facturas emitidas"
+                 Value="@Formatters.Number(_report.IssuedCount)"
+                 Hint="@($"{_report.FromDate:dd/MM/yyyy} a {_report.ToDate:dd/MM/yyyy}")"
+                 Tone="primary" />
+        <KpiCard Label="Total vendido"
+                 Value="@Formatters.Money(_report.IssuedTotal)"
+                 Hint="Sin facturas anuladas"
+                 Tone="ok" />
+        <KpiCard Label="Ticket promedio"
+                 Value="@Formatters.Money(_report.AverageTicket)"
+                 Hint="Por factura emitida"
+                 Tone="info" />
+        <KpiCard Label="Facturas anuladas"
+                 Value="@Formatters.Number(_report.CancelledCount)"
+                 Hint="No suman al total"
+                 Tone="alert" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Facturas del rango</h2>
+                <p class="card-subtitle">@_report.Invoices.Count facturas encontradas</p>
+            </div>
+        </div>
+
+        @if (_report.Invoices.Count == 0)
+        {
+            <EmptyState Title="Sin ventas en el rango"
+                        Message="No hay facturas emitidas entre las fechas seleccionadas." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Factura</th>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th>Documento</th>
+                            <th class="num">Líneas</th>
+                            <th class="num">Total</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var invoice in _report.Invoices)
+                        {
+                            <tr>
+                                <td>@($"FV-{invoice.Id:D5}")</td>
+                                <td>@Formatters.ShortDateTime(invoice.IssueDate)</td>
+                                <td>@invoice.CustomerName</td>
+                                <td>@invoice.CustomerDocument</td>
+                                <td class="num">@Formatters.Number(invoice.LineCount)</td>
+                                <td class="num">@Formatters.Money(invoice.Total)</td>
+                                <td>
+                                    <StatusBadge Text="@invoice.StatusLabel"
+                                                 Tone="@(invoice.Status == InvoiceStatus.Cancelled ? "danger" : "ok")" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private DateTime _from = DateTime.Today;
+    private DateTime _to = DateTime.Today;
+    private SalesReport? _report;
+    private string? _error;
+
+    private string ExportUrl =>
+        $"/reportes/ventas/export.csv?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}";
+
+    protected override void OnInitialized()
+    {
+        var today = LocalTime.ToLocal(DateTime.UtcNow).Date;
+        _from = new DateTime(today.Year, today.Month, 1);
+        _to = today;
+        Load();
+    }
+
+    private void Load()
+    {
+        _error = null;
+
+        if (_from.Date > _to.Date)
+        {
+            _error = "La fecha inicial no puede ser posterior a la fecha final.";
+            return;
+        }
+
+        try
+        {
+            _report = ReportService.Get(
+                DateOnly.FromDateTime(_from),
+                DateOnly.FromDateTime(_to));
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

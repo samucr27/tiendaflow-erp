@@ -1,0 +1,135 @@
+@page "/reportes/inventario"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryReportsView)]
+@using TiendaFlow.Application.Reporting
+@inject InventoryReportService ReportService
+@inject ICurrentUser CurrentUser
+
+<PageTitle>Reporte de inventario · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Reportes"
+            Title="Reporte de inventario"
+            Subtitle="@($"Existencias y valor del inventario de {CurrentUser.StoreName}")">
+    <Actions>
+        <a class="button button-primary" href="/reportes/inventario/export.csv">Exportar CSV</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_report is null)
+{
+    <p class="muted">Cargando el reporte de inventario…</p>
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Productos con stock"
+                 Value="@Formatters.Number(_report.Rows.Count)"
+                 Hint="En esta tienda"
+                 Tone="primary" />
+        <KpiCard Label="Unidades disponibles"
+                 Value="@Formatters.Quantity(_report.UnitsInStock)"
+                 Hint="Suma de existencias"
+                 Tone="info" />
+        <KpiCard Label="Valor del inventario"
+                 Value="@Formatters.Money(_report.StockValue)"
+                 Hint="A precio de venta"
+                 Tone="neutral" />
+        <KpiCard Label="Bajo mínimo"
+                 Value="@Formatters.Number(_report.LowStockCount)"
+                 Hint="Productos a reponer"
+                 Tone="alert" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Detalle por producto</h2>
+                <p class="card-subtitle">El archivo CSV incluye las mismas columnas y totales.</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   aria-label="Buscar productos"
+                   placeholder="Buscar por nombre o SKU"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (!FilteredRows.Any())
+        {
+            <EmptyState Title="Sin resultados"
+                        Message="No encontramos productos con ese nombre o SKU." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Ubicación</th>
+                            <th class="num">Stock</th>
+                            <th class="num">Mínimo</th>
+                            <th class="num">Precio</th>
+                            <th class="num">Valor</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in FilteredRows)
+                        {
+                            <tr>
+                                <td>
+                                    <span>@row.ProductName</span>
+                                    <span class="table-meta">@row.Sku</span>
+                                </td>
+                                <td>@row.Location</td>
+                                <td class="num">@Formatters.Quantity(row.QuantityAvailable)</td>
+                                <td class="num">@Formatters.Quantity(row.MinStock)</td>
+                                <td class="num">@Formatters.Money(row.SalePrice)</td>
+                                <td class="num">@Formatters.Money(row.StockValue)</td>
+                                <td>
+                                    <StatusBadge Text="@row.Status" Tone="@Tone(row)" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private InventoryReport? _report;
+    private string _search = string.Empty;
+    private string? _error;
+
+    private IEnumerable<InventoryReportRow> FilteredRows =>
+        _report is null
+            ? []
+            : _report.Rows.Where(row =>
+                string.IsNullOrWhiteSpace(_search)
+                || row.ProductName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || row.Sku.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _report = ReportService.Get(CurrentUser.StoreId ?? 0);
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static string Tone(InventoryReportRow row) =>
+        row.QuantityAvailable == 0 ? "danger"
+        : row.IsBelowMinimum ? "warning"
+        : "ok";
+}

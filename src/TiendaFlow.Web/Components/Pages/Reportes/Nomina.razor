@@ -1,0 +1,159 @@
+@page "/reportes/nomina"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrPayrollManage)]
+@using TiendaFlow.Application.Payroll
+@inject PayrollRunService PayrollRunService
+@inject NavigationManager Navigation
+
+<PageTitle>Reporte de nómina · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Reportes"
+            Title="Reporte de nómina"
+            Subtitle="Cálculo del mes para los empleados activos, listo para exportar">
+    <Actions>
+        @if (_run is not null)
+        {
+            <a class="button button-primary"
+               href="@($"/reportes/nomina/export.csv?days={_daysWorked}&risk={_riskClass}")">
+                Exportar CSV
+            </a>
+        }
+    </Actions>
+</PageHeader>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Datos de la corrida</h2>
+            <p class="card-subtitle">Se calculan únicamente los empleados activos.</p>
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="report-days">Días trabajados</label>
+            <input id="report-days" class="input" type="number" min="1" max="30" @bind="_daysWorked" />
+        </div>
+        <div class="field">
+            <label for="report-risk">Clase de riesgo ARL</label>
+            <input id="report-risk" class="input" type="number" min="1" max="5" @bind="_riskClass" />
+        </div>
+        <div class="field">
+            <label>&nbsp;</label>
+            <button type="button" class="button button-secondary" @onclick="Calculate">Calcular nómina</button>
+        </div>
+    </div>
+</section>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_run is null)
+{
+    <p class="muted">Calculando la nómina…</p>
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Empleados calculados"
+                 Value="@Formatters.Number(_run.CalculatedCount)"
+                 Hint="@($"{_run.DaysWorked} días, riesgo {_run.RiskClass}")"
+                 Tone="primary" />
+        <KpiCard Label="Total devengado"
+                 Value="@Formatters.Money(_run.TotalGrossEarnings)"
+                 Hint="Salarios, subsidios y extras"
+                 Tone="info" />
+        <KpiCard Label="Neto a pagar"
+                 Value="@Formatters.Money(_run.TotalNetPay)"
+                 Hint="Después de deducciones"
+                 Tone="ok" />
+        <KpiCard Label="Costo del empleador"
+                 Value="@Formatters.Money(_run.TotalEmployerCost)"
+                 Hint="Aportes y provisiones incluidos"
+                 Tone="neutral" />
+    </div>
+
+    @if (_run.ProblemCount > 0)
+    {
+        <div class="alert alert-warning" role="note">
+            @_run.ProblemCount empleados tienen datos incompletos y aparecen sin valores en el reporte.
+        </div>
+    }
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Detalle por empleado</h2>
+                <p class="card-subtitle">@_run.Lines.Count empleados activos en la corrida</p>
+            </div>
+        </div>
+
+        @if (_run.Lines.Count == 0)
+        {
+            <EmptyState Title="Sin empleados activos"
+                        Message="Registra empleados activos para calcular la nómina." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Cargo</th>
+                            <th>Contrato</th>
+                            <th class="num">Devengado</th>
+                            <th class="num">Deducciones</th>
+                            <th class="num">Neto</th>
+                            <th class="num">Costo empleador</th>
+                            <th>Observación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _run.Lines)
+                        {
+                            <tr>
+                                <td>@line.Name</td>
+                                <td>@line.Position</td>
+                                <td>@line.ContractLabel</td>
+                                <td class="num">@Formatters.Money(line.Result?.GrossEarnings ?? 0m)</td>
+                                <td class="num">@Formatters.Money(line.Result?.TotalDeductions ?? 0m)</td>
+                                <td class="num">@Formatters.Money(line.Result?.NetPay ?? 0m)</td>
+                                <td class="num">@Formatters.Money(line.Result?.TotalEmployerCost ?? 0m)</td>
+                                <td>@(line.Problem ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private int _daysWorked = 30;
+    private int _riskClass = 1;
+    private PayrollRun? _run;
+    private string? _error;
+
+    protected override void OnInitialized() => Calculate();
+
+    private void Calculate()
+    {
+        _error = null;
+
+        try
+        {
+            _run = PayrollRunService.Calculate(_daysWorked, _riskClass);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

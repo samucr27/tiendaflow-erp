@@ -15,6 +15,7 @@ using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure;
 using TiendaFlow.Infrastructure.Persistence;
 using TiendaFlow.Web.Components;
+using TiendaFlow.Web.Endpoints;
 using TiendaFlow.Web.Persistence;
 using TiendaFlow.Web.Security;
 
@@ -216,6 +217,8 @@ app.MapPost("/api/nomina/calculate", (PayrollInput input, IPayrollEngine engine)
 // Liveness/readiness probe for App Service. It returns 503 when the database
 // is unreachable so a bad deployment is visible in the platform health check.
 app.MapGet("/healthz", HealthCheckAsync).AllowAnonymous();
+
+app.MapReportEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

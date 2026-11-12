@@ -58,6 +58,32 @@
         }
     }
 
+    @if (AccessControl.Has(Permissions.InventoryReportsView)
+         || AccessControl.Has(Permissions.SalesReportsView)
+         || AccessControl.Has(Permissions.HrPayrollManage))
+    {
+        <p class="nav-section">Reportes</p>
+
+        @if (AccessControl.Has(Permissions.InventoryReportsView))
+        {
+            <NavLink class="nav-item" href="reportes/inventario" Match="NavLinkMatch.Prefix">
+                Inventario
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SalesReportsView))
+        {
+            <NavLink class="nav-item" href="reportes/ventas" Match="NavLinkMatch.Prefix">
+                Ventas
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrPayrollManage))
+        {
+            <NavLink class="nav-item" href="reportes/nomina" Match="NavLinkMatch.Prefix">
+                Nómina
+            </NavLink>
+        }
+    }
+
     @if (AccessControl.Has(Permissions.SecurityUsersView)
          || AccessControl.Has(Permissions.SecurityRolesView)
          || AccessControl.Has(Permissions.SecurityAuditView))
