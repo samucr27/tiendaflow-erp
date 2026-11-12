@@ -72,6 +72,16 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("AccessControl.Has(Permissions.CrmReportsView)", menu);
     }
 
+    [Fact]
+    public void InvoicesPageOffersTheSimulatedXmlAndWarnsItIsNotDian()
+    {
+        var source = ReadPage(Path.Combine("Facturacion", "Facturas.razor"));
+
+        Assert.Contains("XML simulado", source);
+        Assert.Contains("facturacion/{invoice.Id}/xml", source);
+        Assert.Contains("no es válido ante la DIAN", source);
+    }
+
     private static string ReadPage(string file) =>
         File.ReadAllText(Path.Combine(
             RepoRoot, "src", "TiendaFlow.Web", "Components", "Pages", file));

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TiendaFlow.Application;
 using TiendaFlow.Application.Crm;
+using TiendaFlow.Application.Invoicing;
 using TiendaFlow.Application.Reporting;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure.Persistence;
@@ -56,6 +57,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<InventoryReportService>();
         services.AddScoped<SalesReportService>();
         services.AddScoped<CustomerSegmentationService>();
+        services.AddSingleton<IElectronicInvoiceGateway, SimulatedElectronicInvoiceGateway>();
+        services.AddScoped<ElectronicInvoiceService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<StockService>();
         services.AddScoped<ProductPriceService>();

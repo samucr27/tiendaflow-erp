@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using TiendaFlow.Application;
+using TiendaFlow.Application.Invoicing;
 using TiendaFlow.Application.Payroll;
 using TiendaFlow.Application.Reporting;
 using TiendaFlow.Application.Security;
@@ -79,6 +80,32 @@ public static class ReportEndpoints
                 return Results.BadRequest(new { error = exception.Message });
             }
         }).RequireAuthorization(Permissions.HrPayrollManage);
+
+        app.MapGet("/facturacion/{id:int}/xml", (
+            int id,
+            ElectronicInvoiceService electronicInvoices) =>
+        {
+            try
+            {
+                var document = electronicInvoices.Generate(id);
+                return Results.File(
+                    Encoding.UTF8.GetBytes(document.Xml),
+                    "application/xml; charset=utf-8",
+                    $"{document.InvoiceNumber}-simulada.xml");
+            }
+            catch (AccessDeniedException)
+            {
+                return Results.Forbid();
+            }
+            catch (InvoiceNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (InvalidInvoiceException)
+            {
+                return Results.BadRequest(new { error = "Una factura anulada no se puede exportar." });
+            }
+        }).RequireAuthorization(Permissions.SalesInvoicesView);
 
         return app;
     }

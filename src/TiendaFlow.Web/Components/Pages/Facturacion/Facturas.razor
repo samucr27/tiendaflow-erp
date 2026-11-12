@@ -40,6 +40,12 @@ else if (!_invoices.Any())
 }
 else
 {
+    <div class="alert alert-info" role="note">
+        El XML electrónico es una simulación académica con un resumen SHA-256: no tiene CUFE
+        ni firma certificada y no es válido ante la DIAN. Una integración real requeriría un
+        proveedor autorizado.
+    </div>
+
     <section class="card">
         <div class="card-header">
             <div>
@@ -88,6 +94,13 @@ else
                                    href="@($"facturacion/{invoice.Id}")">
                                     @(invoice.Status == InvoiceStatus.Issued ? "Editar" : "Ver")
                                 </a>
+                                @if (invoice.Status == InvoiceStatus.Issued)
+                                {
+                                    <a class="button button-secondary button-small"
+                                       href="@($"facturacion/{invoice.Id}/xml")">
+                                        XML simulado
+                                    </a>
+                                }
                                 @if (invoice.Status == InvoiceStatus.Issued
                                      && AccessControl.Has(Permissions.SalesInvoicesManage))
                                 {
