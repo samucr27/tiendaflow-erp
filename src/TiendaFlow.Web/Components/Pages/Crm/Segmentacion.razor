@@ -1,0 +1,143 @@
+@page "/crm/segmentacion"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmReportsView)]
+@using TiendaFlow.Application.Crm
+@inject CustomerSegmentationService SegmentationService
+
+<PageTitle>Segmentación de clientes · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="Segmentación de clientes"
+            Subtitle="Clasificación A, B y C por volumen de compra y frecuencia">
+    <Actions>
+        <a class="button button-secondary" href="crm/clientes">Volver a clientes</a>
+    </Actions>
+</PageHeader>
+
+<div class="alert alert-info" role="note">
+    Regla de referencia: los clientes con compras se ordenan de mayor a menor valor facturado.
+    El 20 % superior es A, el 30 % siguiente es B y el resto es C. Los clientes sin compras
+    quedan en C. Es una regla académica, no una política comercial validada.
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_segmentation is null)
+{
+    <p class="muted">Calculando la segmentación…</p>
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Segmento A"
+                 Value="@Formatters.Number(_segmentation.CountA)"
+                 Hint="Mayor volumen de compra"
+                 Tone="ok" />
+        <KpiCard Label="Segmento B"
+                 Value="@Formatters.Number(_segmentation.CountB)"
+                 Hint="Volumen medio"
+                 Tone="info" />
+        <KpiCard Label="Segmento C"
+                 Value="@Formatters.Number(_segmentation.CountC)"
+                 Hint="Bajo volumen o sin compras"
+                 Tone="neutral" />
+        <KpiCard Label="Facturado a clientes"
+                 Value="@Formatters.Money(_segmentation.TotalPurchased)"
+                 Hint="Sin facturas anuladas"
+                 Tone="primary" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Clientes por segmento</h2>
+                <p class="card-subtitle">@_segmentation.Rows.Count clientes registrados</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   aria-label="Buscar clientes"
+                   placeholder="Buscar por nombre o documento"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (!FilteredRows.Any())
+        {
+            <EmptyState Title="Sin resultados"
+                        Message="No encontramos clientes con ese nombre o documento." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Segmento</th>
+                            <th>Cliente</th>
+                            <th>Documento</th>
+                            <th class="num">Facturas</th>
+                            <th class="num">Total comprado</th>
+                            <th class="num">Ticket promedio</th>
+                            <th>Última compra</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in FilteredRows)
+                        {
+                            <tr>
+                                <td>
+                                    <StatusBadge Text="@row.Segment.ToString()" Tone="@Tone(row.Segment)" />
+                                </td>
+                                <td>@row.FullName</td>
+                                <td>@row.DocumentNumber</td>
+                                <td class="num">@Formatters.Number(row.InvoiceCount)</td>
+                                <td class="num">@Formatters.Money(row.TotalPurchased)</td>
+                                <td class="num">@Formatters.Money(row.AverageTicket)</td>
+                                <td>
+                                    @(row.LastPurchaseDate is null
+                                        ? "Sin compras"
+                                        : Formatters.ShortDate(row.LastPurchaseDate.Value))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private CustomerSegmentation? _segmentation;
+    private string _search = string.Empty;
+    private string? _error;
+
+    private IEnumerable<CustomerSegmentRow> FilteredRows =>
+        _segmentation is null
+            ? []
+            : _segmentation.Rows.Where(row =>
+                string.IsNullOrWhiteSpace(_search)
+                || row.FullName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || row.DocumentNumber.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _segmentation = SegmentationService.Get();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static string Tone(CustomerSegment segment) => segment switch
+    {
+        CustomerSegment.A => "ok",
+        CustomerSegment.B => "info",
+        _ => "neutral"
+    };
+}

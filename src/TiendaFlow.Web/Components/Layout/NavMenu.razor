@@ -163,13 +163,23 @@
         </NavLink>
     }
 
-    @if (AccessControl.Has(Permissions.CrmCustomersView))
+    @if (AccessControl.Has(Permissions.CrmCustomersView)
+         || AccessControl.Has(Permissions.CrmReportsView))
     {
         <p class="nav-section">CRM</p>
 
-        <NavLink class="nav-item" href="crm/clientes" Match="NavLinkMatch.Prefix">
-            Clientes
-        </NavLink>
+        @if (AccessControl.Has(Permissions.CrmCustomersView))
+        {
+            <NavLink class="nav-item" href="crm/clientes" Match="NavLinkMatch.Prefix">
+                Clientes
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.CrmReportsView))
+        {
+            <NavLink class="nav-item" href="crm/segmentacion" Match="NavLinkMatch.Prefix">
+                Segmentación
+            </NavLink>
+        }
     }
 </nav>
 

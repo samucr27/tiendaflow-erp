@@ -17,6 +17,7 @@ public class FinalScreenAuthorizationTests
     [InlineData("Compras/OrdenForm.razor", "/compras/ordenes/nueva", "PurchasingOrdersCreate")]
     [InlineData("Compras/OrdenDetalle.razor", "/compras/ordenes/{Id:int}", "PurchasingOrdersView")]
     [InlineData("Proveedores/Ranking.razor", "/proveedores/ranking", "PurchasingReportsView")]
+    [InlineData("Crm/Segmentacion.razor", "/crm/segmentacion", "CrmReportsView")]
     public void PurchasingRoutesDeclareThePolicyOfTheMatrix(
         string file,
         string route,
@@ -67,6 +68,8 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("AccessControl.Has(Permissions.PurchasingOrdersView)", menu);
         Assert.Contains("href=\"proveedores/ranking\"", menu);
         Assert.Contains("AccessControl.Has(Permissions.PurchasingReportsView)", menu);
+        Assert.Contains("href=\"crm/segmentacion\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.CrmReportsView)", menu);
     }
 
     private static string ReadPage(string file) =>
