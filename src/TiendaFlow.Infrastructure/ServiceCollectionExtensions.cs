@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IClock, SystemClock>();
 
         services.AddScoped<InventoryDashboardService>();
+        services.AddScoped<BusinessDashboardService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<StockService>();
         services.AddScoped<ProductPriceService>();

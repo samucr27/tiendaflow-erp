@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Permissions.InventoryStockView)]
 @inject InventoryDashboardService DashboardService
+@inject BusinessDashboardService BusinessDashboardService
 @inject ICurrentUser CurrentUser
 @inject IAccessControl AccessControl
 
@@ -34,6 +35,41 @@ else if (_dashboard is null)
 }
 else
 {
+    @if (_business is not null && (_business.CanViewSales || _business.CanViewPurchasing))
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Resumen del negocio</h2>
+                    <p class="card-subtitle">
+                        Indicadores de hoy para @CurrentUser.StoreName y las órdenes de compra en curso.
+                    </p>
+                </div>
+            </div>
+
+            <div class="kpi-grid">
+                @if (_business.CanViewSales)
+                {
+                    <KpiCard Label="Ventas de hoy"
+                             Value="@Formatters.Money(_business.SalesTodayTotal)"
+                             Hint="@($"{Formatters.Number(_business.SalesTodayCount)} facturas emitidas")"
+                             Tone="ok" />
+                }
+                @if (_business.CanViewPurchasing)
+                {
+                    <KpiCard Label="Órdenes abiertas"
+                             Value="@Formatters.Number(_business.OpenPurchaseOrders)"
+                             Hint="@Formatters.Money(_business.OpenPurchaseOrdersValue)"
+                             Tone="primary" />
+                    <KpiCard Label="Por aprobar"
+                             Value="@Formatters.Number(_business.PurchaseOrdersPendingApproval)"
+                             Hint="Borradores y en aprobación"
+                             Tone="info" />
+                }
+            </div>
+        </section>
+    }
+
     <div class="kpi-grid">
         <KpiCard Label="Productos en catálogo"
                  Value="@Formatters.Number(_dashboard.ProductCount)"
@@ -174,6 +210,7 @@ else
 
 @code {
     private InventoryDashboard? _dashboard;
+    private BusinessDashboard? _business;
     private string _search = string.Empty;
     private string? _error;
 
@@ -190,6 +227,7 @@ else
         try
         {
             _dashboard = DashboardService.Get(CurrentUser.StoreId ?? 0);
+            _business = BusinessDashboardService.Get(DateTime.UtcNow);
         }
         catch (Exception exception)
         {
