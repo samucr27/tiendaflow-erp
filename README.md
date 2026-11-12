@@ -96,10 +96,12 @@ Todos usan el dominio `@tiendaflow.local`. Las contraseñas no se documentan aqu
 | Módulo | Rutas | Permiso de lectura | Permiso de escritura |
 |---|---|---|---|
 | Inventario | `/inventario`, `/inventario/productos`, `/inventario/alertas` | `inventory.stock.view`, `inventory.products.view` | `inventory.products.manage`, `inventory.stock.*` |
+| Reportes | `/reportes/inventario`, `/reportes/ventas`, `/reportes/nomina` | `inventory.reports.view`, `sales.reports.view`, `hr.payroll.manage` | — |
 | Nómina y empleados | `/rrhh/empleados`, `/rrhh/nomina` | `hr.employees.view`, `hr.payroll.manage` | `hr.employees.manage`, `hr.payroll.manage` |
-| Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/{id}` | `purchasing.suppliers.view` | `purchasing.suppliers.manage` |
-| Facturación | `/facturacion`, `/facturacion/nueva`, `/facturacion/{id}` | `sales.invoices.view` | `sales.invoices.manage` |
-| CRM clientes | `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id}` | `crm.customers.view` | `crm.customers.manage` |
+| Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/{id}`, `/proveedores/ranking` | `purchasing.suppliers.view`, `purchasing.reports.view` | `purchasing.suppliers.manage`, `purchasing.evaluations.manage` |
+| Compras | `/compras/ordenes`, `/compras/ordenes/nueva`, `/compras/ordenes/{id}` | `purchasing.orders.view` | `purchasing.orders.*` |
+| Facturación | `/facturacion`, `/facturacion/nueva`, `/facturacion/{id}`, `/facturacion/{id}/xml` | `sales.invoices.view` | `sales.invoices.manage` |
+| CRM clientes | `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id}`, `/crm/segmentacion` | `crm.customers.view`, `crm.reports.view` | `crm.customers.manage` |
 | Seguridad | `/seguridad/usuarios`, `/seguridad/roles`, `/seguridad/auditoria` | `security.*.view` | `security.*.manage` |
 
 El detalle de qué rol tiene cada permiso está en `docs/arc42/10-architecture-concepts-security.md` y en `src/TiendaFlow.Application/Security/RolePermissions.cs`.
@@ -145,7 +147,15 @@ Si no tienes `reportgenerator`, instálalo con `dotnet tool install -g dotnet-re
 
 ## Infraestructura como código
 
-`infra/terraform/main.tf` usa estado remoto en HCP Terraform (organización `Tienda-Flow`, workspace `tiendaflow-infra`) y `.github/workflows/terraform-plan.yml` ejecuta `init`, `validate` y `plan` en pull requests a `develop` que modifican archivos `.tf`. El job `plan` se ejecutó en verde en el PR de esta entrega. Todavía no hay `terraform apply`: el plan solo cubre el recurso de ejemplo `random_pet`, no infraestructura real.
+`infra/terraform/main.tf` crea un App Service Linux B1, Azure SQL Basic, las
+reglas de firewall y un sufijo aleatorio para los nombres, usando estado remoto
+del workspace `Tienda-Flow/tiendaflow-infra` en modo local. El flujo
+`.github/workflows/terraform-plan.yml` es solo de validación (`fmt -check`,
+`init -backend=false` y `validate`), porque GitHub no tiene credenciales de
+Azure. El `apply` se ejecuta en tu máquina con `az login`; el despliegue manual
+con `dotnet publish`, zip y `az webapp deploy` está descrito en
+[docs/final/deploy-azure.md](docs/final/deploy-azure.md). La vía secundaria de
+GitHub usa el perfil de publicación como secreto `AZURE_WEBAPP_PUBLISH_PROFILE`.
 
 ## Estructura del repositorio
 
@@ -167,6 +177,7 @@ infra/                        Infraestructura como código (Terraform)
 ## Documentación
 
 - [arc42](docs/arc42): vista de bloques, despliegue y conceptos de seguridad.
+- [Final](docs/final): módulos implementados, permisos, pendientes, pruebas, base de datos y guía de Azure.
 - [Notion](docs/notion): versión para Notion de los mismos documentos.
 - [Sprint 2](docs/sprint2): planeación, guion de demo, guion del tour de arquitectura, flujo de Terraform, revisión de código, validación de parámetros de nómina, revisión de la UI de RR. HH., prueba de humo de autorización, retrospectiva y preguntas abiertas.
 - [Diagramas UML](docs/uml): secuencias de la corrida de nómina.
