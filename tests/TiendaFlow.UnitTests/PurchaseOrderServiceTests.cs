@@ -9,9 +9,11 @@ namespace TiendaFlow.UnitTests;
 public class PurchaseOrderServiceTests
 {
     private static readonly DateTime Date = new(2026, 11, 7, 15, 0, 0, DateTimeKind.Utc);
+    private static readonly DateOnly ReceivedOn = new(2026, 11, 7);
 
     private readonly Mock<IPurchaseOrderRepository> _orders = new();
     private readonly Mock<ISupplierRepository> _suppliers = new();
+    private readonly Mock<IProductSupplierRepository> _productSuppliers = new();
     private readonly Mock<IStockQuery> _stockQuery = new();
     private readonly Mock<IStockRepository> _stockRepository = new();
     private readonly RecordingUnitOfWork _unitOfWork = new();
@@ -22,6 +24,7 @@ public class PurchaseOrderServiceTests
         new(
             _orders.Object,
             _suppliers.Object,
+            _productSuppliers.Object,
             _stockQuery.Object,
             new StockService(_stockRepository.Object, new AllowAllAccessControl()),
             _unitOfWork,
@@ -260,7 +263,7 @@ public class PurchaseOrderServiceTests
         var stock = new StockItem("SKU-1", 1, 5, "Aisle 3");
         _stockRepository.Setup(r => r.Get(1, "SKU-1")).Returns(stock);
 
-        CreateService().Receive(7, new[] { new ReceivePurchaseOrderLine("SKU-1", 4) }, Date);
+        CreateService().Receive(7, new[] { new ReceivePurchaseOrderLine("SKU-1", 4) }, ReceivedOn);
 
         Assert.Equal(9, stock.QuantityAvailable);
         Assert.Equal(PurchaseOrderStatus.PartiallyReceived, order.Status);
@@ -286,7 +289,7 @@ public class PurchaseOrderServiceTests
                 new ReceivePurchaseOrderLine("SKU-1", 10),
                 new ReceivePurchaseOrderLine("SKU-2", 5)
             },
-            Date);
+            ReceivedOn);
 
         Assert.Equal(PurchaseOrderStatus.Received, order.Status);
         Assert.Contains("15 unidades", _audit.Entries.Single().Detail);
@@ -297,7 +300,7 @@ public class PurchaseOrderServiceTests
     {
         GivenOrder(Send);
 
-        CreateService().Receive(7, new[] { new ReceivePurchaseOrderLine("SKU-1", 4) }, Date);
+        CreateService().Receive(7, new[] { new ReceivePurchaseOrderLine("SKU-1", 4) }, ReceivedOn);
 
         _stockRepository.Verify(
             r => r.Add(It.Is<StockItem>(item =>
@@ -314,7 +317,7 @@ public class PurchaseOrderServiceTests
         GivenOrder(Send);
 
         Assert.Throws<InvalidPurchaseOrderException>(
-            () => CreateService().Receive(7, Array.Empty<ReceivePurchaseOrderLine>(), Date));
+            () => CreateService().Receive(7, Array.Empty<ReceivePurchaseOrderLine>(), ReceivedOn));
 
         Assert.Equal(0, _unitOfWork.Executions);
     }
@@ -325,7 +328,7 @@ public class PurchaseOrderServiceTests
         Assert.Throws<PurchaseOrderNotFoundException>(() => CreateService().Receive(
             99,
             new[] { new ReceivePurchaseOrderLine("SKU-1", 1) },
-            Date));
+            ReceivedOn));
     }
 
     [Fact]
@@ -336,7 +339,7 @@ public class PurchaseOrderServiceTests
         Assert.Throws<InvalidPurchaseOrderException>(() => CreateService().Receive(
             7,
             new[] { new ReceivePurchaseOrderLine("SKU-1", 1) },
-            Date));
+            ReceivedOn));
 
         _stockRepository.Verify(r => r.Update(It.IsAny<StockItem>()), Times.Never);
         _stockRepository.Verify(r => r.Add(It.IsAny<StockItem>()), Times.Never);
@@ -352,9 +355,83 @@ public class PurchaseOrderServiceTests
         var exception = Assert.Throws<AccessDeniedException>(() => CreateRestrictedService().Receive(
             7,
             new[] { new ReceivePurchaseOrderLine("SKU-1", 1) },
-            Date));
+            ReceivedOn));
 
         Assert.Equal(Permissions.PurchasingOrdersReceive, exception.Permission);
+    }
+
+    [Fact]
+    public void Create_WithPromisedDate_StoresItAndKeepsTheOrderInDraft()
+    {
+        _suppliers.Setup(r => r.GetById(5)).Returns(new Supplier(5, "900123", "Andina", "Calle 1"));
+        PurchaseOrder? added = null;
+        _orders.Setup(o => o.Add(It.IsAny<PurchaseOrder>())).Callback<PurchaseOrder>(o => added = o);
+        var promised = new DateOnly(2026, 11, 20);
+
+        CreateService().Create(new CreatePurchaseOrderRequest(
+            5,
+            1,
+            Date,
+            new[] { new CreatePurchaseOrderLine("SKU-1", 10, 1000m) },
+            promised));
+
+        Assert.NotNull(added);
+        Assert.Equal(promised, added!.PromisedDate);
+        Assert.Equal(PurchaseOrderStatus.Draft, added.Status);
+    }
+
+    [Fact]
+    public void Receive_RecordsTheReceiptDateAndTheLastCostOfTheRelation()
+    {
+        var order = GivenOrder(Send);
+        var relation = new ProductSupplier("SKU-1", 5, 800m);
+        _stockRepository.Setup(r => r.Get(1, "SKU-1")).Returns(new StockItem("SKU-1", 1, 0, "A"));
+        _productSuppliers.Setup(r => r.Get("SKU-1", 5)).Returns(relation);
+
+        CreateService().Receive(
+            7,
+            new[] { new ReceivePurchaseOrderLine("SKU-1", 4) },
+            new DateOnly(2026, 11, 12));
+
+        Assert.Equal(new DateOnly(2026, 11, 12), order.ReceivedDate);
+        Assert.Equal(1000m, relation.LastCost);
+        Assert.False(relation.IsDefault);
+        _productSuppliers.Verify(r => r.Update(relation), Times.Once);
+        Assert.Contains("2026-11-12", _audit.Entries.Single().Detail);
+    }
+
+    [Fact]
+    public void Receive_WithoutAnExistingRelation_CreatesItWithTheOrderCost()
+    {
+        var order = GivenOrder(Send);
+        _stockRepository.Setup(r => r.Get(1, "SKU-1")).Returns(new StockItem("SKU-1", 1, 0, "A"));
+
+        CreateService().Receive(
+            7,
+            new[] { new ReceivePurchaseOrderLine("SKU-1", 4) },
+            ReceivedOn);
+
+        _productSuppliers.Verify(
+            r => r.Add(It.Is<ProductSupplier>(relation =>
+                relation.ProductSku == "SKU-1"
+                && relation.SupplierId == order.SupplierId
+                && relation.LastCost == 1000m
+                && !relation.IsDefault)),
+            Times.Once);
+    }
+
+    [Fact]
+    public void Receive_WithDefaultReceiptDate_ThrowsAndTouchesNothing()
+    {
+        GivenOrder(Send);
+
+        Assert.Throws<InvalidPurchaseOrderException>(() => CreateService().Receive(
+            7,
+            new[] { new ReceivePurchaseOrderLine("SKU-1", 1) },
+            default));
+
+        _orders.Verify(o => o.Update(It.IsAny<PurchaseOrder>()), Times.Never);
+        _stockRepository.Verify(r => r.Add(It.IsAny<StockItem>()), Times.Never);
     }
 
     private PurchaseOrderService CreateRestrictedService() =>

@@ -57,6 +57,8 @@ public sealed class EfPurchaseOrderQuery : IPurchaseOrderQuery
             order.StoreId,
             store != null ? store.Name : $"Tienda {order.StoreId}",
             order.OrderDate,
+            order.PromisedDate,
+            order.ReceivedDate,
             order.Status,
             order.Total,
             order.Lines.Count);

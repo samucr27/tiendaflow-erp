@@ -192,3 +192,26 @@ public class ReportingTests
         decimal total) =>
         new(id, "Cliente", "900123456", issueDate, status, 1, total);
 }
+
+public class CsvReportSecurityTests
+{
+    [Theory]
+    [InlineData("=1+1")]
+    [InlineData("+1")]
+    [InlineData("-1")]
+    [InlineData("@SUM(A1:A2)")]
+    public void CsvReport_NeutralizesFormulaInjection(string value)
+    {
+        var csv = CsvReport.Build(["Valor"], new[] { new[] { value } });
+
+        Assert.Equal($"Valor\r\n'{value}\r\n", csv);
+    }
+
+    [Fact]
+    public void CsvReport_LeavesRegularTextUntouched()
+    {
+        var csv = CsvReport.Build(["Valor"], new[] { new[] { "Arroz 500 g" } });
+
+        Assert.Equal("Valor\r\nArroz 500 g\r\n", csv);
+    }
+}

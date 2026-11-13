@@ -30,9 +30,6 @@ continuación se documentan con el permiso que las reserva.
 | CRM | `crm.points.manage` | Puntos de fidelización | El cliente no tiene saldo ni movimientos de puntos | Libro de puntos con acumulación y canje |
 | CRM | `crm.pqrs.manage` | PQRS | No hay entidad de peticiones, quejas o reclamos | Radicado, responsable, estados y tiempos |
 | CRM | `crm.campaigns.manage` | Campañas | La segmentación es de solo consulta | Campaña sobre un segmento, vigencia y resultado |
-| Compras | — | Puntualidad y calidad del proveedor con datos de recepción | El ranking usa una calificación manual | Calcular KPIs a partir de fecha prometida, fecha recibida y diferencias de cantidad |
-| Compras | — | Borradores automáticos de reposición | La orden se crea manualmente | Sugerencia por stock mínimo y consumo, con revisión humana |
-| Reportes | — | Exportación del ranking de proveedores | Solo existe la vista en pantalla | Reutilizar el escritor CSV y añadir endpoint con `purchasing.reports.view` |
 | Facturación | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
 
 ## Aclaraciones importantes
@@ -62,7 +59,9 @@ continuación se documentan con el permiso que las reserva.
 
 ## Lo que sí quedó completo
 
-Compras, panel, reportes, ranking de proveedores, segmentación CRM,
-exportación XML simulada, administración de tiendas y parámetros configurables
-están implementados, con permisos, pruebas y documentación. El detalle está en
+Compras (órdenes, puntualidad y cumplimiento con datos de recepción,
+exportación del ranking y borradores de reposición con relación producto ·
+proveedor), panel, reportes, segmentación CRM, exportación XML simulada,
+administración de tiendas y parámetros configurables están implementados, con
+permisos, pruebas y documentación. El detalle está en
 [implemented-modules.md](implemented-modules.md).

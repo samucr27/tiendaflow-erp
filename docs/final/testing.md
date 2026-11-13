@@ -22,11 +22,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 432 | 0 | 0 | 432 |
+| `TiendaFlow.UnitTests` | 488 | 0 | 0 | 488 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 20 | 0 | 0 | 20 |
+| `TiendaFlow.IntegrationTests` | 24 | 0 | 0 | 24 |
 
-Total ejecutado: **458 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **518 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -47,15 +47,16 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 2100 | 2324 | **90,3 %** |
-| `TiendaFlow.Domain` | 558 | 591 | **94,4 %** |
-| Aplicación + dominio | 2658 | 2915 | **91,1 %** |
+| `TiendaFlow.Application` | 2452 | 2689 | **91,1 %** |
+| `TiendaFlow.Domain` | 607 | 640 | **94,8 %** |
+| Aplicación + dominio | 3059 | 3329 | **91,8 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura global del
 reporte incluye `TiendaFlow.Infrastructure`: repositorios EF Core y migraciones
-que solo se ejercitan con SQL Server. No se ocultó esa cifra ni se excluyó el
-código generado para inflar el resultado; el filtro de Application + Domain es
-el que usa la documentación del proyecto.
+que solo se ejercitan con SQL Server. Con las pruebas de integración activas,
+esa capa alcanzó **94,4 %** (6308 de 6678 líneas). No se ocultó esa cifra ni se
+excluyó el código generado para inflar el resultado; el filtro de Application +
+Domain es el que usa la documentación del proyecto.
 
 ## Pruebas añadidas en esta fase
 
@@ -87,8 +88,27 @@ el que usa la documentación del proyecto.
   verificación de que sin permiso no se consultan los repositorios.
 - `ReportingTests`: CSV con comas, comillas y saltos de línea; totales de
   inventario; rango local de ventas; nómina con empleados incompletos.
-- `SupplierServiceTests`: ranking y evaluación ya existentes, ampliados por la
-  pantalla de ranking.
+- `SupplierServiceTests`: ranking y evaluación, KPIs de puntualidad y
+  cumplimiento, exportación CSV y neutralización de fórmulas.
+- `ProductSupplierTests`: validación de SKU, proveedor y costo, y cambio de
+  costo predeterminado.
+- `ProductSupplierServiceTests`: primera relación predeterminada, cambio de
+  predeterminado, costo, producto/proveedor inválido o inactivo, auditoría y
+  negación sin permiso antes de consultar.
+- `ReplenishmentServiceTests`: ventana y cobertura configuradas, fórmula contra
+  stock mínimo y consumo, proveedor predeterminado, agrupación por proveedor,
+  omisión de filas sin proveedor activo, borradores y negación sin permiso.
+- `CsvReportSecurityTests`: neutralización de celdas que empiezan por `=`, `+`,
+  `-` o `@`.
+- `PurchaseOrderTests`: fecha prometida, fecha de recepción de la última
+  entrega y validaciones de ambas.
+- `PurchaseOrderServiceTests`: creación con fecha prometida, recepción con
+  fecha y actualización o alta del último costo de la relación.
+- `PurchasingPhase3IntegrationTests`: relación persistida con un solo
+  predeterminado por producto, KPIs reales sobre SQL Server, consumo por
+  ventana y borradores de reposición sin envío automático.
+- `FinalScreenAuthorizationTests`: política de la ruta de reposición y enlace
+  del menú.
 - `CustomerSegmentationServiceTests`: regla 20/30, clientes sin compras,
   facturas anuladas y permiso.
 - `ElectronicInvoiceTests`: campos del XML, escape de caracteres, digest

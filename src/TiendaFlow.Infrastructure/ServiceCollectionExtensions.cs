@@ -44,8 +44,10 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<ISupplierRepository, EfSupplierRepository>();
         services.AddScoped<IPurchaseOrderRepository, EfPurchaseOrderRepository>();
+        services.AddScoped<IProductSupplierRepository, EfProductSupplierRepository>();
         services.AddScoped<ISupplierQuery, EfSupplierQuery>();
         services.AddScoped<IPurchaseOrderQuery, EfPurchaseOrderQuery>();
+        services.AddScoped<IConsumptionQuery, EfConsumptionQuery>();
 
         services.AddScoped<IInvoiceRepository, EfInvoiceRepository>();
         services.AddScoped<IInvoiceQuery, EfInvoiceQuery>();
@@ -77,6 +79,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<RoleCatalogService>();
         services.AddScoped<AuthenticationService>();
         services.AddScoped<SupplierService>();
+        services.AddScoped<ProductSupplierService>();
+        services.AddScoped<ReplenishmentService>();
         services.AddScoped<PurchaseOrderService>();
         services.AddScoped<SalesInvoiceService>();
         services.AddScoped<CustomerService>();

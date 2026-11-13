@@ -1,3 +1,4 @@
+using TiendaFlow.Application.Reporting;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Domain;
 
@@ -53,6 +54,36 @@ public sealed class SupplierService
             .OrderByDescending(row => row.Rating)
             .ThenBy(row => row.BusinessName)
             .ToList();
+    }
+
+    /// <summary>
+    /// CSV export of the ranking with the manual rating and the two objective
+    /// indicators. CsvReport neutralizes cells that a spreadsheet could
+    /// interpret as a formula.
+    /// </summary>
+    public string RankingCsv()
+    {
+        _accessControl.Demand(Permissions.PurchasingReportsView);
+
+        var ranking = _query.List()
+            .OrderByDescending(row => row.Rating)
+            .ThenBy(row => row.BusinessName)
+            .ToList();
+
+        return CsvReport.Build(
+            ["Posicion", "Proveedor", "NIT", "Calificacion", "Ordenes", "Comprado", "Puntualidad", "Cumplimiento", "Estado"],
+            ranking.Select((row, index) => new[]
+            {
+                (index + 1).ToString(),
+                row.BusinessName,
+                row.Nit,
+                row.RatingLabel,
+                row.OrderCount.ToString(),
+                CsvReport.Number(row.PurchasedTotal),
+                row.PunctualityLabel,
+                row.FulfillmentLabel,
+                row.Active ? "Activo" : "Inactivo"
+            }));
     }
 
     public SupplierRow Get(int id)

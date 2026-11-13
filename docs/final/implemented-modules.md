@@ -84,18 +84,47 @@ académicas; esta fase no cambió ese contrato.
 
 | Ruta | Permiso de página | Función |
 | --- | --- | --- |
-| `/compras/ordenes` | `purchasing.orders.view` | Listado de órdenes con totales y estado |
-| `/compras/ordenes/nueva` | `purchasing.orders.create` | Crear una orden en borrador con líneas |
-| `/compras/ordenes/{Id:int}` | `purchasing.orders.view` | Detalle y acciones según estado y permiso |
-| `/proveedores/ranking` | `purchasing.reports.view` | Ranking por calificación y evaluación manual |
+| `/compras/ordenes` | `purchasing.orders.view` | Listado de órdenes con totales, estado, fecha prometida y recibida |
+| `/compras/ordenes/nueva` | `purchasing.orders.create` | Crear una orden en borrador con líneas y fecha prometida |
+| `/compras/ordenes/{Id:int}` | `purchasing.orders.view` | Detalle, recepción con fecha y acciones según estado y permiso |
+| `/compras/reposicion` | `purchasing.orders.create` | Sugerencias de reposición, generación de borradores y relación producto · proveedor |
+| `/proveedores/ranking` | `purchasing.reports.view` | Ranking por calificación, evaluación manual y KPIs de recepción |
 
 El detalle permite enviar, aprobar, confirmar la recepción y anular una orden,
 cada acción con su permiso (`purchasing.orders.send`, `.approve`, `.receive`,
 `.cancel`). La recepción genera el movimiento de inventario a través del
-servicio existente; no escribe stock directamente desde la pantalla.
+servicio existente; no escribe stock directamente desde la pantalla. Para cerrar
+el ciclo se añadió `PurchaseOrderService.Confirm`, que pasa una orden recibida a
+confirmada y deja el registro de auditoría correspondiente.
 
-Para cerrar el ciclo se añadió `PurchaseOrderService.Confirm`, que pasa una
-orden recibida a confirmada y deja el registro de auditoría correspondiente.
+Reglas y datos añadidos en esta fase:
+
+1. La orden guarda una **fecha prometida** opcional (fecha calendario) y la
+   **fecha de la última recepción**. Solo se considera puntual una orden
+   totalmente recibida que llegó en la fecha prometida o antes.
+2. El **cumplimiento** compara unidades recibidas contra unidades pedidas en
+   órdenes con al menos una unidad recibida. El ranking muestra la calificación
+   manual junto con `Puntualidad` y `Cumplimiento`, o `Sin recepciones` cuando
+   no hay datos medibles. Las órdenes anuladas no cuentan.
+3. El ranking se exporta a CSV con `purchasing.reports.view` reutilizando el
+   escritor existente; las celdas que empiezan por `=`, `+`, `-` o `@` se
+   neutralizan con un apóstrofo para evitar inyección de fórmulas.
+4. La **relación producto · proveedor** (`product_supplier`) guarda el último
+   costo y un único proveedor predeterminado por producto; la base impone esa
+   unicidad con un índice filtrado. Al recibir una orden se actualiza el último
+   costo de la relación (o se crea si no existe).
+5. La **reposición** calcula, con el stock disponible y el consumo de la ventana
+   configurada, la cantidad
+   `max(stock mínimo - disponible, consumo diario promedio × días de cobertura - disponible)`.
+   Solo propone productos por debajo del objetivo y agrupa los borradores por
+   proveedor predeterminado activo. Los productos sin proveedor se listan pero
+   no generan orden.
+6. Generar borradores crea órdenes en estado **Borrador** dentro de una sola
+   transacción y las audita; nunca las envía al proveedor. El envío sigue siendo
+   una acción humana con `purchasing.orders.send`.
+7. La pantalla de reposición usa `purchasing.orders.create`; el editor de la
+   relación producto · proveedor solo aparece con
+   `purchasing.suppliers.manage`. La matriz de permisos no cambió.
 
 ## Panel
 

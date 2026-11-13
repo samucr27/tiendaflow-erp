@@ -25,6 +25,8 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<Supplier> Suppliers => Set<Supplier>();
 
+    public DbSet<ProductSupplier> ProductSuppliers => Set<ProductSupplier>();
+
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
 
     public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();

@@ -59,6 +59,14 @@ else
                  Value="@Formatters.Quantity(_detail.Lines.Sum(line => line.PendingQuantity))"
                  Hint="Por recibir"
                  Tone="alert" />
+        <KpiCard Label="Fecha prometida"
+                 Value="@(header.PromisedDate?.ToString("yyyy-MM-dd") ?? "Sin fecha")"
+                 Hint="Compromiso del proveedor"
+                 Tone="neutral" />
+        <KpiCard Label="Puntualidad"
+                 Value="@header.PunctualityLabel"
+                 Hint="Recepción frente a la fecha prometida"
+                 Tone="@PunctualityTone(header)" />
     </div>
 
     <section class="card">
@@ -213,6 +221,14 @@ else
             </div>
 
             <div class="form-actions">
+                <label class="field" for="received-on">
+                    <span>Fecha de recepción</span>
+                    <input id="received-on"
+                           class="input"
+                           type="date"
+                           value="@_receivedOn.ToString("yyyy-MM-dd")"
+                           @onchange="OnReceivedOnChanged" />
+                </label>
                 <button type="button" class="button button-primary" @onclick="Receive">
                     Registrar recepción
                 </button>
@@ -230,6 +246,7 @@ else
 
     private PurchaseOrderDetail? _detail;
     private Dictionary<string, int> _receiveQuantities = new(StringComparer.Ordinal);
+    private DateOnly _receivedOn = DateOnly.FromDateTime(DateTime.Today);
     private string? _error;
     private string? _success;
 
@@ -263,6 +280,18 @@ else
     private static bool HasActions(PurchaseOrderStatus status) =>
         status is not (PurchaseOrderStatus.Received or PurchaseOrderStatus.Cancelled);
 
+    private static string PunctualityTone(PurchaseOrderRow header) => header.PunctualityLabel switch
+    {
+        "A tiempo" => "ok",
+        "Con retraso" => "alert",
+        _ => "neutral"
+    };
+
+    private void OnReceivedOnChanged(ChangeEventArgs args) =>
+        _receivedOn = DateOnly.TryParse(args.Value?.ToString(), out var date)
+            ? date
+            : DateOnly.FromDateTime(DateTime.Today);
+
     private int QuantityFor(string sku) =>
         _receiveQuantities.TryGetValue(sku, out var quantity) ? quantity : 0;
 
@@ -291,7 +320,7 @@ else
 
         try
         {
-            PurchaseOrderService.Receive(Id, lines, DateTime.UtcNow);
+            PurchaseOrderService.Receive(Id, lines, _receivedOn);
             _success = "La recepción se registró y el inventario quedó actualizado.";
             Load();
         }

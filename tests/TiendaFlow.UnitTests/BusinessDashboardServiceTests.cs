@@ -132,5 +132,5 @@ public class BusinessDashboardServiceTests
         int id,
         PurchaseOrderStatus status,
         decimal total) =>
-        new(id, 1, "Proveedor", 1, "Tienda", NowUtc, status, total, 1);
+        new(id, 1, "Proveedor", 1, "Tienda", NowUtc, null, null, status, total, 1);
 }

@@ -9,7 +9,8 @@ public record CreatePurchaseOrderRequest(
     int SupplierId,
     int StoreId,
     DateTime OrderDate,
-    IReadOnlyList<CreatePurchaseOrderLine> Lines);
+    IReadOnlyList<CreatePurchaseOrderLine> Lines,
+    DateOnly? PromisedDate = null);
 
 public record ReceivePurchaseOrderLine(string ProductSku, int Quantity);
 
@@ -22,6 +23,7 @@ public sealed class PurchaseOrderService
 {
     private readonly IPurchaseOrderRepository _orders;
     private readonly ISupplierRepository _suppliers;
+    private readonly IProductSupplierRepository _productSuppliers;
     private readonly IStockQuery _stock;
     private readonly StockService _stockService;
     private readonly IUnitOfWork _unitOfWork;
@@ -32,6 +34,7 @@ public sealed class PurchaseOrderService
     public PurchaseOrderService(
         IPurchaseOrderRepository orders,
         ISupplierRepository suppliers,
+        IProductSupplierRepository productSuppliers,
         IStockQuery stock,
         StockService stockService,
         IUnitOfWork unitOfWork,
@@ -41,6 +44,7 @@ public sealed class PurchaseOrderService
     {
         _orders = orders;
         _suppliers = suppliers;
+        _productSuppliers = productSuppliers;
         _stock = stock;
         _stockService = stockService;
         _unitOfWork = unitOfWork;
@@ -84,7 +88,12 @@ public sealed class PurchaseOrderService
         if (request.Lines.Count == 0)
             throw new InvalidPurchaseOrderException("The order needs at least one line.");
 
-        var order = new PurchaseOrder(0, supplier.Id, request.StoreId, request.OrderDate);
+        var order = new PurchaseOrder(
+            0,
+            supplier.Id,
+            request.StoreId,
+            request.OrderDate,
+            request.PromisedDate);
 
         foreach (var line in request.Lines)
             order.AddLine(line.ProductSku, line.Quantity, line.UnitCost);
@@ -143,12 +152,14 @@ public sealed class PurchaseOrderService
     public void Receive(
         int id,
         IReadOnlyList<ReceivePurchaseOrderLine> lines,
-        DateTime date)
+        DateOnly receivedOn)
     {
         _accessControl.Demand(Permissions.PurchasingOrdersReceive);
 
         if (lines.Count == 0)
             throw new InvalidPurchaseOrderException("Select at least one line to receive.");
+        if (receivedOn == default)
+            throw new InvalidPurchaseOrderException("The receipt date is required.");
 
         var order = FindOrThrow(id);
 
@@ -156,24 +167,57 @@ public sealed class PurchaseOrderService
         {
             foreach (var line in lines)
             {
-                order.ReceiveLine(line.ProductSku, line.Quantity);
+                order.ReceiveLine(line.ProductSku, line.Quantity, receivedOn);
                 _stockService.ReceiveStock(
                     order.StoreId,
                     line.ProductSku,
                     line.Quantity,
                     location: "Recepción",
                     minStock: 0,
-                    date);
+                    receivedOn.ToDateTime(TimeOnly.MinValue));
             }
 
             _orders.Update(order);
+            UpdateLastCosts(order, lines);
 
             var units = lines.Sum(line => line.Quantity);
             Record(
                 "PurchaseOrderReceived",
                 order.Id,
-                $"{units} unidades recibidas; estado {order.Status}.");
+                $"{units} unidades recibidas el {receivedOn:yyyy-MM-dd}; estado {order.Status}.");
         });
+    }
+
+    /// <summary>
+    /// The receipt is the moment the real cost is known, so it refreshes the
+    /// last cost of the product-supplier pair. The default supplier is a
+    /// deliberate decision of the buyer and is never changed here.
+    /// </summary>
+    private void UpdateLastCosts(
+        PurchaseOrder order,
+        IReadOnlyList<ReceivePurchaseOrderLine> received)
+    {
+        foreach (var receivedLine in received)
+        {
+            var orderLine = order.Lines.FirstOrDefault(line =>
+                line.ProductSku == receivedLine.ProductSku);
+            if (orderLine is null)
+                continue;
+
+            var relation = _productSuppliers.Get(orderLine.ProductSku, order.SupplierId);
+
+            if (relation is null)
+            {
+                _productSuppliers.Add(new ProductSupplier(
+                    orderLine.ProductSku,
+                    order.SupplierId,
+                    orderLine.UnitCost));
+                continue;
+            }
+
+            relation.ChangeCost(orderLine.UnitCost);
+            _productSuppliers.Update(relation);
+        }
     }
 
     private void Transition(

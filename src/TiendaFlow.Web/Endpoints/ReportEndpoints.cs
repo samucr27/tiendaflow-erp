@@ -107,6 +107,19 @@ public static class ReportEndpoints
             }
         }).RequireAuthorization(Permissions.SalesInvoicesView);
 
+        app.MapGet("/proveedores/ranking/export.csv", (
+            SupplierService suppliers) =>
+        {
+            try
+            {
+                return Csv($"ranking-proveedores-{Stamp()}.csv", suppliers.RankingCsv());
+            }
+            catch (AccessDeniedException)
+            {
+                return Results.Forbid();
+            }
+        }).RequireAuthorization(Permissions.PurchasingReportsView);
+
         return app;
     }
 

@@ -55,6 +55,8 @@ public static class DomainErrorTranslator
             "La orden de compra no se puede completar con esos datos. Revisa las líneas, las cantidades y el estado de la orden.",
         PurchaseOrderNotFoundException =>
             "No encontramos la orden de compra solicitada.",
+        InvalidProductSupplierException =>
+            "Revisa la relación producto · proveedor. El producto, el proveedor activo y un último costo mayor que cero son obligatorios.",
         InvalidEmployeeException =>
             "Revisa los datos del empleado. El documento, el nombre, el cargo, el tipo de contrato y la tienda deben ser válidos, y el salario no puede ser negativo.",
         EmployeeNotFoundException =>

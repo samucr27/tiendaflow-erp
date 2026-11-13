@@ -14,3 +14,8 @@ public class DuplicateNitException : Exception
 {
     public DuplicateNitException(string nit) : base($"A supplier with NIT {nit} already exists.") { }
 }
+
+public class InvalidProductSupplierException : Exception
+{
+    public InvalidProductSupplierException(string message) : base(message) { }
+}

@@ -99,7 +99,7 @@ Todos usan el dominio `@tiendaflow.local`. Las contraseñas no se documentan aqu
 | Reportes | `/reportes/inventario`, `/reportes/ventas`, `/reportes/nomina` | `inventory.reports.view`, `sales.reports.view`, `hr.payroll.manage` | — |
 | Nómina y empleados | `/rrhh/empleados`, `/rrhh/nomina` | `hr.employees.view`, `hr.payroll.manage` | `hr.employees.manage`, `hr.payroll.manage` |
 | Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/{id}`, `/proveedores/ranking` | `purchasing.suppliers.view`, `purchasing.reports.view` | `purchasing.suppliers.manage`, `purchasing.evaluations.manage` |
-| Compras | `/compras/ordenes`, `/compras/ordenes/nueva`, `/compras/ordenes/{id}` | `purchasing.orders.view` | `purchasing.orders.*` |
+| Compras | `/compras/ordenes`, `/compras/ordenes/nueva`, `/compras/ordenes/{id}`, `/compras/reposicion` | `purchasing.orders.view` | `purchasing.orders.*` |
 | Facturación | `/facturacion`, `/facturacion/nueva`, `/facturacion/{id}`, `/facturacion/{id}/xml` | `sales.invoices.view` | `sales.invoices.manage` |
 | CRM clientes | `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id}`, `/crm/segmentacion` | `crm.customers.view`, `crm.reports.view` | `crm.customers.manage` |
 | Seguridad | `/seguridad/usuarios`, `/seguridad/tiendas`, `/seguridad/parametros`, `/seguridad/roles`, `/seguridad/auditoria` | `security.*.view` | `security.*.manage` |
@@ -125,7 +125,13 @@ dotnet ef database update `
   --startup-project src\TiendaFlow.Web
 ```
 
-Las migraciones de esta entrega son `20261109011701_Phase3Purchasing` (proveedores y órdenes), `20261111005733_Phase4Invoicing` (facturación) y `20261111010125_Phase5Crm` (clientes).
+Las migraciones de esta entrega son `20261109011701_Phase3Purchasing`
+(proveedores y órdenes), `20261111005733_Phase4Invoicing` (facturación),
+`20261111010125_Phase5Crm` (clientes), `20261113012709_Phase6Stores` (índices de
+tiendas), `20261113013940_Phase7Parameters` (parámetros versionados) y
+`20261113015239_Phase8PurchasingKpis` (fechas de la orden y relación producto ·
+proveedor). Las migraciones anteriores a `Phase6Stores` pertenecen a las
+entregas previas y no se editaron.
 
 ## Pruebas y cobertura
 

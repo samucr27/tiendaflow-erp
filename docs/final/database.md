@@ -14,6 +14,7 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261111010125_Phase5Crm` | Clientes |
 | `20261113012709_Phase6Stores` | Índices de apoyo para la administración de tiendas |
 | `20261113013940_Phase7Parameters` | Tabla `system_parameter`, versionado por fecha y alcance |
+| `20261113015239_Phase8PurchasingKpis` | Fechas prometida/recibida de la orden y tabla `product_supplier` |
 
 La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
 existía. Añade tres índices que sostienen las consultas de la pantalla y del
@@ -45,8 +46,22 @@ cubran también las versiones globales:
 Un intento de duplicar la misma fecha o versión falla en la base, no solo en la
 validación de la aplicación.
 
-Las fases posteriores a la entrega final (compras, inventario, devoluciones, CRM
-y RR. HH.) añadirán su propia migración; esta tabla se amplía a medida que se
+`Phase8PurchasingKpis` añade dos columnas `date` a `purchase_order`:
+
+- `promised_date`: fecha prometida por el proveedor, opcional.
+- `received_date`: fecha de la última recepción, opcional.
+
+También crea `product_supplier`, la relación entre producto y proveedor:
+
+- Clave primaria `(product_sku, supplier_id)` y claves foráneas a producto y
+  proveedor con borrado restringido.
+- `last_cost` con precisión `decimal(18,2)` e `is_default`.
+- `IX_product_supplier_default` es un índice único filtrado que permite un solo
+  proveedor predeterminado por producto; la regla se cumple en la base y no solo
+  en el servicio.
+
+Las fases posteriores a la entrega final (inventario, devoluciones, CRM y
+RR. HH.) añadirán su propia migración; esta tabla se amplía a medida que se
 generan.
 
 ## Generar una migración

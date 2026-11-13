@@ -78,6 +78,24 @@ y en `ParameterService`, porque un valor mal configurado afecta a todas las
 tiendas. Los demás roles consultan el valor efectivo a través de
 `IParameterValues` sin poder modificarlo.
 
+## Cambios en la matriz por los KPIs y la reposición
+
+Las compras con KPIs y reposición tampoco cambiaron la matriz; reutilizan
+permisos existentes:
+
+| Ruta o acción | Permiso | Justificación |
+| --- | --- | --- |
+| `/compras/reposicion` y generación de borradores | `purchasing.orders.create` | Crear borradores es una acción de compra; el borrador no se envía solo. |
+| Ver o editar la relación producto · proveedor | `purchasing.suppliers.view` / `purchasing.suppliers.manage` | El último costo y el proveedor predeterminado son datos maestros de proveedores. |
+| Ranking, KPIs y exportación CSV | `purchasing.reports.view` | Es un reporte de compras, no una acción transaccional. |
+| Fecha prometida y recepción con fecha | `purchasing.orders.create` / `purchasing.orders.receive` | Siguen el mismo permiso que la creación y la recepción de la orden. |
+
+El Coordinador de logística conserva `purchasing.orders.create` y
+`purchasing.suppliers.manage`, así que puede mantener la relación producto ·
+proveedor y generar borradores. El Jefe de tienda conserva la aprobación y la
+recepción, y el Administrador mantiene todas las acciones. Ningún rol nuevo
+recibió permisos de administración de proveedores.
+
 ## Comprobaciones automáticas
 
 - Las pruebas unitarias de cada servicio verifican que sin permiso se lanza

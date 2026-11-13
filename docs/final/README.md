@@ -18,7 +18,9 @@ Esta carpeta reúne la documentación de la entrega final, escrita sobre la rama
 ## Alcance de esta entrega
 
 - Compras: órdenes de compra con creación, envío, aprobación, recepción a
-  inventario y anulación; ranking y evaluación de proveedores.
+  inventario y anulación; ranking y evaluación de proveedores con puntualidad,
+  cumplimiento y exportación CSV; borradores de reposición con relación
+  producto · proveedor.
 - Panel: indicadores de ventas del día y órdenes de compra, filtrados por
   permiso.
 - Reportes: inventario, ventas y nómina, con exportación CSV.

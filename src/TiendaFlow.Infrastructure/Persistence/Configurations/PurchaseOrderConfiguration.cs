@@ -26,6 +26,14 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
             .HasColumnName("order_date")
             .HasColumnType("datetime2");
 
+        builder.Property(order => order.PromisedDate)
+            .HasColumnName("promised_date")
+            .HasColumnType("date");
+
+        builder.Property(order => order.ReceivedDate)
+            .HasColumnName("received_date")
+            .HasColumnType("date");
+
         builder.Property(order => order.Status)
             .HasColumnName("status")
             .HasConversion<string>()

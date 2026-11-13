@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = Permissions.PurchasingOrdersCreate)]
 @using System.ComponentModel.DataAnnotations
 @inject SupplierService SupplierService
+@inject ProductSupplierService ProductSupplierService
 @inject PurchaseOrderService PurchaseOrderService
 @inject IProductCatalogQuery ProductQuery
 @inject ICurrentUser CurrentUser
@@ -60,6 +61,15 @@ else
                     <label for="order-date">Fecha de la orden</label>
                     <InputDate id="order-date" class="input" @bind-Value="_form.OrderDate" />
                     <ValidationMessage For="() => _form.OrderDate" />
+                </div>
+
+                <div class="field">
+                    <label for="order-promised">Fecha prometida por el proveedor</label>
+                    <InputDate id="order-promised" class="input" @bind-Value="_form.PromisedDate" />
+                    <ValidationMessage For="() => _form.PromisedDate" />
+                    <span class="field-hint">
+                        Opcional. Se usa para medir la puntualidad cuando la orden se recibe completa.
+                    </span>
                 </div>
 
                 <div class="field">
@@ -226,7 +236,10 @@ else
 
         var product = _products.FirstOrDefault(item => item.Sku == line.ProductSku);
         if (product is not null && line.UnitCost <= 0m)
-            line.UnitCost = product.SalePrice;
+        {
+            line.UnitCost = ProductSupplierService.DefaultCost(line.ProductSku)
+                ?? product.SalePrice;
+        }
     }
 
     private void Suggest()
@@ -295,7 +308,8 @@ else
                 _form.SupplierId,
                 CurrentUser.StoreId ?? 0,
                 _form.OrderDate,
-                lines));
+                lines,
+                _form.PromisedDate));
 
             Navigation.NavigateTo($"compras/ordenes/{id}?creada=1");
         }
@@ -316,6 +330,8 @@ else
 
         [Required(ErrorMessage = "La fecha es obligatoria.")]
         public DateTime OrderDate { get; set; } = DateTime.Today;
+
+        public DateOnly? PromisedDate { get; set; }
 
         public List<OrderLineForm> Lines { get; set; } = new();
     }

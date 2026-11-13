@@ -302,6 +302,38 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("product", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.ProductSupplier", b =>
+                {
+                    b.Property<string>("ProductSku")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("product_sku");
+
+                    b.Property<int>("SupplierId")
+                        .HasColumnType("int")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_default");
+
+                    b.Property<decimal>("LastCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("last_cost");
+
+                    b.HasKey("ProductSku", "SupplierId");
+
+                    b.HasIndex("ProductSku")
+                        .IsUnique()
+                        .HasDatabaseName("IX_product_supplier_default")
+                        .HasFilter("[is_default] = 1");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("product_supplier", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.PurchaseOrder", b =>
                 {
                     b.Property<int>("Id")
@@ -314,6 +346,14 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2")
                         .HasColumnName("order_date");
+
+                    b.Property<DateOnly?>("PromisedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("promised_date");
+
+                    b.Property<DateOnly?>("ReceivedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("received_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -654,6 +694,21 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .WithMany("Lines")
                         .HasForeignKey("InvoiceId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.ProductSupplier", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductSku")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

@@ -160,6 +160,12 @@
                 Órdenes de compra
             </NavLink>
         }
+        @if (AccessControl.Has(Permissions.PurchasingOrdersCreate))
+        {
+            <NavLink class="nav-item" href="compras/reposicion" Match="NavLinkMatch.Prefix">
+                Reposición de inventario
+            </NavLink>
+        }
         @if (AccessControl.Has(Permissions.PurchasingReportsView))
         {
             <NavLink class="nav-item" href="proveedores/ranking" Match="NavLinkMatch.Prefix">

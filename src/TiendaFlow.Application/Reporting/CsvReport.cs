@@ -45,7 +45,7 @@ public static class CsvReport
 
     private static string Escape(string? value)
     {
-        value ??= string.Empty;
+        value = Neutralize(value ?? string.Empty);
 
         if (!value.Contains(',')
             && !value.Contains('"')
@@ -57,4 +57,14 @@ public static class CsvReport
 
         return $"\"{value.Replace("\"", "\"\"")}\"";
     }
+
+    /// <summary>
+    /// A cell that starts with =, +, - or @ is executed as a formula by
+    /// spreadsheet programs. The apostrophe forces the text interpretation
+    /// without changing what the user reads in the file.
+    /// </summary>
+    private static string Neutralize(string value) =>
+        value.Length > 0 && value[0] is '=' or '+' or '-' or '@'
+            ? $"'{value}"
+            : value;
 }
