@@ -83,12 +83,17 @@ ejecutable `efbundle.exe` no se commitea.
 ## Sembrado de datos
 
 `DevDataSeeder` crea la tienda, los siete roles, un usuario por rol, productos,
-proveedores, facturas y clientes de demostración. Solo se registra cuando
-`Seed:Enabled` es `true`, y cada tabla se llena únicamente si está vacía.
+proveedores, facturas y clientes de demostración. Se registra siempre que
+`Seed:Enabled` sea `true`, **sin importar el entorno**; no está condicionado a
+`Development`. Cada tabla se llena únicamente si está vacía, así que el
+sembrado es idempotente.
 
-- En desarrollo se puede activar con configuración local y los secretos
-  `Seed:AdminPassword` y `Seed:DemoPassword`.
-- En producción queda desactivado. No hay usuarios ni contraseñas por defecto.
+- Si `Seed:Enabled` es `false` o no existe, el servicio no se registra y ninguna
+  ruta crea datos de ejemplo.
+- Para activarlo se usan `Seed:Enabled`, `Seed:AdminPassword` y
+  `Seed:DemoPassword` desde configuración o secretos locales.
+- La configuración de producción lo deja desactivado. No hay usuarios ni
+  contraseñas por defecto.
 - Las contraseñas nunca se guardan en archivos del repositorio.
 
 ## Variables relevantes

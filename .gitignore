@@ -483,6 +483,9 @@ $RECYCLE.BIN/
 
 coveragereport/
 
+# Reqnroll generates these next to the .feature files during build.
+tests/TiendaFlow.AcceptanceTests/Features/*.feature.cs
+
 # Terraform
 .terraform/
 *.tfstate

@@ -47,9 +47,11 @@ continuación se documentan con el permiso que las reserva.
 - **Nómina:** los parámetros son referencias académicas y están documentados en
   `docs/sprint2/payroll-parameters-validation.md`. El sistema calcula la
   corrida, pero no reemplaza una liquidación laboral certificada.
-- **Datos de demostración:** el sembrado solo se ejecuta en desarrollo cuando
-  `Seed:Enabled` es verdadero. En producción no se crean usuarios, productos ni
-  facturas de ejemplo.
+- **Datos de demostración:** el sembrado se registra siempre que
+  `Seed:Enabled` sea verdadero, sin importar el entorno; no está atado a
+  `Development`. Si la clave es falsa o no existe, ninguna ruta crea usuarios,
+  productos ni facturas de ejemplo. En la configuración de producción se deja
+  desactivada.
 - **Pruebas de integración:** están escritas, pero se omiten si no existe una
   cadena de conexión a SQL Server. No se aplicaron migraciones contra la base de
   datos de desarrollo durante esta entrega.
