@@ -73,7 +73,7 @@ resource "azurerm_resource_group" "main" {
 resource "azurerm_service_plan" "main" {
   name                = local.plan_name
   resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  location            = coalesce(var.app_location, var.location) # CAMBIO
   os_type             = "Linux"
   sku_name            = var.app_service_sku
   tags                = local.tags
@@ -82,7 +82,7 @@ resource "azurerm_service_plan" "main" {
 resource "azurerm_linux_web_app" "main" {
   name                                           = local.app_service_name
   resource_group_name                            = azurerm_resource_group.main.name
-  location                                       = azurerm_resource_group.main.location
+  location                                       = coalesce(var.app_location, var.location) # CAMBIO
   service_plan_id                                = azurerm_service_plan.main.id
   https_only                                     = true
   webdeploy_publish_basic_authentication_enabled = true

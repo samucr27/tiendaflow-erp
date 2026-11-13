@@ -104,3 +104,9 @@ variable "client_ip_address" {
     error_message = "client_ip_address must be empty or a valid IPv4 address, for example 190.0.0.10."
   }
 }
+
+variable "app_location" {
+  description = "Region for the App Service plan and web app. Empty means the same as location."
+  type        = string
+  default     = ""
+}
