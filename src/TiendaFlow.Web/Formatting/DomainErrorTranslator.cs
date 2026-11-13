@@ -71,6 +71,9 @@ public static class DomainErrorTranslator
             "No se puede desactivar la tienda porque tiene órdenes de compra abiertas.",
         StoreHasActiveUsersException =>
             "No se puede desactivar la tienda porque tiene usuarios activos asignados.",
+        InvalidParameterException invalidParameter => invalidParameter.Message,
+        ParameterNotFoundException =>
+            "No encontramos el parámetro solicitado.",
         InvalidPayrollInputException =>
             "Revisa los datos de la nómina. Los días trabajados deben estar entre 1 y 30 y la clase de riesgo entre 1 y 5.",
         UnsupportedContractTypeException =>

@@ -20,7 +20,8 @@ las tres capas y no depende de que el enlace esté oculto.
 | Seguridad: roles | `security.roles.view` | `security.roles.manage` (declarado; la matriz es de solo lectura) |
 | Seguridad: auditoría | `security.audit.view` | — |
 | Seguridad: tiendas | `security.stores.view` | `security.stores.manage` |
-| Seguridad: parámetros y reportes | `security.parameters.manage`, `security.reports.view` (declarados, sin pantalla) | — |
+| Seguridad: parámetros | `security.parameters.manage` | `security.parameters.manage` |
+| Seguridad: reportes | `security.reports.view` (declarado, sin pantalla) | — |
 | Inventario: productos y precios | `inventory.products.view` | `inventory.products.manage`, `inventory.price.change` |
 | Inventario: stock | `inventory.stock.view` | `inventory.stock.receive`, `inventory.stock.transfer`*, `inventory.stock.count`* |
 | Inventario: alertas y reportes | `inventory.alerts.view`, `inventory.reports.view` | — |
@@ -67,6 +68,15 @@ el botón de creación, el formulario de edición, la activación/desactivación
 reasignación de usuarios o empleados solo aparecen con
 `security.stores.manage`, y `StoreService` vuelve a exigirlo antes de tocar
 cualquier repositorio.
+
+## Cambios en la matriz por los parámetros
+
+La administración de parámetros no cambió la matriz: el permiso
+`security.parameters.manage` ya existía y solo lo tiene el Administrador. La
+pantalla `/seguridad/parametros` y su historial exigen ese permiso en la página
+y en `ParameterService`, porque un valor mal configurado afecta a todas las
+tiendas. Los demás roles consultan el valor efectivo a través de
+`IParameterValues` sin poder modificarlo.
 
 ## Comprobaciones automáticas
 

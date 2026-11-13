@@ -22,11 +22,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 367 | 0 | 0 | 367 |
+| `TiendaFlow.UnitTests` | 432 | 0 | 0 | 432 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 18 | 0 | 0 | 18 |
+| `TiendaFlow.IntegrationTests` | 20 | 0 | 0 | 20 |
 
-Total ejecutado: **391 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **458 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -47,9 +47,9 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 1795 | 1998 | **89,8 %** |
-| `TiendaFlow.Domain` | 468 | 500 | **93,6 %** |
-| Aplicación + dominio | 2263 | 2498 | **90,5 %** |
+| `TiendaFlow.Application` | 2100 | 2324 | **90,3 %** |
+| `TiendaFlow.Domain` | 558 | 591 | **94,4 %** |
+| Aplicación + dominio | 2658 | 2915 | **91,1 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura global del
 reporte incluye `TiendaFlow.Infrastructure`: repositorios EF Core y migraciones
@@ -59,6 +59,19 @@ el que usa la documentación del proyecto.
 
 ## Pruebas añadidas en esta fase
 
+- `SystemParameterTests`: normalización de enteros, decimales, booleanos y
+  texto; claves, alcances, versiones y fechas inválidas.
+- `ParameterServiceTests`: catálogo con valores de código, valor global y por
+  tienda, versionado, fecha duplicada o anterior, rangos, tienda inactiva,
+  historial con autor, auditoría y negación sin permiso antes de consultar.
+- `ParameterValuesTests`: valor por defecto, valor global, anulación por tienda,
+  versión futura y clave desconocida.
+- `ParameterVersioningIntegrationTests`: versiones reales sobre SQL Server,
+  lectura de la última vigente, historial y auditoría persistida, más el índice
+  único que rechaza un duplicado global.
+- `RolePermissionsTests`: solo el Administrador administra parámetros.
+- `FinalScreenAuthorizationTests`: política de las dos rutas de parámetros y
+  enlace del menú.
 - `StoreServiceTests`: alta con nombre único, edición, activación y
   desactivación con los tres bloqueos, reasignación de usuarios y empleados,
   auditoría y negación sin permiso antes de tocar repositorios.

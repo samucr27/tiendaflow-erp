@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TiendaFlow.Application;
 using TiendaFlow.Application.Crm;
 using TiendaFlow.Application.Invoicing;
+using TiendaFlow.Application.Parameters;
 using TiendaFlow.Application.Reporting;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure.Persistence;
@@ -38,6 +39,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuditTrailQuery, EfAuditTrailQuery>();
         services.AddScoped<IStoreDirectoryQuery, EfStoreDirectoryQuery>();
         services.AddScoped<IStoreUsageQuery, EfStoreUsageQuery>();
+        services.AddScoped<ISystemParameterRepository, EfSystemParameterRepository>();
+        services.AddScoped<IParameterAuthorQuery, EfParameterAuthorQuery>();
 
         services.AddScoped<ISupplierRepository, EfSupplierRepository>();
         services.AddScoped<IPurchaseOrderRepository, EfPurchaseOrderRepository>();
@@ -68,6 +71,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UserDirectoryService>();
         services.AddScoped<StoreService>();
         services.AddScoped<StoreDirectoryService>();
+        services.AddScoped<ParameterService>();
+        services.AddScoped<IParameterValues, ParameterValues>();
         services.AddScoped<AuditTrailService>();
         services.AddScoped<RoleCatalogService>();
         services.AddScoped<AuthenticationService>();

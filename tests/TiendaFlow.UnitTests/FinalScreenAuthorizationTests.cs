@@ -59,6 +59,29 @@ public class FinalScreenAuthorizationTests
         Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
     }
 
+    [Theory]
+    [InlineData("Seguridad/Parametros.razor", "/seguridad/parametros")]
+    [InlineData("Seguridad/ParametroDetalle.razor", "/seguridad/parametros/{Key}")]
+    public void ParameterRoutesDeclareTheManagePolicy(string file, string route)
+    {
+        var source = ReadPage(file);
+
+        Assert.Contains($"@page \"{route}\"", source);
+        Assert.Contains(
+            "@attribute [Authorize(Policy = Permissions.SecurityParametersManage)]",
+            source);
+    }
+
+    [Fact]
+    public void MenuShowsParametersOnlyWithTheManagePermission()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"seguridad/parametros\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.SecurityParametersManage)", menu);
+    }
+
     [Fact]
     public void MenuShowsStoresOnlyWithTheViewPermission()
     {

@@ -35,6 +35,8 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<Customer> Customers => Set<Customer>();
 
+    public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

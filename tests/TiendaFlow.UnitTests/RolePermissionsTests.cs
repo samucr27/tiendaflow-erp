@@ -69,8 +69,7 @@ public class RolePermissionsTests
     }
 
     [Fact]
-    public void StoresAreManagedByTheAdministratorAndReadByTheCorporateManager()
-    {
+    public void StoresAreManagedByTheAdministratorAndReadByTheCorporateManager()    {
         Assert.True(RolePermissions.IsAllowed(RoleNames.Administrator, Permissions.SecurityStoresView));
         Assert.True(RolePermissions.IsAllowed(RoleNames.Administrator, Permissions.SecurityStoresManage));
         Assert.True(RolePermissions.IsAllowed(RoleNames.CorporateManager, Permissions.SecurityStoresView));
@@ -87,6 +86,21 @@ public class RolePermissionsTests
         {
             Assert.False(RolePermissions.IsAllowed(role, Permissions.SecurityStoresView));
             Assert.False(RolePermissions.IsAllowed(role, Permissions.SecurityStoresManage));
+        }
+    }
+
+    [Fact]
+    public void OnlyTheAdministratorManagesSystemParameters()
+    {
+        Assert.True(RolePermissions.IsAllowed(
+            RoleNames.Administrator,
+            Permissions.SecurityParametersManage));
+
+        foreach (var role in RoleNames.All.Where(role => role != RoleNames.Administrator))
+        {
+            Assert.False(RolePermissions.IsAllowed(
+                role,
+                Permissions.SecurityParametersManage));
         }
     }
 }

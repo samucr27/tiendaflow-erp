@@ -20,7 +20,6 @@ continuación se documentan con el permiso que las reserva.
 | Área | Permiso reservado | Qué falta | Por qué queda pendiente | Siguiente paso sugerido |
 | --- | --- | --- | --- | --- |
 | Seguridad | `security.roles.manage` | Editar roles desde la interfaz | La matriz es código para que la autorización sea determinista; la pantalla es de solo lectura | Persistir roles solo si el negocio lo exige, con auditoría y pruebas de autorización |
-| Seguridad | `security.parameters.manage` | Parámetros configurables | Los parámetros actuales son constantes de código (por ejemplo, nómina) | Definir un modelo de parámetros por tienda y versionado |
 | Seguridad | `security.reports.view` | Reportes de seguridad | La auditoría ya es consultable en `/seguridad/auditoria`; no hay reportes agregados | Agregar conteos de accesos, cambios de usuario y exportación CSV |
 | Inventario | `inventory.stock.transfer` | Traslados entre tiendas | No existe modelo de transferencia ni tienda destino en el flujo actual | Modelo de transferencia con origen, destino, estados y recepción |
 | Inventario | `inventory.stock.count` | Conteo físico / ajustes | Solo existe recepción de mercancía; no hay documento de conteo | Conteo por ubicación con diferencia y ajuste auditado |
@@ -47,18 +46,23 @@ continuación se documentan con el permiso que las reserva.
 - **Nómina:** los parámetros son referencias académicas y están documentados en
   `docs/sprint2/payroll-parameters-validation.md`. El sistema calcula la
   corrida, pero no reemplaza una liquidación laboral certificada.
+- **Parámetros:** los valores iniciales son referencias académicas documentadas
+  en `ParameterCatalog`. Si no existe una versión en base, el sistema usa el
+  valor de código; los cambios se guardan como versiones inmutables con fecha de
+  vigencia y quedan auditados.
+- **Pruebas de integración:** requieren una cadena de conexión a SQL Server en
+  `TIENDAFLOW_TEST_CONNECTION`. En la verificación de esta rama se ejecutaron
+  contra un contenedor desechable que aplica las migraciones desde cero; no se
+  usó la base de desarrollo.
 - **Datos de demostración:** el sembrado se registra siempre que
   `Seed:Enabled` sea verdadero, sin importar el entorno; no está atado a
   `Development`. Si la clave es falsa o no existe, ninguna ruta crea usuarios,
   productos ni facturas de ejemplo. En la configuración de producción se deja
   desactivada.
-- **Pruebas de integración:** están escritas, pero se omiten si no existe una
-  cadena de conexión a SQL Server. No se aplicaron migraciones contra la base de
-  datos de desarrollo durante esta entrega.
 
 ## Lo que sí quedó completo
 
 Compras, panel, reportes, ranking de proveedores, segmentación CRM,
-exportación XML simulada y administración de tiendas están implementados, con
-permisos, pruebas y documentación. El detalle está en
+exportación XML simulada, administración de tiendas y parámetros configurables
+están implementados, con permisos, pruebas y documentación. El detalle está en
 [implemented-modules.md](implemented-modules.md).

@@ -1,10 +1,10 @@
 # Módulos y pantallas implementados
 
 Esta entrega completa las pantallas que faltaban para los módulos de compras,
-panel, reportes, CRM, facturación simulada y administración de tiendas. Todas
-las rutas declaran su `Authorize(Policy = ...)` y los servicios vuelven a exigir
-el permiso, de modo que ocultar un enlace del menú no protege una función por sí
-solo.
+panel, reportes, CRM, facturación simulada, administración de tiendas y
+parámetros configurables. Todas las rutas declaran su `Authorize(Policy = ...)`
+y los servicios vuelven a exigir el permiso, de modo que ocultar un enlace del
+menú no protege una función por sí solo.
 
 ## Tiendas
 
@@ -33,6 +33,52 @@ Reglas de negocio aplicadas en el dominio y en `StoreService`:
 
 El Gerente corporativo entra en modo consulta; el Administrador administra. La
 matriz y la justificación están en [permissions.md](permissions.md).
+
+## Parámetros configurables
+
+| Ruta | Permiso de página | Función |
+| --- | --- | --- |
+| `/seguridad/parametros` | `security.parameters.manage` | Valores vigentes por parámetro, filtro global/tienda e historial |
+| `/seguridad/parametros/{Key}` | `security.parameters.manage` | Historial de versiones y formulario para registrar una nueva |
+
+El modelo `SystemParameter` guarda una fila por versión; nunca actualiza la
+anterior. Cada versión tiene clave, tipo (`Integer`, `Decimal`, `Text`,
+`Boolean`), alcance (`Global` o `Store`), tienda cuando aplica, valor
+normalizado, fecha de vigencia, número de versión, autor y fecha de creación en
+UTC.
+
+Reglas aplicadas en el dominio y en `ParameterService`:
+
+1. El catálogo es código (`SystemParameterCatalog`): una clave desconocida no se
+   puede guardar y cada clave conserva un valor por defecto documentado.
+2. El valor se normaliza antes de comparar o guardar (números invariantes,
+   booleanos como `true`/`false`, texto sin espacios sobrantes). Para decimales
+   se aceptan `1500.50` y `1.500,50`.
+3. La fecha de vigencia es una fecha calendario. No se repite para la misma
+   clave, alcance y tienda, y no puede ser anterior a la última versión.
+4. Un parámetro global no puede tener tienda; uno por tienda exige una tienda
+   activa.
+5. La lectura usa la versión por tienda si existe, luego la global y, si no hay
+   ninguna, el valor de código. Una versión futura no se aplica antes de su
+   fecha.
+6. Crear una versión queda auditado con módulo `security`, usuario, IP y el
+   cambio `anterior -> nuevo`; la inserción y la auditoría comparten
+   transacción.
+
+| Clave | Tipo | Valor de código | Uso |
+| --- | --- | --- | --- |
+| `crm.points.cop_per_point` | Decimal | 1000 COP | Compra que genera un punto |
+| `crm.points.cop_per_redeemed_point` | Decimal | 500 COP | Valor de un punto al canjear |
+| `crm.pqrs.response_days` | Entero | 15 días hábiles | Plazo de respuesta a PQRS |
+| `inventory.replenishment.consumption_window_days` | Entero | 30 días | Ventana de consumo para reposición |
+| `inventory.replenishment.coverage_days` | Entero | 15 días | Cobertura objetivo de stock |
+| `hr.contracts.expiry_alert_days` | Entero | 30 días | Aviso de contrato por vencer |
+| `hr.shifts.max_hours_per_shift` | Decimal | 8 horas | Duración máxima de un turno |
+| `hr.shifts.max_hours_per_day` | Decimal | 8 horas | Horas máximas asignadas por día |
+
+`IParameterValues` expone los valores tipados a los demás módulos. Los
+parámetros de nómina siguen en `IPayrollParametersProvider` con sus referencias
+académicas; esta fase no cambió ese contrato.
 
 ## Compras
 

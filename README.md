@@ -102,7 +102,7 @@ Todos usan el dominio `@tiendaflow.local`. Las contraseñas no se documentan aqu
 | Compras | `/compras/ordenes`, `/compras/ordenes/nueva`, `/compras/ordenes/{id}` | `purchasing.orders.view` | `purchasing.orders.*` |
 | Facturación | `/facturacion`, `/facturacion/nueva`, `/facturacion/{id}`, `/facturacion/{id}/xml` | `sales.invoices.view` | `sales.invoices.manage` |
 | CRM clientes | `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id}`, `/crm/segmentacion` | `crm.customers.view`, `crm.reports.view` | `crm.customers.manage` |
-| Seguridad | `/seguridad/usuarios`, `/seguridad/tiendas`, `/seguridad/roles`, `/seguridad/auditoria` | `security.*.view` | `security.*.manage` |
+| Seguridad | `/seguridad/usuarios`, `/seguridad/tiendas`, `/seguridad/parametros`, `/seguridad/roles`, `/seguridad/auditoria` | `security.*.view` | `security.*.manage` |
 
 El detalle de qué rol tiene cada permiso está en `docs/arc42/10-architecture-concepts-security.md` y en `src/TiendaFlow.Application/Security/RolePermissions.cs`.
 

@@ -1,7 +1,7 @@
 # Documentación final de TiendaFlow
 
 Esta carpeta reúne la documentación de la entrega final, escrita sobre la rama
-`feature/erp-final`. Los documentos congelados de entregas anteriores
+`feature/erp-complete`. Los documentos congelados de entregas anteriores
 (`docs/sprint2`, `docs/notion` y `docs/arc42`) no se modificaron.
 
 ## Índice
@@ -24,6 +24,8 @@ Esta carpeta reúne la documentación de la entrega final, escrita sobre la rama
 - Reportes: inventario, ventas y nómina, con exportación CSV.
 - CRM: segmentación A/B/C de clientes por volumen de compra.
 - Facturación: exportación de un XML **simulado** de factura electrónica.
+- Seguridad: administración de tiendas y parámetros configurables con versiones,
+  vigencia y auditoría.
 - Infraestructura: Terraform para Azure SQL y App Service Linux, guía de
   despliegue y flujo de trabajo de validación.
 

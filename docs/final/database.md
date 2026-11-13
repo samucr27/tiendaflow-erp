@@ -13,6 +13,7 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261111005733_Phase4Invoicing` | Facturas y líneas de factura |
 | `20261111010125_Phase5Crm` | Clientes |
 | `20261113012709_Phase6Stores` | Índices de apoyo para la administración de tiendas |
+| `20261113013940_Phase7Parameters` | Tabla `system_parameter`, versionado por fecha y alcance |
 
 La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
 existía. Añade tres índices que sostienen las consultas de la pantalla y del
@@ -29,9 +30,24 @@ EF Core reemplaza los índices de una sola columna `IX_employee_store_id` e
 `IX_purchase_order_store_id` por estos compuestos, que cubren la misma clave
 foránea. Las migraciones anteriores no se editaron.
 
-Las fases posteriores a la entrega final (parámetros, compras, inventario,
-devoluciones, CRM y RR. HH.) añadirán su propia migración; esta tabla se amplía
-a medida que se generan.
+`Phase7Parameters` crea la tabla `system_parameter`. Guarda una fila por versión
+y nunca actualiza la anterior. `effective_from` es `date` (fecha calendario) y
+`created_at` es `datetime2` en UTC. La columna calculada persistida
+`store_scope_key` convierte la tienda nula en `0` para que los índices únicos
+cubran también las versiones globales:
+
+- `IX_system_parameter_key_scope_store_version` sobre clave, alcance, tienda
+  calculada y versión.
+- `IX_system_parameter_key_scope_store_effective` sobre clave, alcance, tienda
+  calculada y fecha de vigencia.
+- Claves foráneas a `store` y `app_user` con borrado restringido.
+
+Un intento de duplicar la misma fecha o versión falla en la base, no solo en la
+validación de la aplicación.
+
+Las fases posteriores a la entrega final (compras, inventario, devoluciones, CRM
+y RR. HH.) añadirán su propia migración; esta tabla se amplía a medida que se
+generan.
 
 ## Generar una migración
 

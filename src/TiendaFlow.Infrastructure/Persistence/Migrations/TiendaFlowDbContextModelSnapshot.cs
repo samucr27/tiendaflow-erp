@@ -545,6 +545,78 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("supplier", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.SystemParameter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_from");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)")
+                        .HasColumnName("parameter_key");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("int")
+                        .HasColumnName("scope");
+
+                    b.Property<int?>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<int>("StoreScopeKey")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasColumnName("store_scope_key")
+                        .HasComputedColumnSql("ISNULL([store_id], 0)", true);
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("value");
+
+                    b.Property<int>("ValueType")
+                        .HasColumnType("int")
+                        .HasColumnName("value_type");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("Key", "Scope", "StoreScopeKey", "EffectiveFrom")
+                        .IsUnique()
+                        .HasDatabaseName("IX_system_parameter_key_scope_store_effective");
+
+                    b.HasIndex("Key", "Scope", "StoreScopeKey", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("IX_system_parameter_key_scope_store_version");
+
+                    b.ToTable("system_parameter", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Application.AuditEntry", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.AppUser", null)
@@ -648,6 +720,19 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("LastMovement");
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.SystemParameter", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.PurchaseOrder", b =>
