@@ -19,6 +19,7 @@ las tres capas y no depende de que el enlace esté oculto.
 | Seguridad: usuarios | `security.users.view` | `security.users.manage` |
 | Seguridad: roles | `security.roles.view` | `security.roles.manage` (declarado; la matriz es de solo lectura) |
 | Seguridad: auditoría | `security.audit.view` | — |
+| Seguridad: tiendas | `security.stores.view` | `security.stores.manage` |
 | Seguridad: parámetros y reportes | `security.parameters.manage`, `security.reports.view` (declarados, sin pantalla) | — |
 | Inventario: productos y precios | `inventory.products.view` | `inventory.products.manage`, `inventory.price.change` |
 | Inventario: stock | `inventory.stock.view` | `inventory.stock.receive`, `inventory.stock.transfer`*, `inventory.stock.count`* |
@@ -51,6 +52,21 @@ Los roles no se editan desde la interfaz: la pantalla `/seguridad/roles` es una
 matriz informativa. Esto es intencional para que la autorización sea
 determinista entre despliegues y no dependa de datos que alguien pueda cambiar
 por error.
+
+## Cambios en la matriz por la administración de tiendas
+
+La fase de tiendas añadió dos permisos y conservó el resto de asignaciones:
+
+| Permiso | Roles | Justificación |
+| --- | --- | --- |
+| `security.stores.view` | Administrador, Gerente corporativo | El gerente corporativo supervisa la red sin modificarla; el administrador necesita verla para gestionarla. |
+| `security.stores.manage` | Administrador | Crear, renombrar, activar, desactivar y reasignar personal altera la operación de una sucursal; queda reservado al rol administrativo. |
+
+La pantalla `/seguridad/tiendas` es de solo lectura para el Gerente corporativo:
+el botón de creación, el formulario de edición, la activación/desactivación y la
+reasignación de usuarios o empleados solo aparecen con
+`security.stores.manage`, y `StoreService` vuelve a exigirlo antes de tocar
+cualquier repositorio.
 
 ## Comprobaciones automáticas
 

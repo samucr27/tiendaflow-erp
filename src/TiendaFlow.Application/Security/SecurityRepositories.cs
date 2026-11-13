@@ -36,6 +36,15 @@ public interface IStoreRepository
 
     IReadOnlyList<Store> List();
 
+    bool ExistsName(string name, int? exceptStoreId = null);
+
+    /// <summary>
+    /// Store ids are assigned by the application because the existing primary
+    /// key is not an identity column. The value is read inside the same
+    /// transaction that inserts the row.
+    /// </summary>
+    int NextId();
+
     void Add(Store store);
 
     void Update(Store store);

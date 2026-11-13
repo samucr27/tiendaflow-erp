@@ -223,7 +223,8 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.HasIndex("IdNumber")
                         .IsUnique();
 
-                    b.HasIndex("StoreId");
+                    b.HasIndex("StoreId", "Active")
+                        .HasDatabaseName("IX_employee_store_active");
 
                     b.ToTable("employee", (string)null);
                 });
@@ -335,9 +336,10 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StoreId");
-
                     b.HasIndex("SupplierId");
+
+                    b.HasIndex("StoreId", "Status")
+                        .HasDatabaseName("IX_purchase_order_store_status");
 
                     b.ToTable("purchase_order", (string)null);
                 });
@@ -462,6 +464,9 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasColumnName("quantity");
 
                     b.HasKey("Sku", "StoreId");
+
+                    b.HasIndex("StoreId", "QuantityAvailable")
+                        .HasDatabaseName("IX_stock_store_quantity");
 
                     b.ToTable("stock", (string)null);
                 });

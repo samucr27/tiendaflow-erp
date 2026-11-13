@@ -36,6 +36,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleRepository, EfRoleRepository>();
         services.AddScoped<IUserDirectoryQuery, EfUserDirectoryQuery>();
         services.AddScoped<IAuditTrailQuery, EfAuditTrailQuery>();
+        services.AddScoped<IStoreDirectoryQuery, EfStoreDirectoryQuery>();
+        services.AddScoped<IStoreUsageQuery, EfStoreUsageQuery>();
 
         services.AddScoped<ISupplierRepository, EfSupplierRepository>();
         services.AddScoped<IPurchaseOrderRepository, EfPurchaseOrderRepository>();
@@ -64,6 +66,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ProductPriceService>();
         services.AddScoped<UserService>();
         services.AddScoped<UserDirectoryService>();
+        services.AddScoped<StoreService>();
+        services.AddScoped<StoreDirectoryService>();
         services.AddScoped<AuditTrailService>();
         services.AddScoped<RoleCatalogService>();
         services.AddScoped<AuthenticationService>();

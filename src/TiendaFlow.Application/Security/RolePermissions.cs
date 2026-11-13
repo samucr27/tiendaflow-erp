@@ -20,6 +20,8 @@ public static class RolePermissions
                 Permissions.SecurityAuditView,
                 Permissions.SecurityParametersManage,
                 Permissions.SecurityReportsView,
+                Permissions.SecurityStoresView,
+                Permissions.SecurityStoresManage,
                 Permissions.InventoryProductsView,
                 Permissions.InventoryStockView,
                 Permissions.InventoryAlertsView,
@@ -37,6 +39,7 @@ public static class RolePermissions
 
             [RoleNames.CorporateManager] = Set(
                 Permissions.SecurityReportsView,
+                Permissions.SecurityStoresView,
                 Permissions.InventoryProductsView,
                 Permissions.InventoryStockView,
                 Permissions.InventoryAlertsView,

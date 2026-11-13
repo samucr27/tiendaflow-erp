@@ -49,5 +49,9 @@ public class StockItemConfiguration : IEntityTypeConfiguration<StockItem>
         });
 
         builder.Navigation(item => item.LastMovement).IsRequired(false);
+
+        // Supports the store deactivation guard: units still held by a store.
+        builder.HasIndex(item => new { item.StoreId, item.QuantityAvailable })
+            .HasDatabaseName("IX_stock_store_quantity");
     }
 }

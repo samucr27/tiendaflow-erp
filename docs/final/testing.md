@@ -1,6 +1,6 @@
 # Compilación, pruebas y cobertura
 
-Última verificación sobre `feature/erp-final`, con .NET 9 en Windows.
+Última verificación sobre `feature/erp-complete`, con .NET 9 en Windows.
 
 ## Comandos
 
@@ -22,17 +22,17 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 339 | 0 | 0 | 339 |
+| `TiendaFlow.UnitTests` | 367 | 0 | 0 | 367 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 0 | 17 | 0 | 17 |
+| `TiendaFlow.IntegrationTests` | 18 | 0 | 0 | 18 |
 
-Total ejecutado: **345 pruebas superadas** y 17 omitidas.
+Total ejecutado: **391 pruebas superadas**, sin omisiones ni errores.
 
-Las pruebas de integración se omiten porque requieren una cadena de conexión a
-SQL Server en `TIENDAFLOW_TEST_CONNECTION` o
-`ConnectionStrings__DefaultConnection`. No se levantó la aplicación ni se
-aplicaron migraciones durante esta entrega, así que esas pruebas no se
-ejecutaron localmente.
+Las pruebas de integración se ejecutaron contra un contenedor SQL Server
+desechable (`tiendaflow-sql-test`, puerto 14333) mediante
+`TIENDAFLOW_TEST_CONNECTION`. El fixture crea una base única, aplica todas las
+migraciones en orden y ejecuta las pruebas; no toca la base de desarrollo. Sin
+esa variable las pruebas se omiten, pero en esta verificación se ejecutaron.
 
 ## Cobertura
 
@@ -47,19 +47,29 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 1796 | 1988 | **90,3 %** |
-| `TiendaFlow.Domain` | 502 | 546 | **91,9 %** |
-| Aplicación + dominio | 2298 | 2534 | **90,7 %** |
+| `TiendaFlow.Application` | 1795 | 1998 | **89,8 %** |
+| `TiendaFlow.Domain` | 468 | 500 | **93,6 %** |
+| Aplicación + dominio | 2263 | 2498 | **90,5 %** |
 
-La lógica de negocio supera el objetivo de 80 %. La cobertura global del
-reporte es 35,0 % porque incluye `TiendaFlow.Infrastructure`: repositorios EF
-Core y migraciones que solo se ejercitan con SQL Server y cuyas pruebas están
-omitidas en este entorno. No se ocultó esa cifra ni se excluyó el código
-generado para inflar el resultado; el filtro de Application + Domain es el que
-usa la documentación del proyecto.
+La lógica de negocio supera el objetivo de 85 %. La cobertura global del
+reporte incluye `TiendaFlow.Infrastructure`: repositorios EF Core y migraciones
+que solo se ejercitan con SQL Server. No se ocultó esa cifra ni se excluyó el
+código generado para inflar el resultado; el filtro de Application + Domain es
+el que usa la documentación del proyecto.
 
 ## Pruebas añadidas en esta fase
 
+- `StoreServiceTests`: alta con nombre único, edición, activación y
+  desactivación con los tres bloqueos, reasignación de usuarios y empleados,
+  auditoría y negación sin permiso antes de tocar repositorios.
+- `StoreDirectoryServiceTests`: listado y detalle con `security.stores.view`,
+  negación sin consultar y tienda inexistente.
+- `StoreDirectoryIntegrationTests`: contadores reales de usuarios, empleados,
+  stock y órdenes abiertas sobre SQL Server, más `ExistsName` y `NextId`.
+- `RolePermissionsTests`: el Administrador administra tiendas y el Gerente
+  corporativo solo consulta; ningún otro rol recibe esos permisos.
+- `FinalScreenAuthorizationTests`: política de las tres rutas de tiendas y
+  enlace del menú.
 - `BusinessDashboardServiceTests`: ventas del día, órdenes abiertas y
   verificación de que sin permiso no se consultan los repositorios.
 - `ReportingTests`: CSV con comas, comillas y saltos de línea; totales de

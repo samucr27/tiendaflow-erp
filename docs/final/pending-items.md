@@ -1,6 +1,7 @@
 # Auditoría de pendientes
 
-La auditoría se hizo sobre el código de `feature/erp-final`:
+La auditoría se hizo sobre el código de `feature/erp-final` y se actualiza en
+`feature/erp-complete` a medida que cada fase cierra un pendiente:
 
 1. Se compararon las constantes de `Permissions.cs` con sus usos en páginas,
    menú y servicios.
@@ -34,7 +35,6 @@ continuación se documentan con el permiso que las reserva.
 | Compras | — | Borradores automáticos de reposición | La orden se crea manualmente | Sugerencia por stock mínimo y consumo, con revisión humana |
 | Reportes | — | Exportación del ranking de proveedores | Solo existe la vista en pantalla | Reutilizar el escritor CSV y añadir endpoint con `purchasing.reports.view` |
 | Facturación | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
-| Tiendas | — | Administración de tiendas | El usuario tiene `StoreId`, pero no hay pantalla de tiendas | CRUD de tiendas y asignación de usuarios |
 
 ## Aclaraciones importantes
 
@@ -58,7 +58,7 @@ continuación se documentan con el permiso que las reserva.
 
 ## Lo que sí quedó completo
 
-Compras, panel, reportes, ranking de proveedores, segmentación CRM y
-exportación XML simulada están implementados, con permisos, pruebas y
-documentación. El detalle está en
+Compras, panel, reportes, ranking de proveedores, segmentación CRM,
+exportación XML simulada y administración de tiendas están implementados, con
+permisos, pruebas y documentación. El detalle está en
 [implemented-modules.md](implemented-modules.md).

@@ -504,6 +504,13 @@ h1:focus {
     overflow-x: auto;
 }
 
+.pager {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 16px;
+}
+
 .data-table {
     width: 100%;
     border-collapse: collapse;

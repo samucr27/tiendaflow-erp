@@ -1,9 +1,38 @@
 # Módulos y pantallas implementados
 
 Esta entrega completa las pantallas que faltaban para los módulos de compras,
-panel, reportes, CRM y facturación simulada. Todas las rutas declaran su
-`Authorize(Policy = ...)` y los servicios vuelven a exigir el permiso, de modo
-que ocultar un enlace del menú no protege una función por sí solo.
+panel, reportes, CRM, facturación simulada y administración de tiendas. Todas
+las rutas declaran su `Authorize(Policy = ...)` y los servicios vuelven a exigir
+el permiso, de modo que ocultar un enlace del menú no protege una función por sí
+solo.
+
+## Tiendas
+
+| Ruta | Permiso de página | Función |
+| --- | --- | --- |
+| `/seguridad/tiendas` | `security.stores.view` | Listado de sucursales con usuarios, empleados, stock y órdenes abiertas |
+| `/seguridad/tiendas/nueva` | `security.stores.manage` | Crear una tienda con nombre único y dirección |
+| `/seguridad/tiendas/{Id:int}` | `security.stores.view` | Detalle, edición, activación/desactivación y reasignación de personal |
+
+Reglas de negocio aplicadas en el dominio y en `StoreService`:
+
+1. El nombre se guarda sin espacios sobrantes y debe ser único; el repositorio
+   compara sin distinguir mayúsculas al validar desde la interfaz y la base
+   mantiene su índice único.
+2. El identificador lo asigna `IStoreRepository.NextId()` porque la columna
+   `store.id` no es identidad; se calcula dentro de la misma transacción de alta.
+3. Una tienda no se puede desactivar si tiene unidades en stock, órdenes de
+   compra abiertas o usuarios activos. Cada bloqueo tiene su propia excepción
+   para que la pantalla explique la primera razón concreta.
+4. Asignar un usuario mueve el empleado al que está vinculado, de modo que el
+   usuario y su registro laboral siempre apuntan a la misma tienda. No se puede
+   asignar personal a una tienda inactiva.
+5. Crear, actualizar, activar, desactivar y reasignar quedan auditados con
+   módulo `security`, usuario, IP y detalle. La desactivación se ejecuta dentro
+   de `IUnitOfWork` para que el cambio y su auditoría sean atómicos.
+
+El Gerente corporativo entra en modo consulta; el Administrador administra. La
+matriz y la justificación están en [permissions.md](permissions.md).
 
 ## Compras
 

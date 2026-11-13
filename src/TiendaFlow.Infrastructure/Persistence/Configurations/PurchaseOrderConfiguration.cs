@@ -46,6 +46,10 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
             .HasForeignKey(order => order.StoreId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Supports the store deactivation guard: open orders of a store.
+        builder.HasIndex(order => new { order.StoreId, order.Status })
+            .HasDatabaseName("IX_purchase_order_store_status");
+
         builder.HasMany(order => order.Lines)
             .WithOne()
             .HasForeignKey(line => line.OrderId)

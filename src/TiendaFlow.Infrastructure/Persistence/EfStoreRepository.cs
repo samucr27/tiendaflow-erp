@@ -15,6 +15,18 @@ public sealed class EfStoreRepository : IStoreRepository
     public IReadOnlyList<Store> List() =>
         _context.Stores.AsNoTracking().OrderBy(store => store.Name).ToList();
 
+    public bool ExistsName(string name, int? exceptStoreId = null)
+    {
+        var normalized = name.Trim();
+
+        return _context.Stores.Any(store =>
+            store.Name == normalized
+            && (exceptStoreId == null || store.Id != exceptStoreId));
+    }
+
+    public int NextId() =>
+        (_context.Stores.Max(store => (int?)store.Id) ?? 0) + 1;
+
     public void Add(Store store)
     {
         _context.Stores.Add(store);

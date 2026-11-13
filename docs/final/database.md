@@ -12,11 +12,26 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261109011701_Phase3Purchasing` | Proveedores y órdenes de compra |
 | `20261111005733_Phase4Invoicing` | Facturas y líneas de factura |
 | `20261111010125_Phase5Crm` | Clientes |
+| `20261113012709_Phase6Stores` | Índices de apoyo para la administración de tiendas |
 
-Esta entrega **no generó una migración nueva**. El panel, los reportes, el
-ranking, la segmentación y el XML simulado son consultas o documentos
-calculados sobre el esquema existente; no añaden tablas ni columnas. Por eso no
-hay que aplicar nada nuevo para usar estas pantallas.
+La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
+existía. Añade tres índices que sostienen las consultas de la pantalla y del
+bloqueo de desactivación:
+
+- `IX_stock_store_quantity` sobre `stock (store_id, quantity)` para saber si una
+  tienda todavía tiene unidades.
+- `IX_purchase_order_store_status` sobre `purchase_order (store_id, status)`
+  para contar órdenes abiertas.
+- `IX_employee_store_active` sobre `employee (store_id, active)` para localizar
+  empleados y usuarios activos de la tienda.
+
+EF Core reemplaza los índices de una sola columna `IX_employee_store_id` e
+`IX_purchase_order_store_id` por estos compuestos, que cubren la misma clave
+foránea. Las migraciones anteriores no se editaron.
+
+Las fases posteriores a la entrega final (parámetros, compras, inventario,
+devoluciones, CRM y RR. HH.) añadirán su propia migración; esta tabla se amplía
+a medida que se generan.
 
 ## Generar una migración
 
@@ -110,5 +125,6 @@ sembrado es idempotente.
 
 Las pruebas de `TiendaFlow.IntegrationTests` usan SQL Server real y se omiten
 cuando no existe `TIENDAFLOW_TEST_CONNECTION` o
-`ConnectionStrings__DefaultConnection`. No se ejecutaron contra la base de
-desarrollo en esta entrega.
+`ConnectionStrings__DefaultConnection`. En la verificación de esta rama se
+ejecutaron contra un contenedor desechable (`tiendaflow-sql-test`) que aplica
+las migraciones en una base nueva y no toca la base de desarrollo.

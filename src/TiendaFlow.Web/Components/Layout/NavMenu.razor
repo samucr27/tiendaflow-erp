@@ -85,6 +85,7 @@
     }
 
     @if (AccessControl.Has(Permissions.SecurityUsersView)
+         || AccessControl.Has(Permissions.SecurityStoresView)
          || AccessControl.Has(Permissions.SecurityRolesView)
          || AccessControl.Has(Permissions.SecurityAuditView))
     {
@@ -94,6 +95,12 @@
         {
             <NavLink class="nav-item" href="seguridad/usuarios" Match="NavLinkMatch.Prefix">
                 Usuarios
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SecurityStoresView))
+        {
+            <NavLink class="nav-item" href="seguridad/tiendas" Match="NavLinkMatch.Prefix">
+                Tiendas
             </NavLink>
         }
         @if (AccessControl.Has(Permissions.SecurityRolesView))

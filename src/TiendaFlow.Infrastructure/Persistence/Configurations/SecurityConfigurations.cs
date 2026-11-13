@@ -98,6 +98,10 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
 
         builder.HasIndex(employee => employee.IdNumber).IsUnique();
 
+        // Supports the store deactivation guard: active users of a store.
+        builder.HasIndex(employee => new { employee.StoreId, employee.Active })
+            .HasDatabaseName("IX_employee_store_active");
+
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(employee => employee.StoreId)

@@ -59,6 +59,18 @@ public static class DomainErrorTranslator
             "Revisa los datos del empleado. El documento, el nombre, el cargo, el tipo de contrato y la tienda deben ser válidos, y el salario no puede ser negativo.",
         EmployeeNotFoundException =>
             "No encontramos el empleado solicitado.",
+        InvalidStoreException =>
+            "Revisa los datos de la tienda. El nombre y la dirección son obligatorios.",
+        StoreNotFoundException =>
+            "No encontramos la tienda solicitada.",
+        DuplicateStoreNameException =>
+            "Ya existe una tienda con ese nombre.",
+        StoreHasStockException =>
+            "No se puede desactivar la tienda porque todavía tiene unidades en stock.",
+        StoreHasOpenOrdersException =>
+            "No se puede desactivar la tienda porque tiene órdenes de compra abiertas.",
+        StoreHasActiveUsersException =>
+            "No se puede desactivar la tienda porque tiene usuarios activos asignados.",
         InvalidPayrollInputException =>
             "Revisa los datos de la nómina. Los días trabajados deben estar entre 1 y 30 y la clase de riesgo entre 1 y 5.",
         UnsupportedContractTypeException =>

@@ -15,6 +15,8 @@ public static class Permissions
     public const string SecurityAuditView = "security.audit.view";
     public const string SecurityParametersManage = "security.parameters.manage";
     public const string SecurityReportsView = "security.reports.view";
+    public const string SecurityStoresView = "security.stores.view";
+    public const string SecurityStoresManage = "security.stores.manage";
 
     // Inventory
     public const string InventoryProductsView = "inventory.products.view";
@@ -71,6 +73,8 @@ public static class Permissions
         SecurityAuditView,
         SecurityParametersManage,
         SecurityReportsView,
+        SecurityStoresView,
+        SecurityStoresManage,
         InventoryProductsView,
         InventoryProductsManage,
         InventoryPriceChange,

@@ -44,6 +44,31 @@ public class FinalScreenAuthorizationTests
         Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
     }
 
+    [Theory]
+    [InlineData("Seguridad/Tiendas.razor", "/seguridad/tiendas", "SecurityStoresView")]
+    [InlineData("Seguridad/TiendaNueva.razor", "/seguridad/tiendas/nueva", "SecurityStoresManage")]
+    [InlineData("Seguridad/TiendaDetalle.razor", "/seguridad/tiendas/{Id:int}", "SecurityStoresView")]
+    public void StoreRoutesDeclareThePolicyOfTheMatrix(
+        string file,
+        string route,
+        string permission)
+    {
+        var source = ReadPage(file);
+
+        Assert.Contains($"@page \"{route}\"", source);
+        Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
+    }
+
+    [Fact]
+    public void MenuShowsStoresOnlyWithTheViewPermission()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"seguridad/tiendas\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.SecurityStoresView)", menu);
+    }
+
     [Fact]
     public void MenuShowsReportsOnlyWithTheReportPermissions()
     {
