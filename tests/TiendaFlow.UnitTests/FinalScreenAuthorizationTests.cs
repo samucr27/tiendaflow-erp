@@ -133,6 +133,34 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("no es válido ante la DIAN", source);
     }
 
+    [Theory]
+    [InlineData("Inventario/Conteos.razor", "/inventario/conteos", "InventoryStockCount")]
+    [InlineData("Inventario/ConteoDetalle.razor", "/inventario/conteos/{Id:int}", "InventoryStockCount")]
+    [InlineData("Inventario/Traslados.razor", "/inventario/traslados", "InventoryStockTransfer")]
+    [InlineData("Inventario/TrasladoDetalle.razor", "/inventario/traslados/{Id:int}", "InventoryStockTransfer")]
+    public void InventoryDocumentRoutesDeclareThePolicyOfTheMatrix(
+        string file,
+        string route,
+        string permission)
+    {
+        var source = ReadPage(file);
+
+        Assert.Contains($"@page \"{route}\"", source);
+        Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
+    }
+
+    [Fact]
+    public void MenuShowsInventoryDocumentsOnlyWithTheirPermissions()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"inventario/conteos\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.InventoryStockCount)", menu);
+        Assert.Contains("href=\"inventario/traslados\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.InventoryStockTransfer)", menu);
+    }
+
     private static string ReadPage(string file) =>
         File.ReadAllText(Path.Combine(
             RepoRoot, "src", "TiendaFlow.Web", "Components", "Pages", file));

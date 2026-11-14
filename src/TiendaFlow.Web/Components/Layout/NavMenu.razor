@@ -16,7 +16,9 @@
 
 <nav class="sidebar-nav" aria-label="Navegación principal">
     @if (AccessControl.Has(Permissions.InventoryStockView)
-         || AccessControl.Has(Permissions.InventoryProductsView))
+         || AccessControl.Has(Permissions.InventoryProductsView)
+         || AccessControl.Has(Permissions.InventoryStockCount)
+         || AccessControl.Has(Permissions.InventoryStockTransfer))
     {
         <p class="nav-section">Inventario</p>
 
@@ -36,6 +38,18 @@
         {
             <NavLink class="nav-item" href="inventario/stock" Match="NavLinkMatch.Prefix">
                 Consultar stock
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.InventoryStockCount))
+        {
+            <NavLink class="nav-item" href="inventario/conteos" Match="NavLinkMatch.Prefix">
+                Conteos físicos
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.InventoryStockTransfer))
+        {
+            <NavLink class="nav-item" href="inventario/traslados" Match="NavLinkMatch.Prefix">
+                Traslados entre tiendas
             </NavLink>
         }
         @if (AccessControl.Has(Permissions.InventoryStockReceive))

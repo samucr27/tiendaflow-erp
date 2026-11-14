@@ -107,6 +107,14 @@ public static class DomainErrorTranslator
         InvalidParameterException invalidParameter => invalidParameter.Message,
         ParameterNotFoundException =>
             "No encontramos el parámetro solicitado.",
+        InvalidInventoryCountException =>
+            "Revisa el conteo físico. Necesita al menos una línea, todas las cantidades contadas y un estado que permita la acción.",
+        InventoryCountNotFoundException =>
+            "No encontramos el conteo físico solicitado.",
+        InvalidInventoryTransferException =>
+            "Revisa el traslado. El origen y el destino deben ser tiendas activas distintas, cada línea necesita cantidad mayor que cero y el estado debe permitir la acción.",
+        InventoryTransferNotFoundException =>
+            "No encontramos el traslado solicitado.",
         InvalidPayrollInputException =>
             "Revisa los datos de la nómina. Los días trabajados deben estar entre 1 y 30 y la clase de riesgo entre 1 y 5.",
         UnsupportedContractTypeException =>

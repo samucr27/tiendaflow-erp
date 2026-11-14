@@ -39,6 +39,14 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
 
+    public DbSet<InventoryCount> InventoryCounts => Set<InventoryCount>();
+
+    public DbSet<InventoryCountLine> InventoryCountLines => Set<InventoryCountLine>();
+
+    public DbSet<InventoryTransfer> InventoryTransfers => Set<InventoryTransfer>();
+
+    public DbSet<InventoryTransferLine> InventoryTransferLines => Set<InventoryTransferLine>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

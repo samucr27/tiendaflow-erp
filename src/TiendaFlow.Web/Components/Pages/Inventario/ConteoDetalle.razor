@@ -1,0 +1,321 @@
+@page "/inventario/conteos/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryStockCount)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject InventoryCountService CountService
+@inject IInventoryDocumentQuery DocumentQuery
+@inject NavigationManager Navigation
+
+<PageTitle>Conteo físico · TiendaFlow</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_detail is null)
+{
+    <PageHeader Eyebrow="Inventario / Conteos"
+                Title="Conteo físico"
+                Subtitle="No encontramos el conteo solicitado">
+        <Actions>
+            <a class="button button-secondary" href="inventario/conteos">Volver</a>
+        </Actions>
+    </PageHeader>
+}
+else
+{
+    var header = _detail.Header;
+
+    <PageHeader Eyebrow="Inventario / Conteos"
+                Title="@($"CT-{header.Id:D5}")"
+                Subtitle="@($"{header.StoreName} · {header.Location ?? "Toda la tienda"} · {Formatters.ShortDate(header.CreatedAt)}")">
+        <Actions>
+            <a class="button button-secondary" href="inventario/conteos">Volver</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="kpi-grid">
+        <KpiCard Label="Estado"
+                 Value="@InventoryText.CountStatus(header.Status)"
+                 Hint="Flujo del conteo"
+                 Tone="@InventoryText.CountTone(header.Status)" />
+        <KpiCard Label="Líneas"
+                 Value="@Formatters.Number(header.LineCount)"
+                 Hint="@($"{header.CountedLineCount} contadas")"
+                 Tone="info" />
+        <KpiCard Label="Diferencia"
+                 Value="@Formatters.Quantity(CurrentDifference)"
+                 Hint="Contado menos sistema"
+                 Tone="@(CurrentDifference == 0 ? "ok" : "warning")" />
+        <KpiCard Label="Cerrado"
+                 Value="@(header.ClosedAt is null ? "Pendiente" : Formatters.ShortDateTime(header.ClosedAt.Value))"
+                 Hint="Cierre del conteo"
+                 Tone="neutral" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Líneas del conteo</h2>
+                <p class="card-subtitle">
+                    La cantidad del sistema es una foto tomada al abrir el conteo; no cambia
+                    con ventas o recepciones posteriores.
+                </p>
+            </div>
+            <StatusBadge Text="@InventoryText.CountStatus(header.Status)"
+                         Tone="@InventoryText.CountTone(header.Status)" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="num">Sistema</th>
+                        <th class="num">Contado</th>
+                        <th class="num">Diferencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _detail.Lines)
+                    {
+                        <tr>
+                            <td>
+                                <span>@line.ProductName</span>
+                                <span class="table-meta">@line.ProductSku</span>
+                            </td>
+                            <td class="num">@Formatters.Quantity(line.SystemQuantity)</td>
+                            <td class="num">
+                                @if (header.Status == InventoryCountStatus.Open)
+                                {
+                                    <input class="input"
+                                           type="number"
+                                           min="0"
+                                           aria-label="@($"Cantidad contada de {line.ProductName}")"
+                                           value="@CountedFor(line.ProductSku)"
+                                           @onchange="args => SetCounted(line.ProductSku, args)" />
+                                }
+                                else
+                                {
+                                    @Formatters.Quantity(line.CountedQuantity ?? 0)
+                                }
+                            </td>
+                            <td class="num">@Formatters.Quantity(DifferenceFor(line))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    @if (header.Status == InventoryCountStatus.Open)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Guardar y cerrar</h2>
+                    <p class="card-subtitle">
+                        Para cerrar, todas las líneas deben tener una cantidad contada. Los
+                        valores inician en la cantidad del sistema; ajústalos a lo encontrado.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button-secondary" @onclick="SaveCounted">
+                    Guardar cantidades
+                </button>
+                <button type="button" class="button button-primary" @onclick="CloseCount">
+                    Cerrar conteo
+                </button>
+            </div>
+        </section>
+    }
+    else if (header.Status == InventoryCountStatus.Closed)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Aplicar ajuste</h2>
+                    <p class="card-subtitle">
+                        El ajuste lleva el stock de cada producto a la cantidad contada, registra
+                        un movimiento de ajuste y deja el conteo inmutable. Esta acción no se
+                        puede deshacer.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button-primary" @onclick="ApplyAdjustment">
+                    Aplicar ajuste al inventario
+                </button>
+            </div>
+        </section>
+    }
+    else
+    {
+        <div class="alert alert-warning" role="status">
+            El conteo ya fue ajustado y no admite cambios. Las existencias de la tienda
+            reflejan las cantidades contadas.
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "abierto")]
+    public string? Abierto { get; set; }
+
+    private InventoryCountDetail? _detail;
+    private Dictionary<string, int> _counted = new(StringComparer.Ordinal);
+    private string? _error;
+    private string? _success;
+    private bool _initialized;
+
+    private int CurrentDifference => _detail is null
+        ? 0
+        : _detail.Lines.Sum(DifferenceFor);
+
+    protected override void OnParametersSet()
+    {
+        var firstLoad = !_initialized;
+
+        Load();
+        _initialized = true;
+
+        if (firstLoad && Abierto == "1")
+            _success = "El conteo se abrió con la cantidad actual del sistema.";
+    }
+
+    private void Load()
+    {
+        try
+        {
+            _detail = DocumentQuery.GetCount(Id);
+
+            if (_detail is null)
+            {
+                _error = "No encontramos el conteo físico solicitado.";
+                return;
+            }
+
+            _counted = _detail.Lines.ToDictionary(
+                line => line.ProductSku,
+                line => line.CountedQuantity ?? line.SystemQuantity,
+                StringComparer.Ordinal);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private int CountedFor(string sku) =>
+        _counted.TryGetValue(sku, out var quantity) ? quantity : 0;
+
+    private int DifferenceFor(InventoryCountLineRow line) =>
+        _detail?.Header.Status == InventoryCountStatus.Open
+            ? CountedFor(line.ProductSku) - line.SystemQuantity
+            : line.Difference ?? 0;
+
+    private void SetCounted(string sku, ChangeEventArgs args) =>
+        _counted[sku] = int.TryParse(args.Value?.ToString(), out var quantity)
+            ? Math.Max(quantity, 0)
+            : 0;
+
+    private void SaveCounted()
+    {
+        if (TrySave(showSuccess: true))
+            LoadSuccess("Las cantidades contadas se guardaron.");
+    }
+
+    private void CloseCount()
+    {
+        _error = null;
+        _success = null;
+
+        if (!TrySave(showSuccess: false))
+            return;
+
+        try
+        {
+            CountService.Close(Id);
+            _success = "El conteo quedó cerrado. Revisa las diferencias antes de aplicar el ajuste.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void ApplyAdjustment()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            CountService.Adjust(Id);
+            _success = "El ajuste se aplicó al inventario de la tienda.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private bool TrySave(bool showSuccess)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            CountService.SetCounted(Id, _counted);
+
+            if (showSuccess)
+                _success = "Las cantidades contadas se guardaron.";
+
+            return true;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+            return false;
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+            return false;
+        }
+    }
+
+    private void LoadSuccess(string message)
+    {
+        Load();
+        _success = message;
+    }
+}

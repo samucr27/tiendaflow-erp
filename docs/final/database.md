@@ -15,6 +15,7 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261113012709_Phase6Stores` | Índices de apoyo para la administración de tiendas |
 | `20261113013940_Phase7Parameters` | Tabla `system_parameter`, versionado por fecha y alcance |
 | `20261113015239_Phase8PurchasingKpis` | Fechas prometida/recibida de la orden y tabla `product_supplier` |
+| `20261114035445_Phase9InventoryDocuments` | Conteos físicos, traslados entre tiendas y sus líneas |
 
 La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
 existía. Añade tres índices que sostienen las consultas de la pantalla y del
@@ -60,7 +61,23 @@ También crea `product_supplier`, la relación entre producto y proveedor:
   proveedor predeterminado por producto; la regla se cumple en la base y no solo
   en el servicio.
 
-Las fases posteriores a la entrega final (inventario, devoluciones, CRM y
+`Phase9InventoryDocuments` crea los dos documentos de inventario:
+
+- `inventory_count` y `inventory_count_line`: la cabecera guarda tienda,
+  ubicación opcional, fechas y estado (`Open`, `Closed`, `Adjusted`); cada línea
+  congela `system_quantity` y guarda `counted_quantity` nula hasta que se cuenta.
+- `inventory_transfer` y `inventory_transfer_line`: origen, destino, fechas de
+  envío, recepción y anulación, estado (`Draft`, `Sent`, `Received`,
+  `Cancelled`) y las unidades por producto.
+
+Las claves foráneas a `store`, las líneas con borrado en cascada desde su
+cabecera y los índices `IX_inventory_count_store_status`,
+`IX_inventory_count_created_at`, `IX_inventory_transfer_origin_status`,
+`IX_inventory_transfer_destination_status`, `IX_inventory_count_line_count_sku`
+y `IX_inventory_transfer_line_transfer_sku` sostienen las pantallas, el filtro
+por tienda y las líneas de cada documento.
+
+Las fases posteriores a la entrega final (devoluciones, CRM restante y
 RR. HH.) añadirán su propia migración; esta tabla se amplía a medida que se
 generan.
 

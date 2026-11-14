@@ -21,8 +21,6 @@ continuación se documentan con el permiso que las reserva.
 | --- | --- | --- | --- | --- |
 | Seguridad | `security.roles.manage` | Editar roles desde la interfaz | La matriz es código para que la autorización sea determinista; la pantalla es de solo lectura | Persistir roles solo si el negocio lo exige, con auditoría y pruebas de autorización |
 | Seguridad | `security.reports.view` | Reportes de seguridad | La auditoría ya es consultable en `/seguridad/auditoria`; no hay reportes agregados | Agregar conteos de accesos, cambios de usuario y exportación CSV |
-| Inventario | `inventory.stock.transfer` | Traslados entre tiendas | No existe modelo de transferencia ni tienda destino en el flujo actual | Modelo de transferencia con origen, destino, estados y recepción |
-| Inventario | `inventory.stock.count` | Conteo físico / ajustes | Solo existe recepción de mercancía; no hay documento de conteo | Conteo por ubicación con diferencia y ajuste auditado |
 | Ventas | `sales.returns.authorize` | Devoluciones y notas crédito | El módulo de facturación solo emite y anula | Documento de devolución, autorización y efecto en inventario |
 | RR. HH. | `hr.contracts.manage` | Contratos y documentos laborales | El empleado guarda tipo de contrato, pero no el contrato como documento | Contratos con vigencia, prórrogas y adjuntos |
 | RR. HH. | `hr.attendance.manage` | Asistencia | No hay registro de entrada/salida ni novedades | Marcaciones, ausencias y cálculo de días trabajados |
@@ -62,6 +60,7 @@ continuación se documentan con el permiso que las reserva.
 Compras (órdenes, puntualidad y cumplimiento con datos de recepción,
 exportación del ranking y borradores de reposición con relación producto ·
 proveedor), panel, reportes, segmentación CRM, exportación XML simulada,
-administración de tiendas y parámetros configurables están implementados, con
-permisos, pruebas y documentación. El detalle está en
+administración de tiendas, parámetros configurables e inventario con conteos
+físicos y traslados entre tiendas están implementados, con permisos, pruebas y
+documentación. El detalle está en
 [implemented-modules.md](implemented-modules.md).

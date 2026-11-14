@@ -122,6 +122,8 @@ public sealed class DevDataSeeder : IHostedService
         await SeedCustomersAsync(context, cancellationToken);
         await SeedPurchaseOrdersAsync(context, cancellationToken);
         await SeedInvoicesAsync(context, cancellationToken);
+        await SeedInventoryCountsAsync(context, cancellationToken);
+        await SeedInventoryTransfersAsync(context, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -600,6 +602,107 @@ public sealed class DevDataSeeder : IHostedService
         }
 
         return invoice;
+    }
+
+    private static async Task SeedInventoryCountsAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.InventoryCounts.AnyAsync(cancellationToken))
+            return;
+
+        var storeOneStock = await context.Stocks
+            .AsNoTracking()
+            .Where(item => item.StoreId == DefaultStoreId)
+            .OrderBy(item => item.Sku)
+            .Take(5)
+            .ToListAsync(cancellationToken);
+
+        if (storeOneStock.Count == 0)
+            return;
+
+        var open = new InventoryCount(
+            0,
+            DefaultStoreId,
+            "Bodega principal",
+            DateTime.UtcNow.AddDays(-2));
+
+        foreach (var item in storeOneStock)
+            open.AddLine(item.Sku, item.QuantityAvailable);
+
+        // Leave one line with a difference so the demo shows the workflow:
+        // open, partially counted, waiting for the operator to close it.
+        var first = storeOneStock[0];
+        open.SetCounted(first.Sku, Math.Max(0, first.QuantityAvailable - 2));
+
+        context.InventoryCounts.Add(open);
+
+        var northStock = await context.Stocks
+            .AsNoTracking()
+            .Where(item => item.StoreId == NorthStoreId)
+            .OrderBy(item => item.Sku)
+            .Take(3)
+            .ToListAsync(cancellationToken);
+
+        if (northStock.Count > 0)
+        {
+            var closed = new InventoryCount(
+                0,
+                NorthStoreId,
+                null,
+                DateTime.UtcNow.AddDays(-4));
+
+            foreach (var item in northStock)
+            {
+                closed.AddLine(item.Sku, item.QuantityAvailable);
+                closed.SetCounted(item.Sku, item.QuantityAvailable);
+            }
+
+            closed.Close(DateTime.UtcNow.AddDays(-3));
+            context.InventoryCounts.Add(closed);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedInventoryTransfersAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.InventoryTransfers.AnyAsync(cancellationToken))
+            return;
+
+        var stock = await context.Stocks
+            .AsNoTracking()
+            .Where(item => item.StoreId == DefaultStoreId && item.QuantityAvailable > 0)
+            .OrderBy(item => item.Sku)
+            .Take(3)
+            .ToListAsync(cancellationToken);
+
+        if (stock.Count == 0)
+            return;
+
+        // A draft and a cancelled draft show every list state this seed needs
+        // without touching the stock that the other demo screens display.
+        var draft = new InventoryTransfer(
+            0,
+            DefaultStoreId,
+            NorthStoreId,
+            DateTime.UtcNow.AddDays(-1));
+
+        foreach (var item in stock)
+            draft.AddLine(item.Sku, Math.Min(item.QuantityAvailable, 2));
+
+        var cancelled = new InventoryTransfer(
+            0,
+            DefaultStoreId,
+            NorthStoreId,
+            DateTime.UtcNow.AddDays(-3));
+        cancelled.AddLine(stock[0].Sku, 1);
+        cancelled.Cancel(DateTime.UtcNow.AddDays(-2));
+
+        context.InventoryTransfers.AddRange(draft, cancelled);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     private sealed record SeedStore(int Id, string Name, string Address);

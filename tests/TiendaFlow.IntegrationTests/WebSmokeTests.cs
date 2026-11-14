@@ -178,6 +178,8 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         var userId = await context.AppUsers.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var employeeId = await context.Employees.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var storeId = await context.Stores.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
+        var countId = await context.InventoryCounts.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
+        var transferId = await context.InventoryTransfers.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var parameterKey = SystemParameterCatalog.All.First().Key;
 
         return new[]
@@ -191,6 +193,10 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute("/inventario/recibir", Permissions.InventoryStockReceive),
             new SmokeRoute("/inventario/ventas", Permissions.SalesPosUse),
             new SmokeRoute("/inventario/alertas", Permissions.InventoryAlertsView),
+            new SmokeRoute("/inventario/conteos", Permissions.InventoryStockCount),
+            new SmokeRoute($"/inventario/conteos/{countId}", Permissions.InventoryStockCount),
+            new SmokeRoute("/inventario/traslados", Permissions.InventoryStockTransfer),
+            new SmokeRoute($"/inventario/traslados/{transferId}", Permissions.InventoryStockTransfer),
             new SmokeRoute("/reportes/inventario", Permissions.InventoryReportsView),
             new SmokeRoute("/reportes/ventas", Permissions.SalesReportsView),
             new SmokeRoute("/reportes/nomina", Permissions.HrPayrollManage),

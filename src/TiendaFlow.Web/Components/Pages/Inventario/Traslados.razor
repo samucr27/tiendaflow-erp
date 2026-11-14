@@ -1,0 +1,365 @@
+@page "/inventario/traslados"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryStockTransfer)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject InventoryTransferService TransferService
+@inject IInventoryDocumentQuery DocumentQuery
+@inject IProductCatalogQuery ProductQuery
+@inject NavigationManager Navigation
+
+<PageTitle>Traslados entre tiendas · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Inventario"
+            Title="Traslados entre tiendas"
+            Subtitle="Envío de unidades del origen al destino, con descuento y reposición controlados" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Nuevo traslado</h2>
+            <p class="card-subtitle">
+                El traslado nace en borrador y no mueve stock hasta que se envía. El origen y
+                el destino deben ser tiendas activas diferentes.
+            </p>
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="transfer-origin">Tienda de origen</label>
+            <select id="transfer-origin" class="input" @bind="_originId">
+                @foreach (var store in _stores)
+                {
+                    <option value="@store.Id">@store.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="transfer-destination">Tienda de destino</label>
+            <select id="transfer-destination" class="input" @bind="_destinationId">
+                @foreach (var store in _stores)
+                {
+                    <option value="@store.Id">@store.Name</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="transfer-product">Producto</label>
+            <select id="transfer-product" class="input" @bind="_productSku">
+                @foreach (var product in _products)
+                {
+                    <option value="@product.Sku">@product.Name · @product.Sku</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="transfer-quantity">Cantidad</label>
+            <input id="transfer-quantity"
+                   class="input"
+                   type="number"
+                   min="1"
+                   @bind="_quantity" />
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="button button-secondary" @onclick="AddLine">
+            + Agregar producto
+        </button>
+    </div>
+
+    @if (_lines.Count > 0)
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="num">Cantidad</th>
+                        <th class="actions"><span class="sr-only">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _lines)
+                    {
+                        <tr>
+                            <td>
+                                <span>@line.ProductName</span>
+                                <span class="table-meta">@line.ProductSku</span>
+                            </td>
+                            <td class="num">@Formatters.Quantity(line.Quantity)</td>
+                            <td class="actions">
+                                <button type="button"
+                                        class="button button-secondary button-small"
+                                        @onclick="() => RemoveLine(line)">
+                                    Quitar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-actions">
+            <strong>@_lines.Count productos · @Formatters.Quantity(TotalUnits) unidades</strong>
+            <button type="button"
+                    class="button button-primary"
+                    disabled="@_saving"
+                    @onclick="Create">
+                Crear traslado en borrador
+            </button>
+        </div>
+    }
+</section>
+
+@if (_transfers is null)
+{
+    <p class="muted">Cargando los traslados…</p>
+}
+else if (_transfers.Count == 0)
+{
+    <EmptyState Title="Todavía no hay traslados"
+                Message="Crea el primer traslado para mover unidades entre tiendas." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Historial de traslados</h2>
+                <p class="card-subtitle">@_transfers.Count traslados registrados</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   aria-label="Buscar traslados"
+                   placeholder="Buscar por tienda o número"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (!Filtered.Any())
+        {
+            <EmptyState Title="Sin resultados"
+                        Message="No encontramos traslados con ese criterio." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Traslado</th>
+                            <th>Origen</th>
+                            <th>Destino</th>
+                            <th>Fecha</th>
+                            <th class="num">Líneas</th>
+                            <th class="num">Unidades</th>
+                            <th>Estado</th>
+                            <th class="actions"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var transfer in PageItems)
+                        {
+                            <tr>
+                                <td>
+                                    <a class="table-link" href="@($"inventario/traslados/{transfer.Id}")">
+                                        TR-@transfer.Id.ToString("D5")
+                                    </a>
+                                </td>
+                                <td>@transfer.OriginStoreName</td>
+                                <td>@transfer.DestinationStoreName</td>
+                                <td>@Formatters.ShortDate(transfer.CreatedAt)</td>
+                                <td class="num">@Formatters.Number(transfer.LineCount)</td>
+                                <td class="num">@Formatters.Quantity(transfer.TotalUnits)</td>
+                                <td>
+                                    <StatusBadge Text="@InventoryText.TransferStatus(transfer.Status)"
+                                                 Tone="@InventoryText.TransferTone(transfer.Status)" />
+                                </td>
+                                <td class="actions">
+                                    <a class="table-action" href="@($"inventario/traslados/{transfer.Id}")">Ver</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Filtered.Count > PageSize)
+            {
+                <div class="pager">
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == 1)" @onclick="PreviousPage">
+                        Anterior
+                    </button>
+                    <span class="muted">Página @_page de @TotalPages</span>
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == TotalPages)" @onclick="NextPage">
+                        Siguiente
+                    </button>
+                </div>
+            }
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private IReadOnlyList<InventoryStoreOption> _stores = [];
+    private IReadOnlyList<ProductListItem> _products = [];
+    private IReadOnlyList<InventoryTransferRow>? _transfers;
+    private readonly List<TransferLineForm> _lines = new();
+    private string _search = string.Empty;
+    private string _productSku = string.Empty;
+    private int _originId;
+    private int _destinationId;
+    private int _quantity = 1;
+    private int _page = 1;
+    private bool _saving;
+    private string? _error;
+    private string? _success;
+
+    private int TotalUnits => _lines.Sum(line => line.Quantity);
+
+    private IReadOnlyList<InventoryTransferRow> Filtered =>
+        (_transfers ?? Array.Empty<InventoryTransferRow>())
+            .Where(transfer =>
+                string.IsNullOrWhiteSpace(_search)
+                || transfer.OriginStoreName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || transfer.DestinationStoreName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || transfer.Id.ToString().Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(Filtered.Count / (double)PageSize));
+
+    private IEnumerable<InventoryTransferRow> PageItems =>
+        Filtered.Skip((_page - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _stores = TransferService.Stores();
+            _originId = _stores.FirstOrDefault()?.Id ?? 0;
+            _destinationId = _stores.Skip(1).FirstOrDefault()?.Id ?? _originId;
+            _products = ProductQuery.Search(term: null);
+            _productSku = _products.FirstOrDefault()?.Sku ?? string.Empty;
+            _transfers = DocumentQuery.ListTransfers();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void AddLine()
+    {
+        _error = null;
+        _success = null;
+
+        var product = _products.FirstOrDefault(item => item.Sku == _productSku);
+
+        if (product is null)
+        {
+            _error = "Elige un producto para agregarlo al traslado.";
+            return;
+        }
+
+        if (_quantity <= 0)
+        {
+            _error = "La cantidad debe ser mayor que cero.";
+            return;
+        }
+
+        if (_lines.Any(line => line.ProductSku == product.Sku))
+        {
+            _error = $"{product.Name} ya está en el traslado. Ajusta la cantidad en la lista.";
+            return;
+        }
+
+        _lines.Add(new TransferLineForm(product.Sku, product.Name, _quantity));
+        _quantity = 1;
+    }
+
+    private void RemoveLine(TransferLineForm line) => _lines.Remove(line);
+
+    private void Create()
+    {
+        _error = null;
+        _success = null;
+
+        if (_originId == _destinationId)
+        {
+            _error = "El origen y el destino deben ser tiendas diferentes.";
+            return;
+        }
+
+        if (_lines.Count == 0)
+        {
+            _error = "Agrega al menos un producto al traslado.";
+            return;
+        }
+
+        _saving = true;
+
+        try
+        {
+            var id = TransferService.Create(new CreateInventoryTransferRequest(
+                _originId,
+                _destinationId,
+                _lines.Select(line => new CreateInventoryTransferLine(line.ProductSku, line.Quantity)).ToList()));
+
+            Navigation.NavigateTo($"inventario/traslados/{id}?creado=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (_page > 1)
+            _page--;
+    }
+
+    private void NextPage()
+    {
+        if (_page < TotalPages)
+            _page++;
+    }
+
+    private sealed record TransferLineForm(string ProductSku, string ProductName, int Quantity);
+}

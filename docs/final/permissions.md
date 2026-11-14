@@ -23,7 +23,7 @@ las tres capas y no depende de que el enlace esté oculto.
 | Seguridad: parámetros | `security.parameters.manage` | `security.parameters.manage` |
 | Seguridad: reportes | `security.reports.view` (declarado, sin pantalla) | — |
 | Inventario: productos y precios | `inventory.products.view` | `inventory.products.manage`, `inventory.price.change` |
-| Inventario: stock | `inventory.stock.view` | `inventory.stock.receive`, `inventory.stock.transfer`*, `inventory.stock.count`* |
+| Inventario: stock | `inventory.stock.view` | `inventory.stock.receive`, `inventory.stock.transfer`, `inventory.stock.count` |
 | Inventario: alertas y reportes | `inventory.alerts.view`, `inventory.reports.view` | — |
 | Ventas: POS | `sales.pos.use` | — |
 | Ventas: facturas | `sales.invoices.view` | `sales.invoices.manage` |
@@ -95,6 +95,23 @@ El Coordinador de logística conserva `purchasing.orders.create` y
 proveedor y generar borradores. El Jefe de tienda conserva la aprobación y la
 recepción, y el Administrador mantiene todas las acciones. Ningún rol nuevo
 recibió permisos de administración de proveedores.
+
+## Cambios en la matriz por los conteos y los traslados
+
+Los conteos físicos y los traslados no cambiaron la matriz: usan permisos que ya
+existían y siguen asignados a los mismos roles.
+
+| Ruta o acción | Permiso | Roles |
+| --- | --- | --- |
+| `/inventario/conteos` y `/inventario/conteos/{id}` | `inventory.stock.count` | Administrador, Jefe de tienda, Auxiliar de bodega |
+| `/inventario/traslados` y `/inventario/traslados/{id}` | `inventory.stock.transfer` | Administrador, Jefe de tienda, Auxiliar de bodega |
+
+El Coordinador de logística conserva la recepción de mercancía
+(`inventory.stock.receive`) pero no crea conteos ni traslados: su papel es
+abastecer, no ajustar el inventario físico de una tienda. El Cajero solo consulta
+el stock y no puede abrir ninguno de los dos documentos. Cada pantalla declara su
+política, el menú oculta el enlace y `InventoryCountService` /
+`InventoryTransferService` vuelven a exigir el permiso antes de leer o escribir.
 
 ## Comprobaciones automáticas
 

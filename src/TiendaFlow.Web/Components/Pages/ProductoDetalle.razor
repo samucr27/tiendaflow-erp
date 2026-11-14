@@ -230,9 +230,7 @@ else
         : "ok";
 
     private static string MovementText(InventoryMovement? movement) =>
-        movement is null
-            ? "Sin movimientos"
-            : $"{(movement.Type == MovementType.Sale ? "Venta" : "Recepción")} de {movement.Quantity} · {Formatters.ShortDateTime(movement.Date)}";
+        InventoryText.Movement(movement);
 
     private sealed class PriceForm
     {

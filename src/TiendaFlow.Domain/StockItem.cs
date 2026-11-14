@@ -42,6 +42,50 @@ public class StockItem
         LastMovement = new InventoryMovement(MovementType.Receipt, quantity, date);
     }
 
+    /// <summary>
+    /// Deducts units sent to another store. The origin is validated before the
+    /// transfer is sent, so a stock row can never go negative.
+    /// </summary>
+    public void RegisterTransferOut(int quantity, DateTime date)
+    {
+        RequirePositive(quantity);
+
+        if (quantity > QuantityAvailable)
+            throw new InsufficientStockException(Sku, QuantityAvailable, quantity);
+
+        QuantityAvailable -= quantity;
+        LastMovement = new InventoryMovement(MovementType.TransferOut, quantity, date);
+    }
+
+    public void RegisterTransferIn(int quantity, DateTime date)
+    {
+        RequirePositive(quantity);
+
+        QuantityAvailable += quantity;
+        LastMovement = new InventoryMovement(MovementType.TransferIn, quantity, date);
+    }
+
+    /// <summary>
+    /// Sets the stock to the physically counted quantity and records an
+    /// adjustment movement with the absolute difference. A count of the same
+    /// quantity does not create a movement.
+    /// </summary>
+    public void AdjustTo(int countedQuantity, DateTime date)
+    {
+        if (countedQuantity < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(countedQuantity),
+                "The counted quantity cannot be negative.");
+
+        var difference = countedQuantity - QuantityAvailable;
+
+        if (difference == 0)
+            return;
+
+        QuantityAvailable = countedQuantity;
+        LastMovement = new InventoryMovement(MovementType.Adjustment, Math.Abs(difference), date);
+    }
+
     private static void RequirePositive(int quantity)
     {
         if (quantity <= 0)

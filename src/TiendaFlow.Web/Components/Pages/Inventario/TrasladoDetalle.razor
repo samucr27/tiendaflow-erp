@@ -1,0 +1,242 @@
+@page "/inventario/traslados/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryStockTransfer)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject InventoryTransferService TransferService
+@inject IInventoryDocumentQuery DocumentQuery
+@inject NavigationManager Navigation
+
+<PageTitle>Traslado entre tiendas · TiendaFlow</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_detail is null)
+{
+    <PageHeader Eyebrow="Inventario / Traslados"
+                Title="Traslado entre tiendas"
+                Subtitle="No encontramos el traslado solicitado">
+        <Actions>
+            <a class="button button-secondary" href="inventario/traslados">Volver</a>
+        </Actions>
+    </PageHeader>
+}
+else
+{
+    var header = _detail.Header;
+
+    <PageHeader Eyebrow="Inventario / Traslados"
+                Title="@($"TR-{header.Id:D5}")"
+                Subtitle="@($"{header.OriginStoreName} → {header.DestinationStoreName} · {Formatters.ShortDate(header.CreatedAt)}")">
+        <Actions>
+            <a class="button button-secondary" href="inventario/traslados">Volver</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="kpi-grid">
+        <KpiCard Label="Estado"
+                 Value="@InventoryText.TransferStatus(header.Status)"
+                 Hint="Flujo del traslado"
+                 Tone="@InventoryText.TransferTone(header.Status)" />
+        <KpiCard Label="Productos"
+                 Value="@Formatters.Number(header.LineCount)"
+                 Hint="Líneas del traslado"
+                 Tone="info" />
+        <KpiCard Label="Unidades"
+                 Value="@Formatters.Quantity(header.TotalUnits)"
+                 Hint="Total a mover"
+                 Tone="neutral" />
+        <KpiCard Label="Enviado"
+                 Value="@(header.SentAt is null ? "Pendiente" : Formatters.ShortDateTime(header.SentAt.Value))"
+                 Hint="Salida del origen"
+                 Tone="neutral" />
+        <KpiCard Label="Recibido"
+                 Value="@(header.ReceivedAt is null ? "Pendiente" : Formatters.ShortDateTime(header.ReceivedAt.Value))"
+                 Hint="Entrada al destino"
+                 Tone="neutral" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Productos del traslado</h2>
+                <p class="card-subtitle">Cantidad comprometida por producto</p>
+            </div>
+            <StatusBadge Text="@InventoryText.TransferStatus(header.Status)"
+                         Tone="@InventoryText.TransferTone(header.Status)" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="num">Cantidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _detail.Lines)
+                    {
+                        <tr>
+                            <td>
+                                <span>@line.ProductName</span>
+                                <span class="table-meta">@line.ProductSku</span>
+                            </td>
+                            <td class="num">@Formatters.Quantity(line.Quantity)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <td class="num">@Formatters.Quantity(header.TotalUnits)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+    @if (header.Status == InventoryTransferStatus.Draft)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Enviar el traslado</h2>
+                    <p class="card-subtitle">
+                        Al enviar se descuentan las unidades del origen. Si no hay existencias
+                        suficientes, el traslado no se envía.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button-primary" @onclick="Send">
+                    Enviar al destino
+                </button>
+                <button type="button" class="button button-secondary" @onclick="Cancel">
+                    Anular borrador
+                </button>
+            </div>
+        </section>
+    }
+    else if (header.Status == InventoryTransferStatus.Sent)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Recibir o anular</h2>
+                    <p class="card-subtitle">
+                        Recibir suma las unidades al destino y crea la fila de stock si el
+                        producto nunca se vendió allí. Anular un traslado enviado devuelve las
+                        unidades al origen.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button-primary" @onclick="Receive">
+                    Recibir en el destino
+                </button>
+                <button type="button" class="button button-secondary" @onclick="Cancel">
+                    Anular y devolver al origen
+                </button>
+            </div>
+        </section>
+    }
+    else if (header.Status == InventoryTransferStatus.Received)
+    {
+        <div class="alert alert-success" role="status">
+            El traslado fue recibido. El destino ya tiene las unidades y el documento no
+            admite más cambios.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning" role="status">
+            El traslado fue anulado. @(header.SentAt is null
+                ? "No hubo movimientos de stock porque se anuló antes de enviarlo."
+                : "Las unidades volvieron al origen en la misma operación.")
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "creado")]
+    public string? Creado { get; set; }
+
+    private InventoryTransferDetail? _detail;
+    private string? _error;
+    private string? _success;
+    private bool _initialized;
+
+    protected override void OnParametersSet()
+    {
+        var firstLoad = !_initialized;
+
+        Load();
+        _initialized = true;
+
+        if (firstLoad && Creado == "1")
+            _success = "El traslado se creó en borrador.";
+    }
+
+    private void Load()
+    {
+        try
+        {
+            _detail = DocumentQuery.GetTransfer(Id);
+
+            if (_detail is null)
+                _error = "No encontramos el traslado solicitado.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Send() =>
+        Run(() => TransferService.Send(Id), "El traslado fue enviado y el origen quedó descontado.");
+
+    private void Receive() =>
+        Run(() => TransferService.Receive(Id), "El traslado fue recibido y el destino quedó actualizado.");
+
+    private void Cancel() =>
+        Run(() => TransferService.Cancel(Id), "El traslado fue anulado.");
+
+    private void Run(Action action, string successMessage)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            action();
+            _success = successMessage;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

@@ -1,8 +1,9 @@
 # Módulos y pantallas implementados
 
 Esta entrega completa las pantallas que faltaban para los módulos de compras,
-panel, reportes, CRM, facturación simulada, administración de tiendas y
-parámetros configurables. Todas las rutas declaran su `Authorize(Policy = ...)`
+panel, reportes, CRM, facturación simulada, administración de tiendas,
+parámetros configurables e inventario (conteos físicos y traslados). Todas las
+rutas declaran su `Authorize(Policy = ...)`
 y los servicios vuelven a exigir el permiso, de modo que ocultar un enlace del
 menú no protege una función por sí solo.
 
@@ -79,6 +80,33 @@ Reglas aplicadas en el dominio y en `ParameterService`:
 `IParameterValues` expone los valores tipados a los demás módulos. Los
 parámetros de nómina siguen en `IPayrollParametersProvider` con sus referencias
 académicas; esta fase no cambió ese contrato.
+
+## Inventario: conteos y traslados
+
+| Ruta | Permiso de página | Función |
+| --- | --- | --- |
+| `/inventario/conteos` | `inventory.stock.count` | Abrir un conteo y listar los existentes con su avance |
+| `/inventario/conteos/{Id:int}` | `inventory.stock.count` | Registrar cantidades, cerrar y ajustar el stock |
+| `/inventario/traslados` | `inventory.stock.transfer` | Crear un traslado en borrador y listar los existentes |
+| `/inventario/traslados/{Id:int}` | `inventory.stock.transfer` | Enviar, recibir o anular según el estado |
+
+Reglas aplicadas en el dominio y en los servicios:
+
+1. El conteo congela la cantidad del sistema de cada fila de la tienda (o de una
+   ubicación concreta) al abrirse. Una recepción posterior no reescribe la
+   instantánea; la diferencia se calcula contra lo congelado.
+2. Para cerrar, todas las líneas deben tener cantidad contada. El ajuste se
+   aplica una sola vez y deja el documento `Adjusted`; después no admite más
+   cambios.
+3. El traslado nace en borrador y no mueve stock. Al enviarse descuenta el origen
+   y al recibirse repone el destino, creando la fila de stock si no existe. La
+   anulación de un traslado enviado devuelve las unidades al origen; un traslado
+   recibido no se anula.
+4. Cada transición ocurre dentro de `IUnitOfWork`, escribe la auditoría con
+   módulo `inventory`, usuario, IP y detalle, y no deja cantidades negativas ni
+   movimientos parciales si algo falla.
+5. Las listas se paginan de 20 en 20 y los importes y fechas se muestran en
+   español (es-CO), con la fecha almacenada en UTC.
 
 ## Compras
 

@@ -1,0 +1,251 @@
+@page "/inventario/conteos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.InventoryStockCount)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject InventoryCountService CountService
+@inject IInventoryDocumentQuery DocumentQuery
+@inject NavigationManager Navigation
+
+<PageTitle>Conteos físicos · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Inventario"
+            Title="Conteos físicos"
+            Subtitle="Conteo por tienda, cierre con todas las líneas contadas y ajuste único de existencias" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Abrir un conteo</h2>
+            <p class="card-subtitle">
+                El conteo congela la cantidad del sistema de cada producto. La ubicación
+                es opcional; si la dejas vacía se cuentan todas las filas de la tienda.
+            </p>
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="count-store">Tienda</label>
+            <select id="count-store" class="input" @bind="_storeId">
+                @foreach (var store in _stores)
+                {
+                    <option value="@store.Id">@store.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="count-location">Ubicación (opcional)</label>
+            <input id="count-location"
+                   class="input"
+                   maxlength="100"
+                   placeholder="Ej. Bodega principal"
+                   @bind="_location" />
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button"
+                class="button button-primary"
+                disabled="@(_stores.Count == 0 || _saving)"
+                @onclick="Create">
+            Abrir conteo
+        </button>
+    </div>
+</section>
+
+@if (_counts is null)
+{
+    <p class="muted">Cargando los conteos físicos…</p>
+}
+else if (_counts.Count == 0)
+{
+    <EmptyState Title="Todavía no hay conteos físicos"
+                Message="Abre el primer conteo para comparar las existencias del sistema con lo que hay en la tienda." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Historial de conteos</h2>
+                <p class="card-subtitle">@_counts.Count conteos registrados</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   aria-label="Buscar conteos"
+                   placeholder="Buscar por tienda, ubicación o número"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (!Filtered.Any())
+        {
+            <EmptyState Title="Sin resultados"
+                        Message="No encontramos conteos con ese criterio." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Conteo</th>
+                            <th>Tienda</th>
+                            <th>Ubicación</th>
+                            <th>Fecha</th>
+                            <th class="num">Líneas</th>
+                            <th class="num">Contadas</th>
+                            <th class="num">Diferencia</th>
+                            <th>Estado</th>
+                            <th class="actions"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var count in PageItems)
+                        {
+                            <tr>
+                                <td>
+                                    <a class="table-link" href="@($"inventario/conteos/{count.Id}")">
+                                        CT-@count.Id.ToString("D5")
+                                    </a>
+                                </td>
+                                <td>@count.StoreName</td>
+                                <td>@(count.Location ?? "Toda la tienda")</td>
+                                <td>@Formatters.ShortDate(count.CreatedAt)</td>
+                                <td class="num">@Formatters.Number(count.LineCount)</td>
+                                <td class="num">@Formatters.Number(count.CountedLineCount)</td>
+                                <td class="num">@Formatters.Number(count.DifferenceUnits)</td>
+                                <td>
+                                    <StatusBadge Text="@InventoryText.CountStatus(count.Status)"
+                                                 Tone="@InventoryText.CountTone(count.Status)" />
+                                </td>
+                                <td class="actions">
+                                    <a class="table-action" href="@($"inventario/conteos/{count.Id}")">Ver</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Filtered.Count > PageSize)
+            {
+                <div class="pager">
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == 1)" @onclick="PreviousPage">
+                        Anterior
+                    </button>
+                    <span class="muted">Página @_page de @TotalPages</span>
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == TotalPages)" @onclick="NextPage">
+                        Siguiente
+                    </button>
+                </div>
+            }
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private IReadOnlyList<InventoryStoreOption> _stores = [];
+    private IReadOnlyList<InventoryCountRow>? _counts;
+    private string _search = string.Empty;
+    private string? _location;
+    private int _storeId;
+    private int _page = 1;
+    private bool _saving;
+    private string? _error;
+    private string? _success;
+
+    private IReadOnlyList<InventoryCountRow> Filtered =>
+        (_counts ?? Array.Empty<InventoryCountRow>())
+            .Where(count =>
+                string.IsNullOrWhiteSpace(_search)
+                || count.StoreName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || (count.Location ?? string.Empty).Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || count.Id.ToString().Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(Filtered.Count / (double)PageSize));
+
+    private IEnumerable<InventoryCountRow> PageItems =>
+        Filtered.Skip((_page - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _stores = CountService.Stores();
+            _storeId = _stores.FirstOrDefault()?.Id ?? 0;
+            _counts = DocumentQuery.ListCounts();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Create()
+    {
+        _error = null;
+        _success = null;
+
+        if (_storeId <= 0)
+        {
+            _error = "Elige una tienda activa para abrir el conteo.";
+            return;
+        }
+
+        _saving = true;
+
+        try
+        {
+            var id = CountService.Create(_storeId, _location);
+            Navigation.NavigateTo($"inventario/conteos/{id}?abierto=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (_page > 1)
+            _page--;
+    }
+
+    private void NextPage()
+    {
+        if (_page < TotalPages)
+            _page++;
+    }
+}

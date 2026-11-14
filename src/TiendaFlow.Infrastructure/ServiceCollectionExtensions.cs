@@ -52,6 +52,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInvoiceRepository, EfInvoiceRepository>();
         services.AddScoped<IInvoiceQuery, EfInvoiceQuery>();
 
+        services.AddScoped<IInventoryCountRepository, EfInventoryCountRepository>();
+        services.AddScoped<IInventoryTransferRepository, EfInventoryTransferRepository>();
+        services.AddScoped<IInventoryDocumentQuery, EfInventoryDocumentQuery>();
+
         services.AddScoped<ICustomerRepository, EfCustomerRepository>();
         services.AddScoped<ICustomerQuery, EfCustomerQuery>();
 
@@ -68,6 +72,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ElectronicInvoiceService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<StockService>();
+        services.AddScoped<InventoryCountService>();
+        services.AddScoped<InventoryTransferService>();
         services.AddScoped<ProductPriceService>();
         services.AddScoped<UserService>();
         services.AddScoped<UserDirectoryService>();

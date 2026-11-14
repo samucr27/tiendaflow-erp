@@ -23,11 +23,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 488 | 0 | 0 | 488 |
+| `TiendaFlow.UnitTests` | 589 | 0 | 0 | 589 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 38 | 0 | 0 | 38 |
+| `TiendaFlow.IntegrationTests` | 42 | 0 | 0 | 42 |
 
-Total ejecutado: **532 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **637 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -48,9 +48,9 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 2624 | 2689 | **97,5 %** |
-| `TiendaFlow.Domain` | 610 | 640 | **95,3 %** |
-| Aplicación + dominio | 3234 | 3329 | **97,1 %** |
+| `TiendaFlow.Application` | 2985 | 3070 | **97,2 %** |
+| `TiendaFlow.Domain` | 776 | 812 | **95,5 %** |
+| Aplicación + dominio | 3761 | 3882 | **96,8 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura global del
 reporte incluye `TiendaFlow.Infrastructure`: repositorios EF Core y migraciones
@@ -81,6 +81,26 @@ demostración es idempotente y solo se activa con `Seed:Enabled`: dos tiendas,
 once empleados, siete usuarios de rol, quince productos con stock variado y bajo,
 seis proveedores, ocho clientes, ocho órdenes en todos los estados, seis facturas
 emitidas y una anulada.
+
+## Conteos físicos y traslados (Bloque 2, fase 4)
+
+La fase 4 añade dos documentos de inventario con migración propia
+(`Phase9InventoryDocuments`):
+
+- **Conteo físico** (`inventory.stock.count`): congela la cantidad del sistema
+  de cada fila de stock al abrirse, permite registrar la cantidad contada línea
+  por línea, exige que todas las líneas estén contadas para cerrar y aplica el
+  ajuste una sola vez. Después de ajustado el documento es inmutable.
+- **Traslado entre tiendas** (`inventory.stock.transfer`): nace en borrador, al
+  enviarse descuenta el stock del origen dentro de una transacción y al recibirse
+  repone el destino creando la fila si no existe; la anulación de un traslado
+  enviado devuelve las unidades al origen. Un traslado recibido no se anula.
+
+Ambos servicios exigen el permiso antes de tocar repositorios, escriben la
+auditoría con módulo, usuario, IP y detalle dentro de la misma transacción que el
+movimiento de stock y nunca dejan cantidades negativas. Las pantallas
+`/inventario/conteos`, `/inventario/conteos/{id}`, `/inventario/traslados` y
+`/inventario/traslados/{id}` paginan de 20 en 20 y declaran su política.
 
 ## Pruebas añadidas en esta fase
 
@@ -154,6 +174,19 @@ emitidas y una anulada.
   determinista, factura anulada, permiso y factura inexistente.
 - `FinalScreenAuthorizationTests`: políticas de las rutas nuevas, enlaces del
   menú y aviso de que el XML no es válido ante la DIAN.
+- `InventoryCountTests` / `InventoryTransferTests`: estados, transiciones,
+  inmutabilidad tras cerrar o ajustar, líneas duplicadas, cantidades inválidas y
+  movimientos de stock de entrada, salida y ajuste.
+- `InventoryCountServiceTests` / `InventoryTransferServiceTests`: permiso antes
+  de consultar, congelado de cantidades, validación de toda la hoja antes de
+  mutar, transacción única, auditoría con usuario e IP, stock insuficiente sin
+  efectos parciales y reposición del destino.
+- `InventoryDocumentsIntegrationTests`: flujo real sobre SQL Server del conteo
+  (instantánea, ajuste único), del traslado (envío, recepción y anulación) y de
+  los modelos de lista y detalle con nombres y filtro por tienda.
+- `WebSmokeTests`: las cuatro rutas de conteos y traslados se recorren con los
+  roles que tienen el permiso; el seeder siembra un conteo abierto y uno cerrado
+  y dos traslados sin mover el stock de las demás pantallas.
 
 ## Cómo reproducir la verificación
 

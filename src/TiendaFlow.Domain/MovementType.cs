@@ -4,5 +4,7 @@ public enum MovementType
 {
     Receipt,
     Sale,
-    Adjustment
+    Adjustment,
+    TransferIn,
+    TransferOut
 }
