@@ -9,21 +9,27 @@
 
 <PageTitle>Panel de inventario · TiendaFlow</PageTitle>
 
-<PageHeader
-    Eyebrow="Inventario"
-    Title="Panel de inventario"
-    Subtitle="@($"Stock de la tienda {CurrentUser.StoreName} en tiempo real")">
-    <Actions>
+<section class="panel-hero">
+    <div class="panel-hero-copy">
+        <p class="panel-hero-kicker">Panel de inventario</p>
+        <h1>Hola, @DisplayName</h1>
+        <p class="panel-hero-lead">
+            Este es el pulso de @CurrentUser.StoreName: stock disponible, alertas
+            y compras que necesitan tu atención hoy.
+        </p>
+    </div>
+
+    <div class="panel-hero-actions">
         @if (AccessControl.Has(Permissions.InventoryAlertsView))
         {
-            <a class="button button-secondary" href="inventario/alertas">Ver alertas</a>
+            <a class="button button-ghost" href="inventario/alertas">Ver alertas</a>
         }
         @if (AccessControl.Has(Permissions.InventoryStockReceive))
         {
             <a class="button button-primary" href="inventario/recibir">+ Recibir mercancía</a>
         }
-    </Actions>
-</PageHeader>
+    </div>
+</section>
 
 @if (_error is not null)
 {
@@ -35,176 +41,178 @@ else if (_dashboard is null)
 }
 else
 {
-    @if (_business is not null && (_business.CanViewSales || _business.CanViewPurchasing))
-    {
-        <section class="card">
-            <div class="card-header">
-                <div>
-                    <h2>Resumen del negocio</h2>
-                    <p class="card-subtitle">
-                        Indicadores de hoy para @CurrentUser.StoreName y las órdenes de compra en curso.
-                    </p>
-                </div>
-            </div>
-
-            <div class="kpi-grid">
-                @if (_business.CanViewSales)
-                {
-                    <KpiCard Label="Ventas de hoy"
-                             Value="@Formatters.Money(_business.SalesTodayTotal)"
-                             Hint="@($"{Formatters.Number(_business.SalesTodayCount)} facturas emitidas")"
-                             Tone="ok" />
-                }
-                @if (_business.CanViewPurchasing)
-                {
-                    <KpiCard Label="Órdenes abiertas"
-                             Value="@Formatters.Number(_business.OpenPurchaseOrders)"
-                             Hint="@Formatters.Money(_business.OpenPurchaseOrdersValue)"
-                             Tone="primary" />
-                    <KpiCard Label="Por aprobar"
-                             Value="@Formatters.Number(_business.PurchaseOrdersPendingApproval)"
-                             Hint="Borradores y en aprobación"
-                             Tone="info" />
-                }
-            </div>
-        </section>
-    }
-
-    <div class="kpi-grid">
-        <KpiCard Label="Productos en catálogo"
-                 Value="@Formatters.Number(_dashboard.ProductCount)"
-                 Hint="SKU activos"
-                 Tone="primary" />
-        <KpiCard Label="Unidades en stock"
-                 Value="@Formatters.Quantity(_dashboard.UnitsInStock)"
-                 Hint="En esta tienda"
-                 Tone="info" />
-        <KpiCard Label="Valor del inventario"
-                 Value="@Formatters.Money(_dashboard.StockValue)"
-                 Hint="A precio de venta"
-                 Tone="neutral" />
-        <KpiCard Label="Bajo mínimo"
-                 Value="@Formatters.Number(_dashboard.LowStock.Count)"
-                 Hint="Requieren reposición"
-                 Tone="alert" />
-    </div>
-
-    <div class="panel-grid">
-        <section class="card">
-            <div class="card-header">
-                <div>
-                    <h2>Productos</h2>
-                    <p class="card-subtitle">
-                        Mostrando @FilteredRows.Count() de @_dashboard.Rows.Count productos con stock
-                    </p>
-                </div>
-                <input class="search-input"
-                       type="search"
-                       placeholder="Buscar por nombre o SKU"
-                       aria-label="Buscar productos"
-                       @bind="_search"
-                       @bind:event="oninput" />
-            </div>
-
-            @if (!FilteredRows.Any())
-            {
-                <EmptyState Title="Sin resultados"
-                            Message="No encontramos productos con ese nombre o SKU." />
-            }
-            else
-            {
-                <div class="table-wrap">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th class="num">Stock</th>
-                                <th class="num">Mínimo</th>
-                                <th class="num">Precio</th>
-                                <th>Estado</th>
-                                <th class="actions"><span class="sr-only">Acciones</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in FilteredRows)
-                            {
-                                <tr>
-                                    <td>
-                                        <a class="table-link" href="inventario/productos/@Uri.EscapeDataString(row.Sku)">
-                                            @row.ProductName
-                                        </a>
-                                        <span class="table-meta">@row.Sku · @row.Location</span>
-                                    </td>
-                                    <td class="num">@Formatters.Quantity(row.QuantityAvailable)</td>
-                                    <td class="num">@Formatters.Quantity(row.MinStock)</td>
-                                    <td class="num">@Formatters.Money(row.SalePrice)</td>
-                                    <td>
-                                        <StatusBadge Text="@StatusText(row)" Tone="@StatusTone(row)" />
-                                    </td>
-                                    <td class="actions">
-                                        <a class="table-action" href="inventario/productos/@Uri.EscapeDataString(row.Sku)">Ver</a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </section>
-
-        <aside class="stack">
+    <div class="panel-dashboard">
+        @if (_business is not null && (_business.CanViewSales || _business.CanViewPurchasing))
+        {
             <section class="card">
                 <div class="card-header">
                     <div>
-                        <h2>Stock crítico</h2>
-                        <p class="card-subtitle">Productos por debajo de su mínimo</p>
+                        <h2>Resumen del negocio</h2>
+                        <p class="card-subtitle">
+                            Indicadores de hoy para @CurrentUser.StoreName y las órdenes de compra en curso.
+                        </p>
                     </div>
-                    <StatusBadge Text="@($"{_dashboard.LowStock.Count} alertas")" Tone="alert" />
                 </div>
 
-                @if (!_dashboard.LowStock.Any())
+                <div class="kpi-grid kpi-grid-fit">
+                    @if (_business.CanViewSales)
+                    {
+                        <KpiCard Label="Ventas de hoy"
+                                 Value="@Formatters.Money(_business.SalesTodayTotal)"
+                                 Hint="@($"{Formatters.Number(_business.SalesTodayCount)} facturas emitidas")"
+                                 Tone="ok" />
+                    }
+                    @if (_business.CanViewPurchasing)
+                    {
+                        <KpiCard Label="Órdenes abiertas"
+                                 Value="@Formatters.Number(_business.OpenPurchaseOrders)"
+                                 Hint="@Formatters.Money(_business.OpenPurchaseOrdersValue)"
+                                 Tone="primary" />
+                        <KpiCard Label="Por aprobar"
+                                 Value="@Formatters.Number(_business.PurchaseOrdersPendingApproval)"
+                                 Hint="Borradores y en aprobación"
+                                 Tone="info" />
+                    }
+                </div>
+            </section>
+        }
+
+        <div class="kpi-grid">
+            <KpiCard Label="Productos en catálogo"
+                     Value="@Formatters.Number(_dashboard.ProductCount)"
+                     Hint="SKU activos"
+                     Tone="primary" />
+            <KpiCard Label="Unidades en stock"
+                     Value="@Formatters.Quantity(_dashboard.UnitsInStock)"
+                     Hint="En esta tienda"
+                     Tone="info" />
+            <KpiCard Label="Valor del inventario"
+                     Value="@Formatters.Money(_dashboard.StockValue)"
+                     Hint="A precio de venta"
+                     Tone="neutral" />
+            <KpiCard Label="Bajo mínimo"
+                     Value="@Formatters.Number(_dashboard.LowStock.Count)"
+                     Hint="Requieren reposición"
+                     Tone="alert" />
+        </div>
+
+        <div class="panel-grid">
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <h2>Productos</h2>
+                        <p class="card-subtitle">
+                            Mostrando @FilteredRows.Count() de @_dashboard.Rows.Count productos con stock
+                        </p>
+                    </div>
+                    <input class="search-input"
+                           type="search"
+                           placeholder="Buscar por nombre o SKU"
+                           aria-label="Buscar productos"
+                           @bind="_search"
+                           @bind:event="oninput" />
+                </div>
+
+                @if (!FilteredRows.Any())
                 {
-                    <p class="muted">Todo el stock está por encima del mínimo.</p>
+                    <EmptyState Title="Sin resultados"
+                                Message="No encontramos productos con ese nombre o SKU." />
                 }
                 else
                 {
-                    <div class="alert-list">
-                        @foreach (var row in _dashboard.LowStock.Take(6))
-                        {
-                            <div class="alert-row">
-                                <div class="alert-copy">
-                                    <span class="alert-name">@row.ProductName</span>
-                                    <span class="alert-meta">
-                                        @row.Sku · Faltan @Formatters.Quantity(Math.Max(row.MinStock - row.QuantityAvailable, 0)) unidades
-                                    </span>
-                                </div>
-                                <a class="button button-small button-secondary"
-                                   href="@($"inventario/recibir?sku={Uri.EscapeDataString(row.Sku)}")">Recibir</a>
-                            </div>
-                        }
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="num">Stock</th>
+                                    <th class="num">Mínimo</th>
+                                    <th class="num">Precio</th>
+                                    <th>Estado</th>
+                                    <th class="actions"><span class="sr-only">Acciones</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in FilteredRows)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a class="table-link" href="inventario/productos/@Uri.EscapeDataString(row.Sku)">
+                                                @row.ProductName
+                                            </a>
+                                            <span class="table-meta">@row.Sku · @row.Location</span>
+                                        </td>
+                                        <td class="num">@Formatters.Quantity(row.QuantityAvailable)</td>
+                                        <td class="num">@Formatters.Quantity(row.MinStock)</td>
+                                        <td class="num">@Formatters.Money(row.SalePrice)</td>
+                                        <td>
+                                            <StatusBadge Text="@StatusText(row)" Tone="@StatusTone(row)" />
+                                        </td>
+                                        <td class="actions">
+                                            <a class="table-action" href="inventario/productos/@Uri.EscapeDataString(row.Sku)">Ver</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
-                    <a class="card-link" href="inventario/alertas">Ver todas las alertas</a>
                 }
             </section>
 
-            <section class="card">
-                <h2>Acciones rápidas</h2>
-                <div class="quick-actions">
-                    <a class="quick-action" href="inventario/productos/nuevo">
-                        <span class="quick-action-title">Registrar producto</span>
-                        <span class="quick-action-meta">Crear un nuevo SKU en el catálogo</span>
-                    </a>
-                    <a class="quick-action" href="inventario/ventas">
-                        <span class="quick-action-title">Registrar venta</span>
-                        <span class="quick-action-meta">Descontar unidades del stock</span>
-                    </a>
-                    <a class="quick-action" href="inventario/stock">
-                        <span class="quick-action-title">Consultar stock</span>
-                        <span class="quick-action-meta">Ver existencias por producto y tienda</span>
-                    </a>
-                </div>
-            </section>
-        </aside>
+            <aside class="stack">
+                <section class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2>Stock crítico</h2>
+                            <p class="card-subtitle">Productos por debajo de su mínimo</p>
+                        </div>
+                        <StatusBadge Text="@($"{_dashboard.LowStock.Count} alertas")" Tone="alert" />
+                    </div>
+
+                    @if (!_dashboard.LowStock.Any())
+                    {
+                        <p class="muted">Todo el stock está por encima del mínimo.</p>
+                    }
+                    else
+                    {
+                        <div class="alert-list">
+                            @foreach (var row in _dashboard.LowStock.Take(6))
+                            {
+                                <div class="alert-row">
+                                    <div class="alert-copy">
+                                        <span class="alert-name">@row.ProductName</span>
+                                        <span class="alert-meta">
+                                            @row.Sku · Faltan @Formatters.Quantity(Math.Max(row.MinStock - row.QuantityAvailable, 0)) unidades
+                                        </span>
+                                    </div>
+                                    <a class="button button-small button-secondary"
+                                       href="@($"inventario/recibir?sku={Uri.EscapeDataString(row.Sku)}")">Recibir</a>
+                                </div>
+                            }
+                        </div>
+                        <a class="card-link" href="inventario/alertas">Ver todas las alertas</a>
+                    }
+                </section>
+
+                <section class="card">
+                    <h2>Acciones rápidas</h2>
+                    <div class="quick-actions">
+                        <a class="quick-action" href="inventario/productos/nuevo">
+                            <span class="quick-action-title">Registrar producto</span>
+                            <span class="quick-action-meta">Crear un nuevo SKU en el catálogo</span>
+                        </a>
+                        <a class="quick-action" href="inventario/ventas">
+                            <span class="quick-action-title">Registrar venta</span>
+                            <span class="quick-action-meta">Descontar unidades del stock</span>
+                        </a>
+                        <a class="quick-action" href="inventario/stock">
+                            <span class="quick-action-title">Consultar stock</span>
+                            <span class="quick-action-meta">Ver existencias por producto y tienda</span>
+                        </a>
+                    </div>
+                </section>
+            </aside>
+        </div>
     </div>
 }
 
@@ -213,6 +221,15 @@ else
     private BusinessDashboard? _business;
     private string _search = string.Empty;
     private string? _error;
+
+    private string DisplayName
+    {
+        get
+        {
+            var parts = CurrentUser.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length == 0 ? CurrentUser.Name : parts[0];
+        }
+    }
 
     private IEnumerable<StockRow> FilteredRows =>
         _dashboard is null

@@ -2,12 +2,24 @@
 @inject ICurrentUser CurrentUser
 
 <div class="app-shell">
-    <aside class="sidebar">
+    <aside class="sidebar" id="app-sidebar">
         <NavMenu />
     </aside>
 
+    <label class="nav-scrim" for="nav-drawer" aria-hidden="true"></label>
+
     <div class="app-body">
         <header class="topbar">
+            <input id="nav-drawer"
+                   class="nav-toggle-input"
+                   type="checkbox"
+                   aria-label="Abrir menú de navegación" />
+            <label class="nav-toggle" for="nav-drawer" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+            </label>
+
             <div class="topbar-context">
                 <span class="topbar-eyebrow">Tienda</span>
                 <span class="topbar-store">@CurrentUser.StoreName</span>

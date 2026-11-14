@@ -5,60 +5,83 @@
 
 <PageTitle>Ingresar · TiendaFlow</PageTitle>
 
-<div class="login-card">
-    <div class="login-brand">
-        <div class="brand-mark" aria-hidden="true">TF</div>
-        <div>
-            <h1>TiendaFlow</h1>
-            <p>ERP para tiendas de conveniencia</p>
-        </div>
-    </div>
-
-    <div class="login-copy">
-        <h2>Inicia sesión</h2>
-        <p class="muted">Ingresa con el correo y la contraseña asignados por el administrador.</p>
-    </div>
-
-    @if (Error == 1)
-    {
-        <div class="alert alert-error" role="alert">
-            El correo o la contraseña no son correctos, o el usuario está inactivo.
-        </div>
-    }
-
-    <form method="post" action="/login" class="login-form">
-        <AntiforgeryToken />
-        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
-
-        <div class="field">
-            <label for="login-email">Correo electrónico</label>
-            <input id="login-email"
-                   class="input"
-                   type="email"
-                   name="email"
-                   autocomplete="username"
-                   required
-                   autofocus
-                   placeholder="nombre@tiendaflow.co" />
+<div class="login-shell">
+    <section class="login-story">
+        <div class="login-story-top">
+            <div class="brand-mark brand-mark-lg" aria-hidden="true">TF</div>
+            <span class="login-story-name">TiendaFlow</span>
         </div>
 
-        <div class="field">
-            <label for="login-password">Contraseña</label>
-            <input id="login-password"
-                   class="input"
-                   type="password"
-                   name="password"
-                   autocomplete="current-password"
-                   required
-                   placeholder="Tu contraseña" />
+        <div class="login-story-body">
+            <p class="login-story-kicker">Operación de tienda, en orden</p>
+            <h1>Tu inventario, tus compras y tu caja en un solo turno.</h1>
+            <p class="login-story-lead">
+                Un ERP para tiendas de conveniencia que necesitan decidir rápido sin
+                perder de vista el stock, los proveedores y las ventas del día.
+            </p>
+
+            <ul class="login-story-list">
+                <li>Stock, alertas y conteos por tienda</li>
+                <li>Compras, reposición y evaluación de proveedores</li>
+                <li>Facturación, reportes y auditoría de cada acción</li>
+            </ul>
         </div>
 
-        <button type="submit" class="button button-primary button-block">Ingresar</button>
-    </form>
+        <p class="login-story-foot">Acceso restringido al personal autorizado.</p>
+    </section>
 
-    <p class="login-footnote">
-        ¿No puedes ingresar? Contacta al administrador del sistema.
-    </p>
+    <section class="login-panel">
+        <div class="login-card">
+            <div class="login-copy">
+                <p class="login-kicker">Acceso</p>
+                <h2>Inicia sesión</h2>
+                <p class="muted">
+                    Ingresa con el correo y la contraseña asignados por el administrador.
+                </p>
+            </div>
+
+            @if (Error == 1)
+            {
+                <div class="alert alert-error" role="alert">
+                    El correo o la contraseña no son correctos, o el usuario está inactivo.
+                </div>
+            }
+
+            <form method="post" action="/login" class="login-form">
+                <AntiforgeryToken />
+                <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+                <div class="field">
+                    <label for="login-email">Correo electrónico</label>
+                    <input id="login-email"
+                           class="input"
+                           type="email"
+                           name="email"
+                           autocomplete="username"
+                           required
+                           autofocus
+                           placeholder="nombre@tiendaflow.co" />
+                </div>
+
+                <div class="field">
+                    <label for="login-password">Contraseña</label>
+                    <input id="login-password"
+                           class="input"
+                           type="password"
+                           name="password"
+                           autocomplete="current-password"
+                           required
+                           placeholder="Tu contraseña" />
+                </div>
+
+                <button type="submit" class="button button-primary button-block">Ingresar</button>
+            </form>
+
+            <p class="login-footnote">
+                ¿No puedes ingresar? Contacta al administrador del sistema.
+            </p>
+        </div>
+    </section>
 </div>
 
 @code {

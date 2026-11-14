@@ -165,6 +165,25 @@ Reglas y datos añadidos en esta fase:
 tiene `sales.reports.view` o `purchasing.orders.view`. Si no tiene ninguno de
 los dos permisos, no ejecuta las consultas y no muestra cifras.
 
+## Interfaz y navegación
+
+El acceso, el panel y el menú comparten una identidad de “turno de tienda” sobre
+variables CSS: bermellón `#E8412C` para la marca, carbón `#1C211E` para las
+superficies oscuras y papel cálido `#F4F2EC` para el fondo. El cambio es solo de
+presentación: no modifica autenticación, rutas, políticas ni condiciones del
+menú.
+
+- El acceso usa una composición dividida: historia de producto a la izquierda y
+  formulario a la derecha, con el mismo `POST /login`, antiforgery y campos.
+- El panel abre con un bloque oscuro con saludo y acciones, seguido de las
+  tarjetas de indicadores y del contenido existente.
+- El menú lateral es oscuro y el botón de 42 px abre un cajón fuera de pantalla
+  en móvil. El cajón se cierra con Escape, con el velo o al navegar; el fondo no
+  se desplaza mientras está abierto.
+- Los colores de texto y botones de estas pantallas cumplen contraste AA y la
+  tabla se desplaza dentro de su tarjeta en pantallas estrechas. El detalle de la
+  comprobación está en [testing.md](testing.md).
+
 ## Reportes
 
 | Ruta | Permiso | Exportación |

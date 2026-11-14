@@ -49,8 +49,8 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
 | `TiendaFlow.Application` | 2985 | 3070 | **97,2 %** |
-| `TiendaFlow.Domain` | 776 | 812 | **95,5 %** |
-| Aplicación + dominio | 3761 | 3882 | **96,8 %** |
+| `TiendaFlow.Domain` | 773 | 809 | **95,5 %** |
+| Aplicación + dominio | 3758 | 3879 | **96,8 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura global del
 reporte incluye `TiendaFlow.Infrastructure`: repositorios EF Core y migraciones
@@ -187,6 +187,34 @@ movimiento de stock y nunca dejan cantidades negativas. Las pantallas
 - `WebSmokeTests`: las cuatro rutas de conteos y traslados se recorren con los
   roles que tienen el permiso; el seeder siembra un conteo abierto y uno cerrado
   y dos traslados sin mover el stock de las demás pantallas.
+
+## Rediseño de acceso, panel y menú (Bloque 3)
+
+El 13 de noviembre de 2026 se verificó la capa visual del inicio de sesión, el
+panel y el menú con Chromium automatizado (Playwright) contra la aplicación real
+y una base SQL Server desechable. La comprobación se hizo fuera de la suite de
+pruebas del repositorio y no añade dependencias al proyecto.
+
+- **1280 × 900:** el acceso muestra las dos columnas (historia de 691 px y
+  formulario de 589 px), el formulario queda sobre el pliegue y el panel conserva
+  el menú lateral de 264 px y el contenido de 936 px.
+- **390 × 844:** el acceso colapsa a una columna, la historia se reduce a 247 px,
+  la tarjeta mide 354 px y el botón queda visible; el panel no desborda
+  horizontalmente y la tabla de productos se desplaza dentro de su tarjeta
+  (308 px visibles, 487 px de contenido).
+- **Menú móvil:** abre con el botón de 42 × 42 px, cubre los 390 px, bloquea el
+  desplazamiento del fondo, cierra al tocar el velo, con Escape y al seguir un
+  enlace (navega a `/inventario/stock` y deja el menú cerrado).
+- **Accesibilidad:** Axe (WCAG 2.0 y 2.1, niveles A y AA) no reporta violaciones
+  en el acceso, el panel ni el menú abierto, en ninguno de los dos anchos. Se
+  corrigieron el contraste del botón y de los enlaces del panel, el subtítulo de
+  la marca y el desbordamiento de la tabla con `position: relative` en
+  `.table-wrap`.
+
+Las capturas se generaron en el equipo de verificación y no se versionan. La
+revisión estética subjetiva queda a cargo del revisor; la comprobación cubre
+composición, desbordamiento, contraste y comportamiento del menú, no el juicio de
+diseño.
 
 ## Cómo reproducir la verificación
 
