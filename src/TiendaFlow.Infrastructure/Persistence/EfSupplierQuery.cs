@@ -10,19 +10,25 @@ public sealed class EfSupplierQuery : ISupplierQuery
 
     public EfSupplierQuery(TiendaFlowDbContext context) => _context = context;
 
-    public IReadOnlyList<SupplierRow> List() =>
-        Read().OrderBy(row => row.BusinessName).ToList();
+    public IReadOnlyList<SupplierRow> List() => Read(orderByName: true).ToList();
 
-    public SupplierRow? GetById(int id) =>
-        Read().ToList().FirstOrDefault(row => row.Id == id);
+    public SupplierRow? GetById(int id) => Read(id: id).FirstOrDefault();
 
-    private IQueryable<SupplierRow> Read()
+    private IQueryable<SupplierRow> Read(int? id = null, bool orderByName = false)
     {
+        var suppliers = _context.Suppliers.AsNoTracking();
+
+        if (id is int supplierId)
+            suppliers = suppliers.Where(supplier => supplier.Id == supplierId);
+
+        if (orderByName)
+            suppliers = suppliers.OrderBy(supplier => supplier.BusinessName);
+
         var orders = _context.PurchaseOrders.AsNoTracking();
         var lines = _context.PurchaseOrderLines.AsNoTracking();
 
         return
-            from supplier in _context.Suppliers.AsNoTracking()
+            from supplier in suppliers
             select new SupplierRow(
                 supplier.Id,
                 supplier.Nit,

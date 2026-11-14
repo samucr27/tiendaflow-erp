@@ -16,6 +16,7 @@ using TiendaFlow.Infrastructure;
 using TiendaFlow.Infrastructure.Persistence;
 using TiendaFlow.Web.Components;
 using TiendaFlow.Web.Endpoints;
+using TiendaFlow.Web.Formatting;
 using TiendaFlow.Web.Persistence;
 using TiendaFlow.Web.Security;
 
@@ -129,6 +130,10 @@ if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     builder.Services.AddHostedService<DevDataSeeder>();
 
 var app = builder.Build();
+
+// Every page reports unexpected failures through DomainErrorTranslator; wire
+// the console logger once so the friendly message never hides the real error.
+DomainErrorTranslator.UseLogger(app.Logger);
 
 // Migrations run only when Database:MigrateOnStartup is true. The default is
 // false: production schema changes go through the EF migration bundle that the
@@ -285,3 +290,7 @@ static void RecordDeniedPageAccess(HttpContext context)
         module: "security",
         ip: context.Connection.RemoteIpAddress?.ToString()));
 }
+
+// Exposed so the integration test suite can host the real pipeline with
+// WebApplicationFactory. No behavior changes: it is only a type marker.
+public partial class Program;

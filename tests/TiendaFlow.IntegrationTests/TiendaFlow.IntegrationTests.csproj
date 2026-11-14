@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.22" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.22" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -21,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TiendaFlow.Infrastructure\TiendaFlow.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\TiendaFlow.Web\TiendaFlow.Web.csproj" />
   </ItemGroup>
 
 </Project>

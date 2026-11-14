@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using TiendaFlow.Application.Payroll;
 using TiendaFlow.Domain;
 
@@ -6,10 +7,40 @@ namespace TiendaFlow.Web.Formatting;
 /// <summary>
 /// Translates domain and framework exceptions into messages a store employee
 /// can act on. The domain keeps its English messages for code and tests.
+/// Unexpected exceptions are logged before the generic message is returned:
+/// the user never sees technical detail, but the server log keeps the type,
+/// message and stack trace.
 /// </summary>
 public static class DomainErrorTranslator
 {
-    public static string ToSpanish(Exception exception) => exception switch
+    private const string UnexpectedMessage =
+        "Ocurrió un error inesperado. Intenta de nuevo.";
+
+    private static ILogger? _logger;
+
+    /// <summary>
+    /// Wires the application logger once at startup. Pages call the static
+    /// translator from every catch block; centralizing the log here avoids
+    /// repeating the same try/log code in more than sixty call sites.
+    /// </summary>
+    public static void UseLogger(ILogger logger) => _logger = logger;
+
+    public static string ToSpanish(Exception exception)
+    {
+        var message = Translate(exception);
+
+        if (message == UnexpectedMessage)
+        {
+            _logger?.LogError(
+                exception,
+                "Excepción no controlada en la interfaz: {ExceptionType}",
+                exception.GetType().FullName);
+        }
+
+        return message;
+    }
+
+    private static string Translate(Exception exception) => exception switch
     {
         DuplicateSkuException =>
             "Ya existe un producto con ese SKU. Usa un código diferente.",
@@ -80,6 +111,6 @@ public static class DomainErrorTranslator
             "Revisa los datos de la nómina. Los días trabajados deben estar entre 1 y 30 y la clase de riesgo entre 1 y 5.",
         UnsupportedContractTypeException =>
             "El tipo de contrato del empleado no tiene una regla de nómina configurada.",
-        _ => "Ocurrió un error inesperado. Intenta de nuevo."
+        _ => UnexpectedMessage
     };
 }

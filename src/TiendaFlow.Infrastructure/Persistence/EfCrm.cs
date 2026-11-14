@@ -38,20 +38,27 @@ public sealed class EfCustomerQuery : ICustomerQuery
 
     public EfCustomerQuery(TiendaFlowDbContext context) => _context = context;
 
-    public IReadOnlyList<CustomerRow> List() =>
-        Read().OrderBy(row => row.FullName).ToList();
+    public IReadOnlyList<CustomerRow> List() => Read(orderByName: true).ToList();
 
-    public CustomerRow? GetById(int id) =>
-        Read().FirstOrDefault(row => row.Id == id);
+    public CustomerRow? GetById(int id) => Read(id: id).FirstOrDefault();
 
-    private IQueryable<CustomerRow> Read() =>
-        from customer in _context.Customers.AsNoTracking()
-        select new CustomerRow(
+    private IQueryable<CustomerRow> Read(int? id = null, bool orderByName = false)
+    {
+        var customers = _context.Customers.AsNoTracking();
+
+        if (id is int customerId)
+            customers = customers.Where(customer => customer.Id == customerId);
+
+        if (orderByName)
+            customers = customers.OrderBy(customer => customer.FullName);
+
+        return customers.Select(customer => new CustomerRow(
             customer.Id,
             customer.DocumentNumber,
             customer.FullName,
             customer.Email,
             customer.Phone,
             customer.Address,
-            customer.Active);
+            customer.Active));
+    }
 }
