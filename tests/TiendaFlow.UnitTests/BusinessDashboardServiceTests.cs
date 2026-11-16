@@ -98,6 +98,34 @@ public class BusinessDashboardServiceTests
         _orders.Verify(query => query.List(), Times.Never);
     }
 
+    [Fact]
+    public void Get_AddsTodaysPointOfSaleSalesToTheInvoices()
+    {
+        _invoices
+            .Setup(query => query.List())
+            .Returns(new[] { Invoice(1, NowUtc.AddMinutes(-5), InvoiceStatus.Issued, 80m) });
+        var posSales = new Mock<IPosSaleQuery>();
+        posSales
+            .Setup(query => query.List(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .Returns(new[]
+            {
+                new PosSaleRow(1, "VTA-1", 1, "Tienda Centro", "Ana Torres", NowUtc.AddMinutes(-3), 2, 7000m),
+                new PosSaleRow(2, "VTA-2", 1, "Tienda Centro", "Ana Torres", NowUtc.AddMinutes(-1), 1, 2500m)
+            });
+
+        var dashboard = new BusinessDashboardService(
+                _invoices.Object,
+                _orders.Object,
+                Granted(Permissions.InventoryStockView, Permissions.SalesReportsView),
+                posSales.Object)
+            .Get(NowUtc);
+
+        Assert.Equal(3, dashboard.SalesTodayCount);
+        Assert.Equal(9580m, dashboard.SalesTodayTotal);
+        Assert.Equal(1, dashboard.InvoicesTodayCount);
+        Assert.Equal(2, dashboard.PosSalesTodayCount);
+    }
+
     private BusinessDashboardService CreateService(IAccessControl accessControl) =>
         new(_invoices.Object, _orders.Object, accessControl);
 

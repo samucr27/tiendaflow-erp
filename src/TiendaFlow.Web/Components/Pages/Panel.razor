@@ -59,7 +59,7 @@ else
                     {
                         <KpiCard Label="Ventas de hoy"
                                  Value="@Formatters.Money(_business.SalesTodayTotal)"
-                                 Hint="@($"{Formatters.Number(_business.SalesTodayCount)} facturas emitidas")"
+                                 Hint="@($"{Formatters.Number(_business.InvoicesTodayCount)} facturas y {Formatters.Number(_business.PosSalesTodayCount)} ventas POS")"
                                  Tone="ok" />
                     }
                     @if (_business.CanViewPurchasing)

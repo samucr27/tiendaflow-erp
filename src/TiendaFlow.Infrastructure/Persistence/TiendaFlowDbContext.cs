@@ -35,6 +35,10 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
 
+    public DbSet<PosSale> PosSales => Set<PosSale>();
+
+    public DbSet<PosSaleLine> PosSaleLines => Set<PosSaleLine>();
+
     public DbSet<Customer> Customers => Set<Customer>();
 
     public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();

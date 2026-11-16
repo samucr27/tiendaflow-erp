@@ -4,7 +4,7 @@
 @using System.ComponentModel.DataAnnotations
 @inject IProductCatalogQuery ProductQuery
 @inject IStockQuery StockQuery
-@inject StockService StockService
+@inject PosSaleService SaleService
 @inject ICurrentUser CurrentUser
 
 <PageTitle>Registrar venta · TiendaFlow</PageTitle>
@@ -75,7 +75,7 @@
         <div class="card-header">
             <div>
                 <h2>Comprobante</h2>
-                <p class="card-subtitle">Última venta registrada en esta sesión</p>
+                <p class="card-subtitle">Última venta registrada en esta sesión; queda guardada en el reporte de ventas</p>
             </div>
         </div>
 
@@ -89,9 +89,9 @@
             <div class="receipt">
                 <div class="receipt-head">
                     <div>
-                        <span class="receipt-code">@_receipt.Code</span>
+                        <span class="receipt-code">@_receipt.Code · N.º @_receipt.SaleId</span>
                         <h3>@_receipt.ProductName</h3>
-                        <span class="table-meta">@_receipt.Sku · @Formatters.ShortDateTime(_receipt.Date)</span>
+                        <span class="table-meta">@_receipt.ProductSku · @Formatters.ShortDateTime(_receipt.SoldAt)</span>
                     </div>
                     <StatusBadge Text="Venta registrada" Tone="ok" />
                 </div>
@@ -112,7 +112,7 @@
                     <strong>@Formatters.Money(_receipt.Total)</strong>
                 </div>
 
-                @if (_receipt.RemainingStock <= _receipt.MinStock)
+                @if (_receipt.LeftStockCritical)
                 {
                     @* HU-05: the sale itself raises the critical stock alert. *@
                     <div class="alert alert-warning" role="alert">
@@ -134,7 +134,7 @@
     private IReadOnlyList<ProductListItem> _products = [];
     private IReadOnlyDictionary<string, StockRow> _stock = new Dictionary<string, StockRow>();
     private SaleForm _form = new();
-    private SaleReceipt? _receipt;
+    private PosSaleReceipt? _receipt;
     private string? _error;
 
     private ProductListItem? CurrentProduct => _products.FirstOrDefault(product => product.Sku == _form.Sku);
@@ -176,29 +176,12 @@
 
         try
         {
-            var product = CurrentProduct
-                ?? throw new ProductNotFoundException(_form.Sku);
-
-            StockService.RegisterSale(
+            _receipt = SaleService.Register(
                 CurrentUser.StoreId ?? 0,
                 _form.Sku,
-                _form.Quantity,
-                DateTime.UtcNow);
+                _form.Quantity);
 
             LoadStock();
-
-            var soldAt = DateTime.UtcNow;
-            _receipt = new SaleReceipt(
-                SaleCode.Create(soldAt),
-                product.Name,
-                product.Sku,
-                _form.Quantity,
-                product.SalePrice,
-                Total,
-                soldAt,
-                Available,
-                _stock.GetValueOrDefault(product.Sku)?.MinStock ?? 0);
-
             _form.Quantity = 1;
         }
         catch (Exception exception)
@@ -219,15 +202,4 @@
         [Range(1, 1_000_000, ErrorMessage = "La cantidad debe ser mayor que cero.")]
         public int Quantity { get; set; } = 1;
     }
-
-    private sealed record SaleReceipt(
-        string Code,
-        string ProductName,
-        string Sku,
-        int Quantity,
-        decimal UnitPrice,
-        decimal Total,
-        DateTime Date,
-        int RemainingStock,
-        int MinStock);
 }

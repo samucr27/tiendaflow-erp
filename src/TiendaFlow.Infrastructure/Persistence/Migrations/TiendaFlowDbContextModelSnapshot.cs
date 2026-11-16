@@ -439,6 +439,91 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("sales_invoice_line", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CashierUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("cashier_user_id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("SoldAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("sold_at");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("SoldAt", "StoreId")
+                        .HasDatabaseName("IX_pos_sale_sold_at_store");
+
+                    b.ToTable("pos_sale", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PosSaleLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PosSaleId")
+                        .HasColumnType("int")
+                        .HasColumnName("pos_sale_id");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("product_name");
+
+                    b.Property<string>("ProductSku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("product_sku");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("unit_price");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PosSaleId");
+
+                    b.HasIndex("ProductSku");
+
+                    b.ToTable("pos_sale_line", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.Product", b =>
                 {
                     b.Property<string>("Sku")
@@ -635,12 +720,18 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("status");
 
+                    b.Property<int?>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
                     b.Property<decimal>("Total")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("total");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
 
                     b.HasIndex("CustomerDocument", "IssueDate");
 
@@ -926,6 +1017,24 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PosSaleLine", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.PosSale", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("PosSaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.ProductSupplier", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.Product", null)
@@ -969,6 +1078,14 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProductSku")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.SalesInvoice", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.StockItem", b =>
@@ -1025,6 +1142,11 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.InventoryTransfer", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
                 {
                     b.Navigation("Lines");
                 });

@@ -52,21 +52,27 @@ public class SalesInvoiceTests
         Assert.Equal(InvoiceStatus.Cancelled, invoice.Status);
         Assert.Throws<InvalidInvoiceException>(
             () => invoice.AddLine("SKU-2", "Pan", 1, 5500m));
-        Assert.Throws<InvalidInvoiceException>(
-            () => invoice.UpdateDetails("Otro", "999", DateTime.UtcNow));
         Assert.Throws<InvalidInvoiceException>(() => invoice.Cancel());
     }
 
     [Fact]
-    public void ClearLines_ResetsTheTotal()
+    public void AnIssuedInvoiceOffersNoWayToEditItsData()
     {
-        var invoice = Invoice();
-        invoice.AddLine("SKU-1", "Agua", 2, 2500m);
+        var editMethods = typeof(SalesInvoice).GetMethods()
+            .Select(method => method.Name)
+            .Where(name => name is "UpdateDetails" or "ClearLines" or "RemoveLine");
 
-        invoice.ClearLines();
+        Assert.Empty(editMethods);
+    }
 
-        Assert.Empty(invoice.Lines);
-        Assert.Equal(0m, invoice.Total);
+    [Fact]
+    public void Constructor_KeepsTheStoreAndRejectsAnInvalidOne()
+    {
+        var invoice = new SalesInvoice(0, "Cliente", "123", DateTime.UtcNow, storeId: 2);
+
+        Assert.Equal(2, invoice.StoreId);
+        Assert.Throws<InvalidInvoiceException>(
+            () => new SalesInvoice(0, "Cliente", "123", DateTime.UtcNow, storeId: 0));
     }
 
     [Fact]

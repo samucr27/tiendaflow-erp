@@ -80,6 +80,8 @@ public static class DomainErrorTranslator
             "Ya existe un proveedor con ese NIT.",
         InvalidInvoiceException =>
             "Revisa los datos de la factura. El cliente, el documento y al menos un ítem con cantidad y precio mayores que cero son obligatorios.",
+        InvalidPosSaleException =>
+            "No se pudo registrar la venta. Revisa el producto, la cantidad y que tu usuario tenga una tienda asignada.",
         InvoiceNotFoundException =>
             "No encontramos la factura solicitada.",
         InvalidCustomerException =>

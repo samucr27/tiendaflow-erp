@@ -14,7 +14,9 @@ public record BusinessDashboard(
     bool CanViewPurchasing,
     int OpenPurchaseOrders,
     decimal OpenPurchaseOrdersValue,
-    int PurchaseOrdersPendingApproval);
+    int PurchaseOrdersPendingApproval,
+    int InvoicesTodayCount = 0,
+    int PosSalesTodayCount = 0);
 
 /// <summary>
 /// Builds the business summary from the same read models the module screens
@@ -25,15 +27,18 @@ public sealed class BusinessDashboardService
     private readonly IInvoiceQuery _invoices;
     private readonly IPurchaseOrderQuery _orders;
     private readonly Security.IAccessControl _accessControl;
+    private readonly IPosSaleQuery? _posSales;
 
     public BusinessDashboardService(
         IInvoiceQuery invoices,
         IPurchaseOrderQuery orders,
-        Security.IAccessControl accessControl)
+        Security.IAccessControl accessControl,
+        IPosSaleQuery? posSales = null)
     {
         _invoices = invoices;
         _orders = orders;
         _accessControl = accessControl;
+        _posSales = posSales;
     }
 
     public BusinessDashboard Get(DateTime nowUtc)
@@ -52,6 +57,13 @@ public sealed class BusinessDashboardService
                 .ToList()
             : new List<InvoiceRow>();
 
+        // Point-of-sale sales are sales too: "Ventas de hoy" adds them to the
+        // issued invoices of the same local day.
+        var startUtc = LocalTime.ToUtc(DateOnly.FromDateTime(today));
+        var posSales = canViewSales && _posSales is not null
+            ? _posSales.List(startUtc, LocalTime.ToUtc(DateOnly.FromDateTime(today).AddDays(1)))
+            : Array.Empty<PosSaleRow>();
+
         var openOrders = canViewPurchasing
             ? _orders.List()
                 .Where(order => order.Status is not (PurchaseOrderStatus.Received
@@ -61,12 +73,14 @@ public sealed class BusinessDashboardService
 
         return new BusinessDashboard(
             canViewSales,
-            sales.Count,
-            sales.Sum(invoice => invoice.Total),
+            sales.Count + posSales.Count,
+            sales.Sum(invoice => invoice.Total) + posSales.Sum(sale => sale.Total),
             canViewPurchasing,
             openOrders.Count,
             openOrders.Sum(order => order.Total),
             openOrders.Count(order => order.Status is PurchaseOrderStatus.Draft
-                or PurchaseOrderStatus.PendingApproval));
+                or PurchaseOrderStatus.PendingApproval),
+            sales.Count,
+            posSales.Count);
     }
 }

@@ -261,7 +261,7 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute("/compras/ordenes/nueva", Permissions.PurchasingOrdersCreate),
             new SmokeRoute("/compras/reposicion", Permissions.PurchasingOrdersCreate),
             new SmokeRoute("/facturacion", Permissions.SalesInvoicesView),
-            new SmokeRoute($"/facturacion/{invoiceId}", Permissions.SalesInvoicesManage),
+            new SmokeRoute($"/facturacion/{invoiceId}", Permissions.SalesInvoicesView),
             new SmokeRoute("/facturacion/nueva", Permissions.SalesInvoicesManage),
             new SmokeRoute("/crm/clientes", Permissions.CrmCustomersView),
             new SmokeRoute($"/crm/clientes/{customerId}", Permissions.CrmCustomersManage),

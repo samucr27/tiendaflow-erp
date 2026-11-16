@@ -18,8 +18,12 @@ public class SalesInvoice
         int id,
         string customerName,
         string customerDocument,
-        DateTime issueDate)
+        DateTime issueDate,
+        int? storeId = null)
     {
+        if (storeId is <= 0)
+            throw new InvalidInvoiceException("The store must be a positive id.");
+
         RequireText(customerName, "The customer name is required.");
         RequireText(customerDocument, "The customer document is required.");
 
@@ -27,6 +31,7 @@ public class SalesInvoice
         CustomerName = customerName.Trim();
         CustomerDocument = customerDocument.Trim();
         IssueDate = UtcTimestamp.Normalize(issueDate);
+        StoreId = storeId;
         Status = InvoiceStatus.Issued;
         Total = 0m;
     }
@@ -39,23 +44,24 @@ public class SalesInvoice
 
     public DateTime IssueDate { get; private set; }
 
+    /// <summary>
+    /// Store whose stock the invoice moved. Invoices issued before the
+    /// invoice started moving inventory have no store and return nothing
+    /// when they are cancelled.
+    /// </summary>
+    public int? StoreId { get; private set; }
+
     public InvoiceStatus Status { get; private set; }
 
     public decimal Total { get; private set; }
 
     public List<InvoiceLine> Lines { get; } = new();
 
-    public void UpdateDetails(string customerName, string customerDocument, DateTime issueDate)
-    {
-        RequireIssued("edit");
-        RequireText(customerName, "The customer name is required.");
-        RequireText(customerDocument, "The customer document is required.");
-
-        CustomerName = customerName.Trim();
-        CustomerDocument = customerDocument.Trim();
-        IssueDate = UtcTimestamp.Normalize(issueDate);
-    }
-
+    /// <summary>
+    /// Lines are added while the invoice is being built. Once it is saved it is
+    /// an issued fiscal document: the domain offers no way to edit it, only to
+    /// cancel it, and a correction is a new invoice.
+    /// </summary>
     public void AddLine(string productSku, string description, int quantity, decimal unitPrice)
     {
         RequireIssued("add lines");
@@ -66,13 +72,6 @@ public class SalesInvoice
 
         Lines.Add(new InvoiceLine(Id, sku, description, quantity, unitPrice));
         RecalculateTotal();
-    }
-
-    public void ClearLines()
-    {
-        RequireIssued("edit");
-        Lines.Clear();
-        Total = 0m;
     }
 
     public void Cancel()
