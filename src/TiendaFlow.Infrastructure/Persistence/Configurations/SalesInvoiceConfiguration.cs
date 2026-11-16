@@ -30,6 +30,15 @@ public class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesInvoice>
             .HasColumnName("issue_date")
             .HasColumnType("datetime2");
 
+        builder.Property(invoice => invoice.StoreId)
+            .HasColumnName("store_id");
+
+        builder.HasOne<Store>()
+            .WithMany()
+            .HasForeignKey(invoice => invoice.StoreId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Property(invoice => invoice.Status)
             .HasColumnName("status")
             .HasConversion<string>()

@@ -46,6 +46,18 @@ public class StockItem
     /// Deducts units sent to another store. The origin is validated before the
     /// transfer is sent, so a stock row can never go negative.
     /// </summary>
+    /// <summary>
+    /// Units that come back to the shelf because the sale document that took
+    /// them out was cancelled.
+    /// </summary>
+    public void RegisterReturn(int quantity, DateTime date)
+    {
+        RequirePositive(quantity);
+
+        QuantityAvailable += quantity;
+        LastMovement = new InventoryMovement(MovementType.Return, quantity, date);
+    }
+
     public void RegisterTransferOut(int quantity, DateTime date)
     {
         RequirePositive(quantity);

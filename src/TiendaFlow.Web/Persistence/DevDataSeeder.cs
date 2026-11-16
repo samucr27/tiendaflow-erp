@@ -119,6 +119,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedUsersAsync(context, cancellationToken);
         await SeedCatalogAsync(context, cancellationToken);
         await SeedSuppliersAsync(context, cancellationToken);
+        await SeedProductSuppliersAsync(context, cancellationToken);
         await SeedCustomersAsync(context, cancellationToken);
         await SeedPurchaseOrdersAsync(context, cancellationToken);
         await SeedInvoicesAsync(context, cancellationToken);
@@ -367,6 +368,44 @@ public sealed class DevDataSeeder : IHostedService
                 seed.Phone,
                 seed.Address,
                 seed.Active));
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    // Default supplier of each demo product, so the replenishment screen can
+    // turn the critical stock alerts (HU-05) into draft purchase orders
+    // without any manual setup. The last cost is about 65 % of the sale price.
+    private static readonly (string Sku, string SupplierNit)[] DemoProductSuppliers =
+    {
+        ("SKU-1001", "900456789-4"), ("SKU-1002", "900456789-4"),
+        ("SKU-1003", "900123456-1"), ("SKU-1004", "900123456-1"),
+        ("SKU-1005", "900654321-2"), ("SKU-1006", "900123456-1"),
+        ("SKU-1007", "900123456-1"), ("SKU-1008", "900123456-1"),
+        ("SKU-1009", "900123456-1"), ("SKU-1010", "901987654-3"),
+        ("SKU-1011", "901987654-3"), ("SKU-1012", "901987654-3"),
+        ("SKU-1013", "901234567-5"), ("SKU-1014", "900654321-2"),
+        ("SKU-1015", "900123456-1")
+    };
+
+    private static async Task SeedProductSuppliersAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.ProductSuppliers.AnyAsync(cancellationToken))
+            return;
+
+        var suppliers = await context.Suppliers
+            .ToDictionaryAsync(supplier => supplier.Nit, cancellationToken);
+
+        foreach (var (sku, nit) in DemoProductSuppliers)
+        {
+            var product = DemoProducts.FirstOrDefault(seed => seed.Sku == sku);
+            if (product is null || !suppliers.TryGetValue(nit, out var supplier))
+                continue;
+
+            var lastCost = Math.Round(product.SalePrice * 0.65m / 100m) * 100m;
+            context.ProductSuppliers.Add(new ProductSupplier(sku, supplier.Id, lastCost, isDefault: true));
         }
 
         await context.SaveChangesAsync(cancellationToken);

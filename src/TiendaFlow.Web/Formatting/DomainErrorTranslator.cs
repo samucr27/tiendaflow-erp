@@ -58,6 +58,12 @@ public static class DomainErrorTranslator
             "La cantidad debe ser mayor que cero.",
         AccessDeniedException =>
             "Tu rol no tiene permiso para realizar esta operación.",
+        // UserService already writes its rule violations in Spanish ("No puedes
+        // desactivar tu propia cuenta", the password length, the last
+        // administrator); only the English domain validations get the generic
+        // message.
+        InvalidUserException invalidUser when !ThrownByDomain(invalidUser) =>
+            invalidUser.Message,
         InvalidUserException =>
             "Revisa los datos del usuario. El correo, el documento y el rol son obligatorios.",
         UserNotFoundException =>
@@ -74,6 +80,8 @@ public static class DomainErrorTranslator
             "Ya existe un proveedor con ese NIT.",
         InvalidInvoiceException =>
             "Revisa los datos de la factura. El cliente, el documento y al menos un ítem con cantidad y precio mayores que cero son obligatorios.",
+        InvalidPosSaleException =>
+            "No se pudo registrar la venta. Revisa el producto, la cantidad y que tu usuario tenga una tienda asignada.",
         InvoiceNotFoundException =>
             "No encontramos la factura solicitada.",
         InvalidCustomerException =>
@@ -119,6 +127,11 @@ public static class DomainErrorTranslator
             "Revisa los datos de la nómina. Los días trabajados deben estar entre 1 y 30 y la clase de riesgo entre 1 y 5.",
         UnsupportedContractTypeException =>
             "El tipo de contrato del empleado no tiene una regla de nómina configurada.",
+        Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException =>
+            "Otro usuario modificó estos datos al mismo tiempo. Revisa los valores actuales e intenta de nuevo.",
         _ => UnexpectedMessage
     };
+
+    private static bool ThrownByDomain(Exception exception) =>
+        exception.TargetSite?.DeclaringType?.Assembly == typeof(AppUser).Assembly;
 }

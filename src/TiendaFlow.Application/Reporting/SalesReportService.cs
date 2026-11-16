@@ -6,8 +6,18 @@ namespace TiendaFlow.Application.Reporting;
 public sealed record SalesReport(
     DateOnly FromDate,
     DateOnly ToDate,
-    IReadOnlyList<InvoiceRow> Invoices)
+    IReadOnlyList<InvoiceRow> Invoices,
+    IReadOnlyList<PosSaleRow>? PosSales = null)
 {
+    public IReadOnlyList<PosSaleRow> PointOfSaleSales => PosSales ?? Array.Empty<PosSaleRow>();
+
+    public int PosSalesCount => PointOfSaleSales.Count;
+
+    public decimal PosSalesTotal => PointOfSaleSales.Sum(sale => sale.Total);
+
+    /// <summary>Issued invoices plus point-of-sale sales.</summary>
+    public decimal GrandTotal => IssuedTotal + PosSalesTotal;
+
     public int IssuedCount => Invoices.Count(invoice => invoice.Status != InvoiceStatus.Cancelled);
 
     public int CancelledCount => Invoices.Count(invoice => invoice.Status == InvoiceStatus.Cancelled);
@@ -31,7 +41,16 @@ public sealed record SalesReport(
                 invoice.StatusLabel,
                 invoice.LineCount.ToString(),
                 CsvReport.Number(invoice.Total)
-            }));
+            }).Concat(PointOfSaleSales.Select(sale => new[]
+            {
+                sale.Code,
+                CsvReport.Date(LocalTime.ToLocal(sale.SoldAt)),
+                "Venta de mostrador (POS)",
+                sale.StoreName,
+                "Venta POS",
+                sale.Units.ToString(),
+                CsvReport.Number(sale.Total)
+            })));
 }
 
 /// <summary>
@@ -43,11 +62,16 @@ public sealed class SalesReportService
 {
     private readonly IInvoiceQuery _invoices;
     private readonly IAccessControl _accessControl;
+    private readonly IPosSaleQuery? _posSales;
 
-    public SalesReportService(IInvoiceQuery invoices, IAccessControl accessControl)
+    public SalesReportService(
+        IInvoiceQuery invoices,
+        IAccessControl accessControl,
+        IPosSaleQuery? posSales = null)
     {
         _invoices = invoices;
         _accessControl = accessControl;
+        _posSales = posSales;
     }
 
     public SalesReport Get(DateOnly fromDate, DateOnly toDate)
@@ -68,6 +92,12 @@ public sealed class SalesReportService
             .ThenByDescending(invoice => invoice.Id)
             .ToList();
 
-        return new SalesReport(fromDate, toDate, invoices);
+        var posSales = _posSales?
+            .List(LocalTime.ToUtc(fromDate), LocalTime.ToUtc(toDate.AddDays(1)))
+            .OrderByDescending(sale => sale.SoldAt)
+            .ToList()
+            ?? new List<PosSaleRow>();
+
+        return new SalesReport(fromDate, toDate, invoices, posSales);
     }
 }

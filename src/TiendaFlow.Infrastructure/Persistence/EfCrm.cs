@@ -10,7 +10,8 @@ public sealed class EfCustomerRepository : ICustomerRepository
 
     public EfCustomerRepository(TiendaFlowDbContext context) => _context = context;
 
-    public Customer? GetById(int id) => _context.Customers.Find(id);
+    public Customer? GetById(int id) =>
+        _context.LoadFresh<Customer>(customer => customer.Id == id, () => _context.Customers.Find(id));
 
     public Customer? GetByDocument(string documentNumber) =>
         _context.Customers

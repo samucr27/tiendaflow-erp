@@ -35,6 +35,10 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
 
+    public DbSet<PosSale> PosSales => Set<PosSale>();
+
+    public DbSet<PosSaleLine> PosSaleLines => Set<PosSaleLine>();
+
     public DbSet<Customer> Customers => Set<Customer>();
 
     public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
@@ -46,6 +50,45 @@ public class TiendaFlowDbContext : DbContext
     public DbSet<InventoryTransfer> InventoryTransfers => Set<InventoryTransfer>();
 
     public DbSet<InventoryTransferLine> InventoryTransferLines => Set<InventoryTransferLine>();
+
+    /// <summary>
+    /// A failed save leaves its entities as Modified or Added in a context
+    /// that lives as long as the browser tab. Outside an explicit transaction
+    /// the failed changes are discarded so the next operation of the same user
+    /// does not write them again. Inside a transaction, EfUnitOfWork discards
+    /// them after the rollback.
+    /// </summary>
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        try
+        {
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+        catch
+        {
+            if (Database.CurrentTransaction is null)
+                ChangeTracker.Clear();
+
+            throw;
+        }
+    }
+
+    public override async Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch
+        {
+            if (Database.CurrentTransaction is null)
+                ChangeTracker.Clear();
+
+            throw;
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

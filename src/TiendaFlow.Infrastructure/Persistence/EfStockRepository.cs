@@ -11,7 +11,9 @@ public class EfStockRepository : IStockRepository
     public EfStockRepository(TiendaFlowDbContext context) => _context = context;
 
     public StockItem? Get(int storeId, string sku) =>
-        _context.Stocks.FirstOrDefault(item => item.StoreId == storeId && item.Sku == sku);
+        _context.LoadFresh<StockItem>(
+            item => item.StoreId == storeId && string.Equals(item.Sku, sku, StringComparison.OrdinalIgnoreCase),
+            () => _context.Stocks.FirstOrDefault(item => item.StoreId == storeId && item.Sku == sku));
 
     public void Add(StockItem item)
     {

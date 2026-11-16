@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -123,6 +124,29 @@ builder.Services.AddAuthorization(options =>
     }
 });
 
+// The login form is the only anonymous write endpoint. A fixed window per
+// client IP slows down password guessing without locking real accounts; a
+// rejected attempt goes back to the form with a message instead of a bare 429.
+var loginAttemptsPerMinute = builder.Configuration.GetValue("Security:LoginAttemptsPerMinute", 10);
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy(LoginRateLimitPolicy, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = loginAttemptsPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.OnRejected = (context, _) =>
+    {
+        context.HttpContext.Response.Redirect("/login?error=2");
+        return ValueTask.CompletedTask;
+    };
+});
+
 // The demo seeder is opt-in. It never runs unless Seed:Enabled is explicitly
 // true, and it reads the user passwords from configuration (Seed:AdminPassword
 // and Seed:DemoPassword), never from code.
@@ -166,6 +190,7 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseHttpsRedirection();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -195,7 +220,7 @@ app.MapPost("/login", async (
 
     var target = IsLocalUrl(returnUrl) ? returnUrl! : LandingPage.For(user.Permissions);
     return Results.LocalRedirect(target);
-}).AllowAnonymous();
+}).AllowAnonymous().RequireRateLimiting(LoginRateLimitPolicy);
 
 app.MapPost("/logout", async (HttpContext context, [FromForm] string? returnUrl) =>
 {
@@ -293,4 +318,7 @@ static void RecordDeniedPageAccess(HttpContext context)
 
 // Exposed so the integration test suite can host the real pipeline with
 // WebApplicationFactory. No behavior changes: it is only a type marker.
-public partial class Program;
+public partial class Program
+{
+    private const string LoginRateLimitPolicy = "login";
+}

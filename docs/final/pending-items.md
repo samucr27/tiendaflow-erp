@@ -30,6 +30,17 @@ continuación se documentan con el permiso que las reserva.
 | CRM | `crm.campaigns.manage` | Campañas | La segmentación es de solo consulta | Campaña sobre un segmento, vigencia y resultado |
 | Facturación | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
 
+## Resuelto en la revisión final (16 de noviembre)
+
+- **Venta del POS:** se guarda como documento y la cuentan el panel, el reporte
+  de ventas y la reposición.
+- **Facturas e inventario:** emitir descuenta stock y anular lo devuelve.
+- **Facturas emitidas:** ya no se editan; se anulan y se emite otra.
+
+Queda pendiente un proceso, no código: los pull requests deben tener una
+revisión registrada en GitHub por otro integrante antes de fusionarse, como
+exige la Definition of Done.
+
 ## Aclaraciones importantes
 
 - **XML simulado:** se genera un documento legible y un resumen SHA-256
