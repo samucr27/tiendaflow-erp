@@ -1,0 +1,20 @@
+@page "/acceso-denegado"
+@attribute [Authorize]
+
+<PageTitle>Acceso denegado · TiendaFlow</PageTitle>
+
+<PageHeader
+    Eyebrow="Seguridad"
+    Title="No tienes acceso a esta función"
+    Subtitle="Tu rol no incluye los permisos necesarios para abrir esta página." />
+
+<EmptyState Title="Acceso restringido"
+            Message="Si necesitas realizar esta tarea, solicita al administrador que revise los permisos de tu rol.">
+    <Action>
+        <a class="button button-primary" href="/inventario">Volver al panel</a>
+        <form method="post" action="/logout" class="inline-form">
+            <AntiforgeryToken />
+            <button type="submit" class="button button-secondary">Cerrar sesión</button>
+        </form>
+    </Action>
+</EmptyState>

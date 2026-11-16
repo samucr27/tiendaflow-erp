@@ -1,0 +1,16 @@
+﻿@page "/not-found"
+@layout MainLayout
+
+<PageTitle>Página no encontrada · TiendaFlow</PageTitle>
+
+<PageHeader
+    Eyebrow="TiendaFlow"
+    Title="Página no encontrada"
+    Subtitle="El contenido que buscas no existe o cambió de dirección." />
+
+<EmptyState Title="No encontramos esta página"
+            Message="Revisa la dirección o vuelve al panel de inventario para continuar.">
+    <Action>
+        <a class="button button-primary" href="inventario">Volver al panel</a>
+    </Action>
+</EmptyState>

@@ -1,0 +1,185 @@
+@page "/seguridad/usuarios/nuevo"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityUsersManage)]
+@using System.ComponentModel.DataAnnotations
+@inject UserService UserService
+@inject UserDirectoryService UserDirectory
+@inject NavigationManager Navigation
+
+<PageTitle>Crear usuario · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad / Usuarios"
+            Title="Crear usuario"
+            Subtitle="Registra a la persona, asígnale un rol y entrega una contraseña temporal">
+    <Actions>
+        <a class="button button-secondary" href="seguridad/usuarios">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_options is null || _form is null)
+{
+    <p class="muted">Cargando las opciones…</p>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="Save" FormName="crear-usuario" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-section">
+            <h2>Datos de la persona</h2>
+            <p class="card-subtitle">El documento y el correo deben ser únicos en la cadena.</p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="user-name">Nombre completo</label>
+                    <InputText id="user-name" class="input" @bind-Value="_form.FullName" />
+                    <ValidationMessage For="() => _form.FullName" />
+                </div>
+
+                <div class="field">
+                    <label for="user-id-number">Número de documento</label>
+                    <InputText id="user-id-number" class="input" @bind-Value="_form.IdNumber" />
+                    <ValidationMessage For="() => _form.IdNumber" />
+                </div>
+
+                <div class="field">
+                    <label for="user-position">Cargo</label>
+                    <InputText id="user-position" class="input" @bind-Value="_form.Position" />
+                    <ValidationMessage For="() => _form.Position" />
+                </div>
+
+                <div class="field">
+                    <label for="user-email">Correo electrónico</label>
+                    <InputText id="user-email" class="input" type="email" @bind-Value="_form.Email" />
+                    <ValidationMessage For="() => _form.Email" />
+                </div>
+
+                <div class="field">
+                    <label for="user-store">Tienda</label>
+                    <InputSelect id="user-store" class="input" @bind-Value="_form.StoreId">
+                        @foreach (var store in _options.Stores)
+                        {
+                            <option value="@store.Id">@store.Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => _form.StoreId" />
+                </div>
+
+                <div class="field">
+                    <label for="user-role">Rol</label>
+                    <InputSelect id="user-role" class="input" @bind-Value="_form.RoleId">
+                        @foreach (var role in _options.Roles)
+                        {
+                            <option value="@role.Id">@SystemRoles.Label(role.Name)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => _form.RoleId" />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Contraseña temporal</h2>
+            <p class="card-subtitle">
+                Debe tener al menos 8 caracteres. Pídele a la persona que la cambie después del primer ingreso.
+            </p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="user-password">Contraseña</label>
+                    <InputText id="user-password" class="input" type="password" @bind-Value="_form.Password" />
+                    <ValidationMessage For="() => _form.Password" />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a class="button button-secondary" href="seguridad/usuarios">Cancelar</a>
+            <button type="submit" class="button button-primary">Crear usuario</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private CreateUserForm? _form;
+    private UserFormOptions? _options;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _options = UserDirectory.GetFormOptions();
+            _form = new CreateUserForm
+            {
+                StoreId = _options.Stores.FirstOrDefault()?.Id ?? 0,
+                RoleId = _options.Roles.FirstOrDefault()?.Id ?? 0
+            };
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+
+        try
+        {
+            var id = UserService.CreateUser(new CreateUserRequest(
+                _form!.Email,
+                _form.FullName,
+                _form.IdNumber,
+                _form.Position,
+                _form.StoreId,
+                _form.RoleId,
+                _form.Password));
+
+            Navigation.NavigateTo($"seguridad/usuarios/{id}");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private sealed class CreateUserForm
+    {
+        [Required(ErrorMessage = "El nombre es obligatorio.")]
+        [StringLength(160, ErrorMessage = "El nombre no puede superar 160 caracteres.")]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El documento es obligatorio.")]
+        [StringLength(30, ErrorMessage = "El documento no puede superar 30 caracteres.")]
+        public string IdNumber { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El cargo es obligatorio.")]
+        [StringLength(100, ErrorMessage = "El cargo no puede superar 100 caracteres.")]
+        public string Position { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El correo es obligatorio.")]
+        [EmailAddress(ErrorMessage = "Escribe un correo válido.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Range(1, int.MaxValue, ErrorMessage = "Selecciona una tienda.")]
+        public int StoreId { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "Selecciona un rol.")]
+        public int RoleId { get; set; }
+
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
+        [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

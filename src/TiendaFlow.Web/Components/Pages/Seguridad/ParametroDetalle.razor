@@ -1,0 +1,282 @@
+@page "/seguridad/parametros/{Key}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityParametersManage)]
+@using System.ComponentModel.DataAnnotations
+@inject ParameterService ParameterService
+@inject NavigationManager Navigation
+
+<PageTitle>@(_history?.Name ?? "Parámetro") · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad / Parámetros"
+            Title="@(_history?.Name ?? "Parámetro")"
+            Subtitle="@(_history?.Description ?? "Cargando el parámetro…")">
+    <Actions>
+        <a class="button button-secondary" href="seguridad/parametros">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_history is null || _form is null)
+{
+    <p class="muted">Cargando el historial…</p>
+}
+else
+{
+    var latest = _history.Versions.FirstOrDefault();
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>@ParameterText.Scope(_scope) · @(_storeName ?? "Todas las tiendas")</h2>
+                <p class="card-subtitle">
+                    <code>@_history.Key</code> · @ParameterText.Type(_history.ValueType)
+                    @if (!string.IsNullOrWhiteSpace(_history.Unit))
+                    {
+                        <span> · @_history.Unit</span>
+                    }
+                </p>
+            </div>
+            <span class="badge @(latest is null ? "badge-muted" : "badge-success")">
+                @(latest is null ? "Valor de código" : $"Versión {latest.Version}")
+            </span>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Valor vigente</span>
+                <strong class="kpi-value">
+                    @ParameterText.Value(_history.ValueType, latest?.Value ?? _history.DefaultValue)
+                </strong>
+                <span class="muted">@(_history.Unit)</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Vigente desde</span>
+                <strong class="kpi-value">
+                    @(latest?.EffectiveFrom.ToString("dd/MM/yyyy") ?? "—")
+                </strong>
+                <span class="muted">@(latest is null ? "Sin versión registrada" : "Última versión efectiva")</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Valor de código</span>
+                <strong class="kpi-value">@ParameterText.Value(_history.ValueType, _history.DefaultValue)</strong>
+                <span class="muted">Se usa si no hay versión registrada</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Versiones</span>
+                <strong class="kpi-value">@_history.Versions.Count</strong>
+                <span class="muted">Ninguna se sobrescribe</span>
+            </div>
+        </div>
+    </section>
+
+    <EditForm Model="_form" OnValidSubmit="Save" FormName="nueva-version-parametro" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-section">
+            <h2>Registrar una nueva versión</h2>
+            <p class="card-subtitle">
+                La versión anterior se conserva. La fecha de vigencia debe ser igual o
+                posterior a la última versión y no puede repetirse.
+            </p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="parameter-value">Valor</label>
+                    @if (_history.ValueType == ParameterValueType.Boolean)
+                    {
+                        <InputSelect id="parameter-value" class="input" @bind-Value="_form.Value">
+                            <option value="true">Sí</option>
+                            <option value="false">No</option>
+                        </InputSelect>
+                    }
+                    else
+                    {
+                        <InputText id="parameter-value" class="input" @bind-Value="_form.Value" />
+                    }
+                    <ValidationMessage For="() => _form.Value" />
+                    <span class="muted">
+                        @(_history.ValueType switch
+                        {
+                            ParameterValueType.Integer => "Número entero.",
+                            ParameterValueType.Decimal => "Número decimal con punto o coma.",
+                            ParameterValueType.Boolean => "Verdadero o falso.",
+                            _ => "Texto libre."
+                        })
+                        @if (!string.IsNullOrWhiteSpace(_history.Unit))
+                        {
+                            <span> Unidad: @_history.Unit.</span>
+                        }
+                    </span>
+                </div>
+
+                <div class="field">
+                    <label for="parameter-effective">Vigente desde</label>
+                    <InputDate id="parameter-effective" class="input" @bind-Value="_form.EffectiveFrom" />
+                    <ValidationMessage For="() => _form.EffectiveFrom" />
+                    <span class="muted">Fecha calendario de la operación.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a class="button button-secondary" href="seguridad/parametros">Cancelar</a>
+            <button type="submit" class="button button-primary">Guardar versión</button>
+        </div>
+    </EditForm>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Historial de versiones</h2>
+                <p class="card-subtitle">De la más reciente a la más antigua; cada fila es inmutable</p>
+            </div>
+        </div>
+
+        @if (!_history.Versions.Any())
+        {
+            <EmptyState Title="Sin versiones registradas"
+                        Message="Se está usando el valor de código. Registra la primera versión cuando el negocio necesite un valor propio." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Versión</th>
+                            <th>Valor</th>
+                            <th>Alcance</th>
+                            <th>Tienda</th>
+                            <th>Vigente desde</th>
+                            <th>Autor</th>
+                            <th>Registrada</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var version in _history.Versions)
+                        {
+                            <tr>
+                                <td>@version.Version</td>
+                                <td><strong>@ParameterText.Value(_history.ValueType, version.Value)</strong></td>
+                                <td>@version.ScopeLabel</td>
+                                <td>@version.StoreName</td>
+                                <td>@version.EffectiveFrom.ToString("dd/MM/yyyy")</td>
+                                <td>@version.Author</td>
+                                <td>@Formatters.ShortDateTime(version.CreatedAtUtc)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public string Key { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery(Name = "scope")]
+    public string? ScopeName { get; set; }
+
+    [SupplyParameterFromQuery(Name = "storeId")]
+    public int? StoreId { get; set; }
+
+    private ParameterHistory? _history;
+    private IReadOnlyList<ParameterStoreOption> _stores = Array.Empty<ParameterStoreOption>();
+    private ParameterVersionForm? _form;
+    private ParameterScope _scope;
+    private string? _storeName;
+    private string? _error;
+    private string? _success;
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        _error = null;
+
+        try
+        {
+            _scope = string.Equals(ScopeName, "Store", StringComparison.OrdinalIgnoreCase)
+                ? ParameterScope.Store
+                : ParameterScope.Global;
+
+            _stores = ParameterService.Stores();
+
+            if (_scope == ParameterScope.Store && StoreId is not > 0)
+            {
+                _error = "Selecciona la tienda cuyo historial quieres consultar.";
+                return;
+            }
+
+            _storeName = StoreId is int id
+                ? _stores.FirstOrDefault(store => store.Id == id)?.Name
+                : null;
+
+            _history = ParameterService.History(Key, _scope, StoreId);
+
+            var current = _history.Versions.FirstOrDefault();
+
+            _form = new ParameterVersionForm
+            {
+                Value = current?.Value ?? _history.DefaultValue,
+                EffectiveFrom = LocalTime.ToLocal(DateTime.UtcNow).Date
+            };
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+        _success = null;
+
+        if (_history is null || _form is null)
+            return;
+
+        try
+        {
+            ParameterService.CreateVersion(new CreateParameterVersionRequest(
+                _history.Key,
+                _scope,
+                _scope == ParameterScope.Store ? StoreId : null,
+                _form.Value,
+                DateOnly.FromDateTime(_form.EffectiveFrom)));
+
+            _success = "La nueva versión quedó registrada y auditada.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private sealed class ParameterVersionForm
+    {
+        [Required(ErrorMessage = "El valor es obligatorio.")]
+        public string Value { get; set; } = string.Empty;
+
+        public DateTime EffectiveFrom { get; set; } = DateTime.Today;
+    }
+}

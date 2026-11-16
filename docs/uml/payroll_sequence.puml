@@ -1,0 +1,33 @@
+@startuml payroll_sequence
+title HU-04 - Payroll calculation flow (POST /api/nomina/calculate)
+
+actor "HR Officer\n(browser / client)" as Client
+participant "ASP.NET Core\nAuth middleware" as Auth
+participant "Minimal API endpoint\n/api/nomina/calculate" as Endpoint
+participant "IPayrollEngine\n(PayrollEngine)" as Engine
+participant "IPayrollStrategy\n(Employment / ServiceProvision)" as Strategy
+participant "IPayrollParametersProvider" as Params
+participant "IWithholdingCalculator" as Withholding
+
+Client -> Auth : POST PayrollInput (cookie)
+alt not authenticated or missing hr.payroll.manage
+    Auth --> Client : redirect to /login or /acceso-denegado\n(denied attempt audited)
+else authorized
+    Auth -> Endpoint : request
+    Endpoint -> Engine : Calculate(input)
+    Engine -> Engine : validate input\n(salary > 0, days 1..30, other earnings >= 0)
+    Engine -> Engine : select strategy where Supports(contractType)
+    Engine -> Params : GetCurrent()
+    Params --> Engine : PayrollParameters
+    Engine -> Strategy : Calculate(input, parameters)
+    Strategy -> Withholding : CalculateMonthlyEmployeeWithholding(\ngross income, mandatory contributions, parameters)
+    Withholding --> Strategy : withholding amount
+    Strategy --> Engine : PayrollResult
+    Engine --> Endpoint : PayrollResult
+    alt InvalidPayrollInputException or UnsupportedContractTypeException
+        Endpoint --> Client : 400 Bad Request { error }
+    else success
+        Endpoint --> Client : 200 OK PayrollResult
+    end
+end
+@enduml

@@ -1,0 +1,233 @@
+@page "/rrhh/empleados/nuevo"
+@page "/rrhh/empleados/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrEmployeesManage)]
+@using System.ComponentModel.DataAnnotations
+@using TiendaFlow.Application.Payroll
+@inject EmployeeService EmployeeService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEditing ? "Editar empleado" : "Registrar empleado") · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano / Empleados"
+            Title="@(IsEditing ? "Editar empleado" : "Registrar empleado")"
+            Subtitle="Documento, cargo, tienda y condiciones del contrato">
+    <Actions>
+        <a class="button button-secondary" href="rrhh/empleados">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_options is null || _form is null)
+{
+    <p class="muted">Cargando los datos del empleado…</p>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="Save" FormName="empleado" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-section">
+            <h2>Datos de la persona</h2>
+            <p class="card-subtitle">El número de documento debe ser único en la cadena.</p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="employee-name">Nombre completo</label>
+                    <InputText id="employee-name" class="input" @bind-Value="_form.Name" />
+                    <ValidationMessage For="() => _form.Name" />
+                </div>
+
+                <div class="field">
+                    <label for="employee-id-number">Número de documento</label>
+                    <InputText id="employee-id-number" class="input" @bind-Value="_form.IdNumber" />
+                    <ValidationMessage For="() => _form.IdNumber" />
+                </div>
+
+                <div class="field">
+                    <label for="employee-position">Cargo</label>
+                    <InputText id="employee-position" class="input" @bind-Value="_form.Position" />
+                    <ValidationMessage For="() => _form.Position" />
+                </div>
+
+                <div class="field">
+                    <label for="employee-store">Tienda</label>
+                    <InputSelect id="employee-store" class="input" @bind-Value="_form.StoreId">
+                        @foreach (var store in _options)
+                        {
+                            <option value="@store.Id">@store.Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => _form.StoreId" />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Contrato y salario</h2>
+            <p class="card-subtitle">
+                El salario solo es visible para quienes administran el talento humano.
+            </p>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="employee-contract">Tipo de contrato</label>
+                    <InputSelect id="employee-contract" class="input" @bind-Value="_form.ContractType">
+                        @foreach (var contract in ContractTypeLabels.All)
+                        {
+                            <option value="@ContractTypeLabels.ToLabel(contract)">
+                                @ContractTypeLabels.ToLabel(contract)
+                            </option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => _form.ContractType" />
+                </div>
+
+                <div class="field">
+                    <label for="employee-salary">Salario mensual (COP)</label>
+                    <InputNumber id="employee-salary" class="input" @bind-Value="_form.Salary" />
+                    <ValidationMessage For="() => _form.Salary" />
+                </div>
+
+                @if (IsEditing)
+                {
+                    <div class="field field-inline">
+                        <InputCheckbox id="employee-active" @bind-Value="_form.Active" />
+                        <label for="employee-active">Empleado activo</label>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a class="button button-secondary" href="rrhh/empleados">Cancelar</a>
+            <button type="submit" class="button button-primary">
+                @(IsEditing ? "Guardar cambios" : "Registrar empleado")
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private IReadOnlyList<Store>? _options;
+    private EmployeeForm? _form;
+    private string? _error;
+
+    private bool IsEditing => Id > 0;
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _options = EmployeeService.ListStores();
+            _form = new EmployeeForm
+            {
+                StoreId = _options.FirstOrDefault()?.Id ?? 0,
+                ContractType = ContractTypeLabels.ToLabel(ContractType.Indefinite),
+                Active = true
+            };
+
+            if (!IsEditing)
+                return;
+
+            var employee = EmployeeService.Get(Id);
+            _form = new EmployeeForm
+            {
+                Name = employee.Name,
+                IdNumber = employee.IdNumber,
+                Position = employee.Position,
+                StoreId = employee.StoreId,
+                ContractType = ContractTypeLabels.ToLabel(employee.ContractType),
+                Salary = employee.Salary ?? 0m,
+                Active = employee.Active
+            };
+        }
+        catch (EmployeeNotFoundException)
+        {
+            _error = "No encontramos el empleado solicitado.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+
+        try
+        {
+            if (IsEditing)
+            {
+                EmployeeService.Update(Id, new UpdateEmployeeRequest(
+                    _form!.IdNumber,
+                    _form.Name,
+                    _form.Position,
+                    _form.StoreId,
+                    _form.ContractType,
+                    _form.Salary,
+                    _form.Active));
+            }
+            else
+            {
+                EmployeeService.Create(new CreateEmployeeRequest(
+                    _form!.IdNumber,
+                    _form.Name,
+                    _form.Position,
+                    _form.StoreId,
+                    _form.ContractType,
+                    _form.Salary));
+            }
+
+            Navigation.NavigateTo("rrhh/empleados?guardado=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private sealed class EmployeeForm
+    {
+        [Required(ErrorMessage = "El nombre es obligatorio.")]
+        [StringLength(160, ErrorMessage = "El nombre no puede superar 160 caracteres.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El documento es obligatorio.")]
+        [StringLength(30, ErrorMessage = "El documento no puede superar 30 caracteres.")]
+        public string IdNumber { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El cargo es obligatorio.")]
+        [StringLength(100, ErrorMessage = "El cargo no puede superar 100 caracteres.")]
+        public string Position { get; set; } = string.Empty;
+
+        [Range(1, int.MaxValue, ErrorMessage = "Selecciona una tienda.")]
+        public int StoreId { get; set; }
+
+        [Required(ErrorMessage = "Selecciona un tipo de contrato.")]
+        public string ContractType { get; set; } = string.Empty;
+
+        [Range(0, 999_999_999, ErrorMessage = "El salario debe ser mayor o igual que cero.")]
+        public decimal Salary { get; set; }
+
+        public bool Active { get; set; }
+    }
+}

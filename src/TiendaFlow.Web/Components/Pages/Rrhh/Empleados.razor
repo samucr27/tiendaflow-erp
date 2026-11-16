@@ -1,0 +1,135 @@
+@page "/rrhh/empleados"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrEmployeesView)]
+@using TiendaFlow.Application.Payroll
+@inject EmployeeService EmployeeService
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Empleados · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Empleados"
+            Subtitle="Personas vinculadas a la operación, su tienda y su contrato">
+    <Actions>
+        @if (AccessControl.Has(Permissions.HrEmployeesManage))
+        {
+            <a class="button button-primary" href="rrhh/empleados/nuevo">+ Registrar empleado</a>
+        }
+        @if (AccessControl.Has(Permissions.HrPayrollManage))
+        {
+            <a class="button button-secondary" href="rrhh/nomina">Calcular nómina</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_employees is null)
+{
+    <p class="muted">Cargando los empleados…</p>
+}
+else if (!_employees.Any())
+{
+    <EmptyState Title="Todavía no hay empleados"
+                Message="Registra el primer empleado para administrar la nómina del mes." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Equipo registrado</h2>
+                <p class="card-subtitle">@_employees.Count empleados en la cadena</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Documento</th>
+                        <th>Cargo</th>
+                        <th>Tienda</th>
+                        <th>Contrato</th>
+                        <th>Salario</th>
+                        <th>Estado</th>
+                        @if (AccessControl.Has(Permissions.HrEmployeesManage))
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var employee in _employees)
+                    {
+                        <tr>
+                            <td>@employee.Name</td>
+                            <td>@employee.IdNumber</td>
+                            <td>@employee.Position</td>
+                            <td>@employee.StoreName</td>
+                            <td>@ContractTypeLabels.ToLabel(employee.ContractType)</td>
+                            <td>
+                                @if (employee.Salary is decimal salary)
+                                {
+                                    @Formatters.Money(salary)
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @(employee.Active ? "badge-success" : "badge-muted")">
+                                    @(employee.Active ? "Activo" : "Inactivo")
+                                </span>
+                            </td>
+                            @if (AccessControl.Has(Permissions.HrEmployeesManage))
+                            {
+                                <td class="table-actions">
+                                    <a class="button button-secondary button-small"
+                                       href="@($"rrhh/empleados/{employee.Id}")">Editar</a>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "guardado")]
+    public string? Guardado { get; set; }
+
+    private IReadOnlyList<EmployeeRow>? _employees;
+    private string? _error;
+    private string? _success;
+
+    protected override void OnParametersSet()
+    {
+        _success = Guardado == "1" ? "El empleado se guardó correctamente." : null;
+
+        try
+        {
+            _employees = EmployeeService.List();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

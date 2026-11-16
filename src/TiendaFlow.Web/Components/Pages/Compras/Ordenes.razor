@@ -1,0 +1,168 @@
+@page "/compras/ordenes"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.PurchasingOrdersView)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject IPurchaseOrderQuery OrderQuery
+@inject IAccessControl AccessControl
+
+<PageTitle>Órdenes de compra · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Compras"
+            Title="Órdenes de compra"
+            Subtitle="Solicitudes a proveedores, aprobación y recepción en tienda">
+    <Actions>
+        @if (AccessControl.Has(Permissions.PurchasingOrdersCreate))
+        {
+            <a class="button button-primary" href="compras/ordenes/nueva">+ Nueva orden</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_orders is null)
+{
+    <p class="muted">Cargando las órdenes de compra…</p>
+}
+else if (!_orders.Any())
+{
+    <EmptyState Title="Todavía no hay órdenes de compra"
+                Message="Crea la primera orden para abastecer la tienda o revisa las alertas de stock.">
+        <Action>
+            @if (AccessControl.Has(Permissions.PurchasingOrdersCreate))
+            {
+                <a class="button button-primary" href="compras/ordenes/nueva">+ Nueva orden</a>
+            }
+            else
+            {
+                <a class="button button-secondary" href="inventario/alertas">Ver alertas de stock</a>
+            }
+        </Action>
+    </EmptyState>
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Órdenes abiertas"
+                 Value="@Formatters.Number(OpenOrders.Count())"
+                 Hint="Pendientes de recibir o cancelar"
+                 Tone="primary" />
+        <KpiCard Label="Por aprobar"
+                 Value="@Formatters.Number(PendingApproval)"
+                 Hint="Borradores y en aprobación"
+                 Tone="info" />
+        <KpiCard Label="Valor comprometido"
+                 Value="@Formatters.Money(OpenValue)"
+                 Hint="Órdenes abiertas"
+                 Tone="neutral" />
+        <KpiCard Label="Recibidas"
+                 Value="@Formatters.Number(ReceivedCount)"
+                 Hint="Historial completo"
+                 Tone="ok" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Historial de órdenes</h2>
+                <p class="card-subtitle">@Filtered.Count() de @_orders.Count órdenes</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   aria-label="Buscar órdenes"
+                   placeholder="Buscar por proveedor, tienda o número"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (!Filtered.Any())
+        {
+            <EmptyState Title="Sin resultados"
+                        Message="No encontramos órdenes con ese criterio." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Orden</th>
+                            <th>Proveedor</th>
+                            <th>Tienda</th>
+                            <th>Fecha</th>
+                            <th class="num">Líneas</th>
+                            <th class="num">Total</th>
+                            <th>Estado</th>
+                            <th class="actions"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Filtered)
+                        {
+                            <tr>
+                                <td>
+                                    <a class="table-link" href="@($"compras/ordenes/{order.Id}")">
+                                        OC-@order.Id.ToString("D5")
+                                    </a>
+                                </td>
+                                <td>@order.SupplierName</td>
+                                <td>@order.StoreName</td>
+                                <td>@Formatters.ShortDate(order.OrderDate)</td>
+                                <td class="num">@Formatters.Number(order.LineCount)</td>
+                                <td class="num">@Formatters.Money(order.Total)</td>
+                                <td>
+                                    <StatusBadge Text="@PurchasingText.Status(order.Status)"
+                                                 Tone="@PurchasingText.Tone(order.Status)" />
+                                </td>
+                                <td class="actions">
+                                    <a class="table-action" href="@($"compras/ordenes/{order.Id}")">Ver</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private IReadOnlyList<PurchaseOrderRow>? _orders;
+    private string _search = string.Empty;
+    private string? _error;
+
+    private IEnumerable<PurchaseOrderRow> Filtered =>
+        (_orders ?? Array.Empty<PurchaseOrderRow>()).Where(order =>
+            string.IsNullOrWhiteSpace(_search)
+            || order.SupplierName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+            || order.StoreName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+            || order.Id.ToString().Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<PurchaseOrderRow> OpenOrders =>
+        (_orders ?? Array.Empty<PurchaseOrderRow>()).Where(order => PurchasingText.IsOpen(order.Status));
+
+    private int PendingApproval =>
+        (_orders ?? Array.Empty<PurchaseOrderRow>()).Count(order =>
+            order.Status is PurchaseOrderStatus.Draft or PurchaseOrderStatus.PendingApproval);
+
+    private decimal OpenValue => OpenOrders.Sum(order => order.Total);
+
+    private int ReceivedCount =>
+        (_orders ?? Array.Empty<PurchaseOrderRow>()).Count(order =>
+            order.Status == PurchaseOrderStatus.Received);
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _orders = OrderQuery.List();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

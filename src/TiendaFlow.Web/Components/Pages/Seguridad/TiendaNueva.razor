@@ -1,0 +1,95 @@
+@page "/seguridad/tiendas/nueva"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityStoresManage)]
+@using System.ComponentModel.DataAnnotations
+@inject StoreService StoreService
+@inject NavigationManager Navigation
+
+<PageTitle>Crear tienda · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad / Tiendas"
+            Title="Crear tienda"
+            Subtitle="Registra una sucursal; después podrás asignarle usuarios, empleados e inventario">
+    <Actions>
+        <a class="button button-secondary" href="seguridad/tiendas">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<EditForm Model="_form" OnValidSubmit="Save" FormName="crear-tienda" class="form-card">
+    <DataAnnotationsValidator />
+
+    <div class="form-section">
+        <h2>Datos de la tienda</h2>
+        <p class="card-subtitle">El nombre debe ser único en toda la cadena.</p>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="store-name">Nombre</label>
+                <InputText id="store-name" class="input" @bind-Value="_form.Name" />
+                <ValidationMessage For="() => _form.Name" />
+            </div>
+
+            <div class="field">
+                <label for="store-address">Dirección</label>
+                <InputText id="store-address" class="input" @bind-Value="_form.Address" />
+                <ValidationMessage For="() => _form.Address" />
+            </div>
+        </div>
+
+        <div class="field field-inline">
+            <InputCheckbox id="store-active" @bind-Value="_form.Active" />
+            <label for="store-active">Tienda activa desde su creación</label>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a class="button button-secondary" href="seguridad/tiendas">Cancelar</a>
+        <button type="submit" class="button button-primary">Crear tienda</button>
+    </div>
+</EditForm>
+
+@code {
+    private readonly CreateStoreForm _form = new();
+    private string? _error;
+
+    private void Save()
+    {
+        _error = null;
+
+        try
+        {
+            var id = StoreService.CreateStore(new CreateStoreRequest(
+                _form.Name,
+                _form.Address,
+                _form.Active));
+
+            Navigation.NavigateTo($"seguridad/tiendas/{id}");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private sealed class CreateStoreForm
+    {
+        [Required(ErrorMessage = "El nombre es obligatorio.")]
+        [StringLength(120, ErrorMessage = "El nombre no puede superar 120 caracteres.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La dirección es obligatoria.")]
+        [StringLength(200, ErrorMessage = "La dirección no puede superar 200 caracteres.")]
+        public string Address { get; set; } = string.Empty;
+
+        public bool Active { get; set; } = true;
+    }
+}
