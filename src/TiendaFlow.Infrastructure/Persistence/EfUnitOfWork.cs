@@ -25,6 +25,12 @@ public sealed class EfUnitOfWork : IUnitOfWork
             catch
             {
                 transaction.Rollback();
+
+                // The rollback undid the rows, but the tracker still holds the
+                // entities saved inside the transaction (with ids that no
+                // longer exist) and the failed changes. Forget all of it so
+                // the long-lived Blazor context does not reuse them.
+                _context.ChangeTracker.Clear();
                 throw;
             }
         });

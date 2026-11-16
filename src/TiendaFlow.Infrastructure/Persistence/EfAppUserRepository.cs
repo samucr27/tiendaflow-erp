@@ -10,12 +10,15 @@ public sealed class EfAppUserRepository : IAppUserRepository
 
     public EfAppUserRepository(TiendaFlowDbContext context) => _context = context;
 
-    public AppUser? GetById(int id) => _context.AppUsers.Find(id);
+    public AppUser? GetById(int id) =>
+        _context.LoadFresh<AppUser>(user => user.Id == id, () => _context.AppUsers.Find(id));
 
     public AppUser? GetByEmail(string email)
     {
         var normalized = email.Trim().ToLowerInvariant();
-        return _context.AppUsers.FirstOrDefault(user => user.Email == normalized);
+        return _context.LoadFresh<AppUser>(
+            user => user.Email == normalized,
+            () => _context.AppUsers.FirstOrDefault(user => user.Email == normalized));
     }
 
     public IReadOnlyList<AppUser> List() =>

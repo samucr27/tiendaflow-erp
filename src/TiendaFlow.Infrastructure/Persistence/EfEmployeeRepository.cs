@@ -10,12 +10,15 @@ public sealed class EfEmployeeRepository : IEmployeeRepository
 
     public EfEmployeeRepository(TiendaFlowDbContext context) => _context = context;
 
-    public Employee? GetById(int id) => _context.Employees.Find(id);
+    public Employee? GetById(int id) =>
+        _context.LoadFresh<Employee>(employee => employee.Id == id, () => _context.Employees.Find(id));
 
     public Employee? GetByIdNumber(string idNumber)
     {
         var normalized = idNumber.Trim();
-        return _context.Employees.FirstOrDefault(employee => employee.IdNumber == normalized);
+        return _context.LoadFresh<Employee>(
+            employee => employee.IdNumber == normalized,
+            () => _context.Employees.FirstOrDefault(employee => employee.IdNumber == normalized));
     }
 
     public IReadOnlyList<Employee> List() =>

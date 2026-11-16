@@ -14,9 +14,11 @@ public sealed class EfProductSupplierRepository : IProductSupplierRepository
     {
         var sku = productSku.Trim();
 
-        return _context.ProductSuppliers
-            .FirstOrDefault(relation =>
-                relation.ProductSku == sku && relation.SupplierId == supplierId);
+        return _context.LoadFresh<ProductSupplier>(
+            relation => relation.ProductSku == sku && relation.SupplierId == supplierId,
+            () => _context.ProductSuppliers
+                .FirstOrDefault(relation =>
+                    relation.ProductSku == sku && relation.SupplierId == supplierId));
     }
 
     public IReadOnlyList<ProductSupplier> List() =>

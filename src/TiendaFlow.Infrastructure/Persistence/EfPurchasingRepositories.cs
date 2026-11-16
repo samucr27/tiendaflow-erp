@@ -10,7 +10,8 @@ public sealed class EfSupplierRepository : ISupplierRepository
 
     public EfSupplierRepository(TiendaFlowDbContext context) => _context = context;
 
-    public Supplier? GetById(int id) => _context.Suppliers.Find(id);
+    public Supplier? GetById(int id) =>
+        _context.LoadFresh<Supplier>(supplier => supplier.Id == id, () => _context.Suppliers.Find(id));
 
     public Supplier? GetByNit(string nit) =>
         _context.Suppliers.AsNoTracking().FirstOrDefault(supplier => supplier.Nit == nit);
@@ -40,9 +41,11 @@ public sealed class EfPurchaseOrderRepository : IPurchaseOrderRepository
     public EfPurchaseOrderRepository(TiendaFlowDbContext context) => _context = context;
 
     public PurchaseOrder? GetById(int id) =>
-        _context.PurchaseOrders
-            .Include(order => order.Lines)
-            .FirstOrDefault(order => order.Id == id);
+        _context.LoadFresh<PurchaseOrder>(
+            order => order.Id == id,
+            () => _context.PurchaseOrders
+                .Include(order => order.Lines)
+                .FirstOrDefault(order => order.Id == id));
 
     public IReadOnlyList<PurchaseOrder> List() =>
         _context.PurchaseOrders

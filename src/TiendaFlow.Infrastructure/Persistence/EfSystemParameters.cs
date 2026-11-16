@@ -31,7 +31,8 @@ public sealed class EfSystemParameterRepository : ISystemParameterRepository
             .ToList();
     }
 
-    public SystemParameter? GetById(int id) => _context.SystemParameters.Find(id);
+    public SystemParameter? GetById(int id) =>
+        _context.LoadFresh<SystemParameter>(parameter => parameter.Id == id, () => _context.SystemParameters.Find(id));
 
     public SystemParameter? GetLatest(
         string key,

@@ -672,6 +672,12 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("int")
                         .HasColumnName("quantity");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("row_version");
+
                     b.HasKey("Sku", "StoreId");
 
                     b.HasIndex("StoreId", "QuantityAvailable")
