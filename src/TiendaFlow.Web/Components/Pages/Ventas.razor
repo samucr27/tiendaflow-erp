@@ -112,6 +112,16 @@
                     <strong>@Formatters.Money(_receipt.Total)</strong>
                 </div>
 
+                @if (_receipt.RemainingStock <= _receipt.MinStock)
+                {
+                    @* HU-05: the sale itself raises the critical stock alert. *@
+                    <div class="alert alert-warning" role="alert">
+                        Stock crítico: quedan @Formatters.Quantity(_receipt.RemainingStock) unidades y el
+                        mínimo es @Formatters.Quantity(_receipt.MinStock). El producto ya aparece en las
+                        alertas de stock para reponerlo.
+                    </div>
+                }
+
                 <p class="receipt-footer">
                     Stock restante: <strong>@Formatters.Quantity(_receipt.RemainingStock) unidades</strong>
                 </p>
@@ -186,7 +196,8 @@
                 product.SalePrice,
                 Total,
                 soldAt,
-                Available);
+                Available,
+                _stock.GetValueOrDefault(product.Sku)?.MinStock ?? 0);
 
             _form.Quantity = 1;
         }
@@ -217,5 +228,6 @@
         decimal UnitPrice,
         decimal Total,
         DateTime Date,
-        int RemainingStock);
+        int RemainingStock,
+        int MinStock);
 }
