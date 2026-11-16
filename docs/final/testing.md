@@ -1,7 +1,8 @@
 # Compilación, pruebas y cobertura
 
-Última verificación: **13 de noviembre de 2026**, sobre `feature/erp-complete`,
-con .NET 9 en Windows.
+Última verificación: **16 de noviembre de 2026**, sobre
+`fix/sprint2-final-review` (rama creada desde `feature/erp-complete`), con
+.NET 9 en Windows y SQL Server 2022 en Docker.
 
 ## Comandos
 
@@ -23,11 +24,13 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 589 | 0 | 0 | 589 |
+| `TiendaFlow.UnitTests` | 592 | 0 | 0 | 592 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 42 | 0 | 0 | 42 |
+| `TiendaFlow.IntegrationTests` | 46 | 0 | 0 | 46 |
 
-Total ejecutado: **637 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **644 pruebas superadas**, sin omisiones ni errores. Las 7
+pruebas nuevas de la revisión final se describen en la sección
+"Revisión final del 16 de noviembre".
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -215,6 +218,25 @@ Las capturas se generaron en el equipo de verificación y no se versionan. La
 revisión estética subjetiva queda a cargo del revisor; la comprobación cubre
 composición, desbordamiento, contraste y comportamiento del menú, no el juicio de
 diseño.
+
+## Revisión final del 16 de noviembre
+
+Revisión de backend y frontend antes de la entrega. Cada corrección tiene una
+prueba que fallaba antes del cambio o que cubre la regla nueva.
+
+| Hallazgo | Corrección | Prueba |
+| --- | --- | --- |
+| **Ventas perdidas entre sesiones.** Blazor Server mantiene un `DbContext` por pestaña; una consulta con seguimiento devolvía la copia en caché y no el valor actual. Dos cajeros vendiendo el mismo SKU dejaban el stock en 8 en lugar de 7. | `FreshTracking.LoadFresh` olvida la copia sin cambios antes de leer en los repositorios que cargan para modificar (stock, productos, proveedores, órdenes, facturas, clientes, empleados, usuarios, tiendas, parámetros, conteos y traslados). | `LongLivedContextStockTests.SalesFromTwoCircuits_DiscountEveryUnit` |
+| **Ventas simultáneas.** Sin control de concurrencia, dos escrituras al mismo tiempo se sobrescribían. | Columna `row_version` (`rowversion`) en `stock`, migración `Phase10StockConcurrency`; el conflicto se informa como "Otro usuario modificó estos datos…". | `SimultaneousSales_RejectTheSecondWriteInsteadOfLosingAUnit` |
+| **Cambios fallidos que quedaban vivos.** Tras un error o un rollback, el contexto de la pestaña conservaba entidades modificadas o con ids inexistentes. | `TiendaFlowDbContext.SaveChanges` y `EfUnitOfWork` limpian el seguimiento al fallar. | `ARejectedSale_DoesNotPoisonTheNextOperationOfTheCircuit` |
+| **Último administrador.** Un administrador podía quitarse el rol o desactivar al último administrador activo y dejar el sistema sin quien gestione usuarios. | `UserService.EnsureAnAdministratorRemains`. | 3 pruebas en `UserServiceTests` |
+| **Mensajes de usuario ocultos.** "No puedes desactivar tu propia cuenta" o la longitud de la contraseña se mostraban como un mensaje genérico. | `DomainErrorTranslator` muestra los mensajes en español de `UserService` y deja el genérico para las validaciones del dominio. | Cubierto por las pruebas anteriores y `WebSmokeTests` |
+| **Fuerza bruta en el acceso.** `POST /login` no limitaba intentos. | Límite por IP (`Security:LoginAttemptsPerMinute`, 10 por minuto) con mensaje en la pantalla de acceso. | `WebSmokeTests.LoginThrottlesRepeatedAttemptsFromTheSameClient` |
+| **HU-05 sin aviso en la venta.** El comprobante no indicaba que la venta dejaba el producto en stock crítico, y el panel decía "Faltan 0 unidades" para un producto justo en su mínimo. | Aviso de stock crítico en el comprobante del POS y texto "En el mínimo" en el panel. | Verificado en el navegador con el cajero |
+
+Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en esta
+verificación (unión de las tres suites, `coverlet.collector`): **97,0 %**
+(Application 97,4 %, Domain 95,7 %).
 
 ## Cómo reproducir la verificación
 
