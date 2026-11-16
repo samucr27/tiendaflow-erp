@@ -139,6 +139,8 @@ public sealed class UserService
         if (userId == _currentUser.UserId && !request.Active)
             throw new InvalidUserException("No puedes desactivar tu propia cuenta.");
 
+        EnsureAnAdministratorRemains(user, role.Id, request.Active);
+
         _unitOfWork.ExecuteInTransaction(() =>
         {
             employee.Update(
@@ -183,6 +185,8 @@ public sealed class UserService
 
         var user = _users.GetById(userId) ?? throw new UserNotFoundException(userId);
 
+        EnsureAnAdministratorRemains(user, user.RoleId, newActive: false);
+
         _unitOfWork.ExecuteInTransaction(() =>
         {
             user.Deactivate();
@@ -206,6 +210,35 @@ public sealed class UserService
             _users.Update(user);
             Audit("PasswordReset", user.Id.ToString(), $"Contraseña restablecida para el usuario {user.Id}");
         });
+    }
+
+    /// <summary>
+    /// Only the Administrator role manages users, roles and stores. Removing
+    /// the role from (or deactivating) the last active administrator would
+    /// lock everyone out of security administration, so it is rejected.
+    /// </summary>
+    private void EnsureAnAdministratorRemains(AppUser user, int newRoleId, bool newActive)
+    {
+        var administratorRoleId = _roles.List()
+            .FirstOrDefault(role => role.Name == RoleNames.Administrator)?.Id;
+
+        if (administratorRoleId is null)
+            return;
+
+        var isActiveAdministrator = user.Active && user.RoleId == administratorRoleId;
+        var staysActiveAdministrator = newActive && newRoleId == administratorRoleId;
+
+        if (!isActiveAdministrator || staysActiveAdministrator)
+            return;
+
+        var otherActiveAdministrators = _users.List().Count(other =>
+            other.Id != user.Id && other.Active && other.RoleId == administratorRoleId);
+
+        if (otherActiveAdministrators == 0)
+        {
+            throw new InvalidUserException(
+                "Debe quedar al menos un administrador activo. Asigna el rol de administrador a otro usuario antes de cambiar este.");
+        }
     }
 
     private void Audit(string action, string entityId, string detail) =>
