@@ -116,6 +116,42 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         Assert.DoesNotContain("no existe", html, StringComparison.OrdinalIgnoreCase);
     }
 
+    [SqlServerFact]
+    public async Task LoginThrottlesRepeatedAttemptsFromTheSameClient()
+    {
+        await _factory.PrepareAsync();
+
+        // A separate host keeps its own rate limiter, so this test never uses
+        // up the attempts of the smoke test that signs in as every role.
+        using var throttled = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("Security:LoginAttemptsPerMinute", "2"));
+        using var client = throttled.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = true,
+            HandleCookies = true
+        });
+
+        var html = string.Empty;
+
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var token = await ReadAntiforgeryTokenAsync(client);
+
+            using var response = await client.PostAsync("/login", new FormUrlEncodedContent(
+                new Dictionary<string, string>
+                {
+                    ["email"] = "admin@tiendaflow.local",
+                    ["password"] = "contrasena-incorrecta",
+                    ["__RequestVerificationToken"] = token
+                }));
+
+            html = await response.Content.ReadAsStringAsync();
+        }
+
+        Assert.Contains("Demasiados intentos de inicio de sesión", html);
+    }
+
     private static async Task SignInAsync(HttpClient client, SeedAccount account)
     {
         var token = await ReadAntiforgeryTokenAsync(client);

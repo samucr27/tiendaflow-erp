@@ -46,6 +46,12 @@
                     El correo o la contraseña no son correctos, o el usuario está inactivo.
                 </div>
             }
+            else if (Error == 2)
+            {
+                <div class="alert alert-error" role="alert">
+                    Demasiados intentos de inicio de sesión. Espera un minuto e intenta de nuevo.
+                </div>
+            }
 
             <form method="post" action="/login" class="login-form">
                 <AntiforgeryToken />
