@@ -1,5 +1,10 @@
-name: Terraform Plan
+name: Terraform Validate
 
+# The HCP Terraform workspace runs in Local execution mode and Terraform is
+# executed on the operator machine with `az login`. CI has no Azure credentials
+# and the student subscription does not allow creating a service principal, so
+# `terraform plan` cannot authenticate here. CI therefore validates the
+# configuration only; the real plan/apply is a documented manual step.
 on:
   pull_request:
     branches: [develop]
@@ -10,25 +15,25 @@ permissions:
   contents: read
 
 jobs:
-  plan:
+  validate:
+    name: Format, init and validate
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: infra/terraform
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-        with:
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
 
       - name: Terraform init
-        run: terraform init -input=false
+        run: terraform init -backend=false -input=false
 
       - name: Terraform validate
         run: terraform validate
-
-      - name: Terraform plan
-        run: terraform plan -input=false

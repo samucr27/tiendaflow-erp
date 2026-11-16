@@ -1,0 +1,414 @@
+@page "/compras/reposicion"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.PurchasingOrdersCreate)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject ReplenishmentService ReplenishmentService
+@inject ProductSupplierService ProductSupplierService
+@inject SupplierService SupplierService
+@inject IProductCatalogQuery ProductQuery
+@inject IAccessControl AccessControl
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Reposición de inventario · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Compras"
+            Title="Reposición de inventario"
+            Subtitle="Sugerencias calculadas con el stock mínimo y el consumo real de la ventana configurada">
+    <Actions>
+        <a class="button button-secondary" href="compras/ordenes">Órdenes de compra</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_preview is null)
+{
+    <p class="muted">Calculando las sugerencias de reposición…</p>
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Ventana de consumo"
+                 Value="@($"{_preview.ConsumptionWindowDays} días")"
+                 Hint="Parámetro de la tienda"
+                 Tone="neutral" />
+        <KpiCard Label="Cobertura objetivo"
+                 Value="@($"{_preview.CoverageDays} días")"
+                 Hint="Parámetro de la tienda"
+                 Tone="neutral" />
+        <KpiCard Label="Productos a reponer"
+                 Value="@Formatters.Number(_preview.Rows.Count)"
+                 Hint="@($"{_preview.ReadyCount} con proveedor predeterminado")"
+                 Tone="info" />
+        <KpiCard Label="Sin proveedor"
+                 Value="@Formatters.Number(_preview.MissingSupplierCount)"
+                 Hint="No se incluyen en los borradores"
+                 Tone="@(_preview.MissingSupplierCount > 0 ? "alert" : "ok")" />
+        <KpiCard Label="Valor estimado"
+                 Value="@Formatters.Money(_preview.EstimatedTotal)"
+                 Hint="Con el último costo conocido"
+                 Tone="neutral" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Sugerencias de compra</h2>
+                <p class="card-subtitle">
+                    La cantidad es la mayor entre lo que falta para el stock mínimo y lo que falta
+                    para cubrir el consumo promedio diario por los días de cobertura. Las órdenes
+                    se crean en borrador: nunca se envían solas al proveedor.
+                </p>
+            </div>
+            <button type="button"
+                    class="button button-primary"
+                    disabled="@(_preview.ReadyCount == 0 || _generating)"
+                    @onclick="Generate">
+                @(_generating ? "Generando…" : "Generar borradores")
+            </button>
+        </div>
+
+        @if (!_preview.Rows.Any())
+        {
+            <EmptyState Title="Sin productos por reponer"
+                        Message="El stock actual cubre el mínimo y el consumo esperado de la tienda." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="num">Stock</th>
+                            <th class="num">Mínimo</th>
+                            <th class="num">Consumo diario</th>
+                            <th class="num">Objetivo</th>
+                            <th class="num">Sugerido</th>
+                            <th>Proveedor</th>
+                            <th class="num">Último costo</th>
+                            <th class="num">Costo estimado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _preview.Rows)
+                        {
+                            <tr>
+                                <td>
+                                    <span>@row.ProductName</span>
+                                    <span class="table-meta">@row.Sku</span>
+                                </td>
+                                <td class="num">@Formatters.Quantity(row.Available)</td>
+                                <td class="num">@Formatters.Quantity(row.MinStock)</td>
+                                <td class="num">@row.AverageDailyConsumption.ToString("0.##")</td>
+                                <td class="num">@Formatters.Quantity(row.TargetStock)</td>
+                                <td class="num">@Formatters.Quantity(row.SuggestedQuantity)</td>
+                                <td>
+                                    @if (row.HasSupplier)
+                                    {
+                                        <span>@row.SupplierName</span>
+                                        <span class="table-meta">Predeterminado</span>
+                                    }
+                                    else
+                                    {
+                                        <StatusBadge Text="Sin proveedor" Tone="alert" />
+                                    }
+                                </td>
+                                <td class="num">
+                                    @(row.LastCost is decimal cost ? Formatters.Money(cost) : "—")
+                                </td>
+                                <td class="num">@Formatters.Money(row.EstimatedCost)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@if (AccessControl.Has(Permissions.PurchasingSuppliersManage))
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Relación producto · proveedor</h2>
+                <p class="card-subtitle">
+                    Define el proveedor predeterminado y el último costo de cada producto. El
+                    proveedor predeterminado es el que usan los borradores de reposición.
+                </p>
+            </div>
+        </div>
+
+        @if (_relationError is not null)
+        {
+            <div class="alert alert-error" role="alert">@_relationError</div>
+        }
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="relation-product">Producto</label>
+                <select id="relation-product" class="input" @bind="_relation.ProductSku">
+                    <option value="">Selecciona un producto</option>
+                    @foreach (var product in _products)
+                    {
+                        <option value="@product.Sku">@product.Name (@product.Sku)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="relation-supplier">Proveedor</label>
+                <select id="relation-supplier" class="input" @bind="_relation.SupplierId">
+                    <option value="0">Selecciona un proveedor</option>
+                    @foreach (var supplier in _suppliers)
+                    {
+                        <option value="@supplier.Id">
+                            @supplier.BusinessName@(supplier.Active ? string.Empty : " (inactivo)")
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="relation-cost">Último costo</label>
+                <input id="relation-cost"
+                       class="input"
+                       type="number"
+                       min="0"
+                       step="0.01"
+                       @bind="_relation.LastCost" />
+            </div>
+
+            <div class="field">
+                <label for="relation-default">Predeterminado</label>
+                <label class="checkbox">
+                    <input id="relation-default" type="checkbox" @bind="_relation.IsDefault" />
+                    <span>Usar en la reposición automática</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="button button-primary" @onclick="SaveRelation">
+                Guardar relación
+            </button>
+        </div>
+
+        @if (!_relations.Any())
+        {
+            <EmptyState Title="Sin relaciones registradas"
+                        Message="Guarda la primera relación para que la reposición pueda proponer compras." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Proveedor</th>
+                            <th class="num">Último costo</th>
+                            <th>Predeterminado</th>
+                            <th>Estado del proveedor</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var relation in _relations)
+                        {
+                            <tr>
+                                <td>
+                                    <span>@relation.ProductName</span>
+                                    <span class="table-meta">@relation.ProductSku</span>
+                                </td>
+                                <td>@relation.SupplierName</td>
+                                <td class="num">@Formatters.Money(relation.LastCost)</td>
+                                <td>
+                                    <StatusBadge Text="@(relation.IsDefault ? "Predeterminado" : "Alterno")"
+                                                 Tone="@(relation.IsDefault ? "ok" : "neutral")" />
+                                </td>
+                                <td>
+                                    <StatusBadge Text="@(relation.SupplierActive ? "Activo" : "Inactivo")"
+                                                 Tone="@(relation.SupplierActive ? "ok" : "alert")" />
+                                </td>
+                                <td class="table-actions">
+                                    <button type="button"
+                                            class="button button-secondary button-small"
+                                            @onclick="() => EditRelation(relation)">
+                                        Editar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private ReplenishmentPreview? _preview;
+    private IReadOnlyList<ProductSupplierRow> _relations = Array.Empty<ProductSupplierRow>();
+    private IReadOnlyList<ProductListItem> _products = Array.Empty<ProductListItem>();
+    private IReadOnlyList<SupplierRow> _suppliers = Array.Empty<SupplierRow>();
+    private RelationForm _relation = new();
+    private bool _generating;
+    private string? _error;
+    private string? _success;
+    private string? _relationError;
+
+    protected override void OnInitialized()
+    {
+        LoadPreview();
+
+        if (AccessControl.Has(Permissions.PurchasingSuppliersManage))
+            LoadRelations();
+    }
+
+    private void LoadPreview()
+    {
+        var storeId = CurrentUser.StoreId ?? 0;
+
+        if (storeId <= 0)
+        {
+            _error = "Tu usuario no tiene una tienda asignada para calcular la reposición.";
+            return;
+        }
+
+        try
+        {
+            _preview = ReplenishmentService.Preview(storeId);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void LoadRelations()
+    {
+        try
+        {
+            _relations = ProductSupplierService.List();
+            _products = ProductQuery.Search(null);
+            _suppliers = SupplierService.List();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _relationError = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void EditRelation(ProductSupplierRow relation)
+    {
+        _relation = new RelationForm
+        {
+            ProductSku = relation.ProductSku,
+            SupplierId = relation.SupplierId,
+            LastCost = relation.LastCost,
+            IsDefault = relation.IsDefault
+        };
+    }
+
+    private void SaveRelation()
+    {
+        _relationError = null;
+        _success = null;
+
+        try
+        {
+            ProductSupplierService.Set(new SetProductSupplierRequest(
+                _relation.ProductSku,
+                _relation.SupplierId,
+                _relation.LastCost,
+                _relation.IsDefault));
+
+            _success = "La relación producto · proveedor quedó guardada.";
+            _relation = new RelationForm();
+            LoadRelations();
+            LoadPreview();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _relationError = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Generate()
+    {
+        _error = null;
+        _success = null;
+        _generating = true;
+
+        try
+        {
+            var result = ReplenishmentService.GenerateDrafts(CurrentUser.StoreId ?? 0);
+
+            if (result.Orders.Count == 0)
+            {
+                _success = result.SkippedRows > 0
+                    ? $"No se generaron borradores: {result.SkippedRows} productos no tienen un proveedor activo predeterminado."
+                    : "No hay productos pendientes de reposición.";
+            }
+            else
+            {
+                var details = string.Join(
+                    ", ",
+                    result.Orders.Select(order =>
+                        $"{order.SupplierName} ({order.LineCount} líneas)"));
+                _success =
+                    $"Se crearon {result.Orders.Count} borradores por {Formatters.Money(result.TotalValue)}: {details}. " +
+                    "Revísalos y envíalos desde órdenes de compra.";
+            }
+
+            LoadPreview();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _generating = false;
+        }
+    }
+
+    private sealed class RelationForm
+    {
+        public string ProductSku { get; set; } = string.Empty;
+
+        public int SupplierId { get; set; }
+
+        public decimal LastCost { get; set; }
+
+        public bool IsDefault { get; set; }
+    }
+}

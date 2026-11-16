@@ -11,12 +11,14 @@
 
 <div class="sidebar-store">
     <span class="store-dot" aria-hidden="true"></span>
-    <span>Tienda @CurrentUser.StoreName</span>
+    <span>@CurrentUser.StoreName</span>
 </div>
 
 <nav class="sidebar-nav" aria-label="Navegación principal">
     @if (AccessControl.Has(Permissions.InventoryStockView)
-         || AccessControl.Has(Permissions.InventoryProductsView))
+         || AccessControl.Has(Permissions.InventoryProductsView)
+         || AccessControl.Has(Permissions.InventoryStockCount)
+         || AccessControl.Has(Permissions.InventoryStockTransfer))
     {
         <p class="nav-section">Inventario</p>
 
@@ -36,6 +38,18 @@
         {
             <NavLink class="nav-item" href="inventario/stock" Match="NavLinkMatch.Prefix">
                 Consultar stock
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.InventoryStockCount))
+        {
+            <NavLink class="nav-item" href="inventario/conteos" Match="NavLinkMatch.Prefix">
+                Conteos físicos
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.InventoryStockTransfer))
+        {
+            <NavLink class="nav-item" href="inventario/traslados" Match="NavLinkMatch.Prefix">
+                Traslados entre tiendas
             </NavLink>
         }
         @if (AccessControl.Has(Permissions.InventoryStockReceive))
@@ -58,7 +72,35 @@
         }
     }
 
+    @if (AccessControl.Has(Permissions.InventoryReportsView)
+         || AccessControl.Has(Permissions.SalesReportsView)
+         || AccessControl.Has(Permissions.HrPayrollManage))
+    {
+        <p class="nav-section">Reportes</p>
+
+        @if (AccessControl.Has(Permissions.InventoryReportsView))
+        {
+            <NavLink class="nav-item" href="reportes/inventario" Match="NavLinkMatch.Prefix">
+                Inventario
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SalesReportsView))
+        {
+            <NavLink class="nav-item" href="reportes/ventas" Match="NavLinkMatch.Prefix">
+                Ventas
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrPayrollManage))
+        {
+            <NavLink class="nav-item" href="reportes/nomina" Match="NavLinkMatch.Prefix">
+                Nómina
+            </NavLink>
+        }
+    }
+
     @if (AccessControl.Has(Permissions.SecurityUsersView)
+         || AccessControl.Has(Permissions.SecurityStoresView)
+         || AccessControl.Has(Permissions.SecurityParametersManage)
          || AccessControl.Has(Permissions.SecurityRolesView)
          || AccessControl.Has(Permissions.SecurityAuditView))
     {
@@ -68,6 +110,18 @@
         {
             <NavLink class="nav-item" href="seguridad/usuarios" Match="NavLinkMatch.Prefix">
                 Usuarios
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SecurityStoresView))
+        {
+            <NavLink class="nav-item" href="seguridad/tiendas" Match="NavLinkMatch.Prefix">
+                Tiendas
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SecurityParametersManage))
+        {
+            <NavLink class="nav-item" href="seguridad/parametros" Match="NavLinkMatch.Prefix">
+                Parámetros
             </NavLink>
         }
         @if (AccessControl.Has(Permissions.SecurityRolesView))
@@ -103,13 +157,35 @@
         }
     }
 
-    @if (AccessControl.Has(Permissions.PurchasingSuppliersView))
+    @if (AccessControl.Has(Permissions.PurchasingSuppliersView)
+         || AccessControl.Has(Permissions.PurchasingOrdersView))
     {
         <p class="nav-section">Compras</p>
 
-        <NavLink class="nav-item" href="proveedores" Match="NavLinkMatch.Prefix">
-            Proveedores
-        </NavLink>
+        @if (AccessControl.Has(Permissions.PurchasingSuppliersView))
+        {
+            <NavLink class="nav-item" href="proveedores" Match="NavLinkMatch.Prefix">
+                Proveedores
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.PurchasingOrdersView))
+        {
+            <NavLink class="nav-item" href="compras/ordenes" Match="NavLinkMatch.Prefix">
+                Órdenes de compra
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.PurchasingOrdersCreate))
+        {
+            <NavLink class="nav-item" href="compras/reposicion" Match="NavLinkMatch.Prefix">
+                Reposición de inventario
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.PurchasingReportsView))
+        {
+            <NavLink class="nav-item" href="proveedores/ranking" Match="NavLinkMatch.Prefix">
+                Ranking de proveedores
+            </NavLink>
+        }
     }
 
     @if (AccessControl.Has(Permissions.SalesInvoicesView))
@@ -121,13 +197,23 @@
         </NavLink>
     }
 
-    @if (AccessControl.Has(Permissions.CrmCustomersView))
+    @if (AccessControl.Has(Permissions.CrmCustomersView)
+         || AccessControl.Has(Permissions.CrmReportsView))
     {
         <p class="nav-section">CRM</p>
 
-        <NavLink class="nav-item" href="crm/clientes" Match="NavLinkMatch.Prefix">
-            Clientes
-        </NavLink>
+        @if (AccessControl.Has(Permissions.CrmCustomersView))
+        {
+            <NavLink class="nav-item" href="crm/clientes" Match="NavLinkMatch.Prefix">
+                Clientes
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.CrmReportsView))
+        {
+            <NavLink class="nav-item" href="crm/segmentacion" Match="NavLinkMatch.Prefix">
+                Segmentación
+            </NavLink>
+        }
     }
 </nav>
 

@@ -19,7 +19,7 @@ public class Sprint2ScreenAuthorizationTests
     [InlineData("Proveedores/ProveedorForm.razor", "/proveedores/{Id:int}", "PurchasingSuppliersManage")]
     [InlineData("Facturacion/Facturas.razor", "/facturacion", "SalesInvoicesView")]
     [InlineData("Facturacion/FacturaForm.razor", "/facturacion/nueva", "SalesInvoicesManage")]
-    [InlineData("Facturacion/FacturaForm.razor", "/facturacion/{Id:int}", "SalesInvoicesManage")]
+    [InlineData("Facturacion/FacturaDetalle.razor", "/facturacion/{Id:int}", "SalesInvoicesView")]
     [InlineData("Crm/Clientes.razor", "/crm/clientes", "CrmCustomersView")]
     [InlineData("Crm/ClienteForm.razor", "/crm/clientes/nuevo", "CrmCustomersManage")]
     [InlineData("Crm/ClienteForm.razor", "/crm/clientes/{Id:int}", "CrmCustomersManage")]

@@ -179,6 +179,17 @@ internal sealed class InMemoryStoreRepository : IStoreRepository
 
     public IReadOnlyList<Store> List() => _stores;
 
+    public bool ExistsName(string name, int? exceptStoreId = null)
+    {
+        var normalized = name.Trim();
+
+        return _stores.Any(store =>
+            string.Equals(store.Name, normalized, StringComparison.OrdinalIgnoreCase)
+            && (exceptStoreId is null || store.Id != exceptStoreId));
+    }
+
+    public int NextId() => _stores.Count == 0 ? 1 : _stores.Max(store => store.Id) + 1;
+
     public void Add(Store store) => _stores.Add(store);
 
     public void Update(Store store)
@@ -199,4 +210,40 @@ internal sealed class InMemoryRoleRepository : IRoleRepository
     public IReadOnlyList<Role> List() => _roles;
 
     public void Add(Role role) => _roles.Add(role);
+}
+
+internal sealed class FakeStoreUsageQuery : IStoreUsageQuery
+{
+    public bool Stock { get; set; }
+
+    public bool OpenOrders { get; set; }
+
+    public bool ActiveUsers { get; set; }
+
+    public bool HasStock(int storeId) => Stock;
+
+    public bool HasOpenPurchaseOrders(int storeId) => OpenOrders;
+
+    public bool HasActiveUsers(int storeId) => ActiveUsers;
+}
+
+internal sealed class FakeStoreDirectoryQuery : IStoreDirectoryQuery
+{
+    public bool WasQueried { get; private set; }
+
+    public IReadOnlyList<StoreListItem> Rows { get; set; } = Array.Empty<StoreListItem>();
+
+    public StoreDetail? Detail { get; set; }
+
+    public IReadOnlyList<StoreListItem> List()
+    {
+        WasQueried = true;
+        return Rows;
+    }
+
+    public StoreDetail? Get(int id)
+    {
+        WasQueried = true;
+        return Detail;
+    }
 }

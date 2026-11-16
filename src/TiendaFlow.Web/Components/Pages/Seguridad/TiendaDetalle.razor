@@ -1,0 +1,449 @@
+@page "/seguridad/tiendas/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityStoresView)]
+@using System.ComponentModel.DataAnnotations
+@inject StoreService StoreService
+@inject StoreDirectoryService StoreDirectory
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>@(_detail?.Store.Name ?? "Tienda") · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad / Tiendas"
+            Title="@(_detail?.Store.Name ?? "Tienda")"
+            Subtitle="@(_detail?.Store.Address ?? "Cargando…")">
+    <Actions>
+        <a class="button button-secondary" href="seguridad/tiendas">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_detail is null || _form is null)
+{
+    <p class="muted">Cargando la tienda…</p>
+}
+else
+{
+    var store = _detail.Store;
+    var canManage = AccessControl.Has(Permissions.SecurityStoresManage);
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Estado de la tienda</h2>
+                <p class="card-subtitle">
+                    @(store.Active
+                        ? "La tienda está activa y recibe operación."
+                        : "La tienda está inactiva y no se le puede asignar personal.")
+                </p>
+            </div>
+            <span class="badge @(store.Active ? "badge-success" : "badge-muted")">
+                @(store.Active ? "Activa" : "Inactiva")
+            </span>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Usuarios activos</span>
+                <strong class="kpi-value">@store.ActiveUsers</strong>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Empleados</span>
+                <strong class="kpi-value">@store.EmployeeCount</strong>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Unidades en stock</span>
+                <strong class="kpi-value">@store.UnitsInStock</strong>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Órdenes abiertas</span>
+                <strong class="kpi-value">@store.OpenOrders</strong>
+            </div>
+        </div>
+
+        @if (canManage && store.Active)
+        {
+            <button type="button" class="button button-danger" @onclick="Deactivate">Desactivar tienda</button>
+            <p class="muted">
+                Solo se puede desactivar cuando no tiene stock, órdenes de compra abiertas
+                ni usuarios activos asignados.
+            </p>
+        }
+        else if (canManage)
+        {
+            <button type="button" class="button button-primary" @onclick="Activate">Activar tienda</button>
+        }
+    </section>
+
+    @if (canManage)
+    {
+        <EditForm Model="_form" OnValidSubmit="Save" FormName="editar-tienda" class="form-card">
+            <DataAnnotationsValidator />
+
+            <div class="form-section">
+                <h2>Datos de la tienda</h2>
+                <p class="card-subtitle">El nombre debe ser único en toda la cadena.</p>
+
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="store-name">Nombre</label>
+                        <InputText id="store-name" class="input" @bind-Value="_form.Name" />
+                        <ValidationMessage For="() => _form.Name" />
+                    </div>
+
+                    <div class="field">
+                        <label for="store-address">Dirección</label>
+                        <InputText id="store-address" class="input" @bind-Value="_form.Address" />
+                        <ValidationMessage For="() => _form.Address" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a class="button button-secondary" href="seguridad/tiendas">Cancelar</a>
+                <button type="submit" class="button button-primary">Guardar cambios</button>
+            </div>
+        </EditForm>
+    }
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Usuarios</h2>
+                <p class="card-subtitle">Personas con acceso al sistema y la tienda donde trabajan</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Rol</th>
+                        <th>Tienda actual</th>
+                        <th>Estado</th>
+                        @if (canManage && store.Active)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in VisibleUsers)
+                    {
+                        <tr>
+                            <td>@user.Name</td>
+                            <td>@user.Email</td>
+                            <td>@user.RoleLabel</td>
+                            <td>@user.StoreName</td>
+                            <td>
+                                <span class="badge @(user.Active ? "badge-success" : "badge-muted")">
+                                    @(user.Active ? "Activo" : "Inactivo")
+                                </span>
+                            </td>
+                            @if (canManage && store.Active)
+                            {
+                                <td class="table-actions">
+                                    @if (user.StoreId != Id)
+                                    {
+                                        <button type="button" class="button button-secondary button-small"
+                                                @onclick="() => AssignUser(user.UserId)">
+                                            Asignar aquí
+                                        </button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_detail.Users.Count > PageSize)
+        {
+            <div class="pager">
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_userPage == 1)" @onclick="PreviousUserPage">Anterior</button>
+                <span class="muted">Página @_userPage de @UserPages</span>
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_userPage == UserPages)" @onclick="NextUserPage">Siguiente</button>
+            </div>
+        }
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Empleados</h2>
+                <p class="card-subtitle">Registros laborales y la tienda a la que están vinculados</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Documento</th>
+                        <th>Cargo</th>
+                        <th>Tienda actual</th>
+                        <th>Estado</th>
+                        @if (canManage && store.Active)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var employee in VisibleEmployees)
+                    {
+                        <tr>
+                            <td>@employee.Name</td>
+                            <td>@employee.IdNumber</td>
+                            <td>@employee.Position</td>
+                            <td>@employee.StoreName</td>
+                            <td>
+                                <span class="badge @(employee.Active ? "badge-success" : "badge-muted")">
+                                    @(employee.Active ? "Activo" : "Inactivo")
+                                </span>
+                            </td>
+                            @if (canManage && store.Active)
+                            {
+                                <td class="table-actions">
+                                    @if (employee.StoreId != Id)
+                                    {
+                                        <button type="button" class="button button-secondary button-small"
+                                                @onclick="() => AssignEmployee(employee.EmployeeId)">
+                                            Asignar aquí
+                                        </button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_detail.Employees.Count > PageSize)
+        {
+            <div class="pager">
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_employeePage == 1)" @onclick="PreviousEmployeePage">Anterior</button>
+                <span class="muted">Página @_employeePage de @EmployeePages</span>
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_employeePage == EmployeePages)" @onclick="NextEmployeePage">Siguiente</button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    [Parameter]
+    public int Id { get; set; }
+
+    private StoreDetail? _detail;
+    private EditStoreForm? _form;
+    private string? _error;
+    private string? _success;
+    private int _userPage = 1;
+    private int _employeePage = 1;
+
+    private int UserPages => _detail is null || _detail.Users.Count == 0
+        ? 1
+        : (int)Math.Ceiling(_detail.Users.Count / (double)PageSize);
+
+    private int EmployeePages => _detail is null || _detail.Employees.Count == 0
+        ? 1
+        : (int)Math.Ceiling(_detail.Employees.Count / (double)PageSize);
+
+    private IEnumerable<StoreUserAssignment> VisibleUsers =>
+        (_detail?.Users ?? Array.Empty<StoreUserAssignment>())
+            .Skip((_userPage - 1) * PageSize)
+            .Take(PageSize);
+
+    private IEnumerable<StoreEmployeeAssignment> VisibleEmployees =>
+        (_detail?.Employees ?? Array.Empty<StoreEmployeeAssignment>())
+            .Skip((_employeePage - 1) * PageSize)
+            .Take(PageSize);
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _detail = StoreDirectory.Get(Id);
+            _form = new EditStoreForm
+            {
+                Name = _detail.Store.Name,
+                Address = _detail.Store.Address
+            };
+            _userPage = Math.Clamp(_userPage, 1, UserPages);
+            _employeePage = Math.Clamp(_employeePage, 1, EmployeePages);
+        }
+        catch (StoreNotFoundException)
+        {
+            _error = "No encontramos la tienda solicitada.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            StoreService.UpdateStore(Id, new UpdateStoreRequest(_form!.Name, _form.Address));
+            _success = "Los cambios se guardaron correctamente.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Activate()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            StoreService.ActivateStore(Id);
+            _success = "La tienda quedó activa.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Deactivate()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            StoreService.DeactivateStore(Id);
+            _success = "La tienda quedó inactiva.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void AssignUser(int userId)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            StoreService.AssignUserToStore(userId, Id);
+            _success = "El usuario quedó asignado a esta tienda.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void AssignEmployee(int employeeId)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            StoreService.AssignEmployeeToStore(employeeId, Id);
+            _success = "El empleado quedó asignado a esta tienda.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void PreviousUserPage()
+    {
+        if (_userPage > 1)
+            _userPage--;
+    }
+
+    private void NextUserPage()
+    {
+        if (_userPage < UserPages)
+            _userPage++;
+    }
+
+    private void PreviousEmployeePage()
+    {
+        if (_employeePage > 1)
+            _employeePage--;
+    }
+
+    private void NextEmployeePage()
+    {
+        if (_employeePage < EmployeePages)
+            _employeePage++;
+    }
+
+    private sealed class EditStoreForm
+    {
+        [Required(ErrorMessage = "El nombre es obligatorio.")]
+        [StringLength(120, ErrorMessage = "El nombre no puede superar 120 caracteres.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La dirección es obligatoria.")]
+        [StringLength(200, ErrorMessage = "La dirección no puede superar 200 caracteres.")]
+        public string Address { get; set; } = string.Empty;
+    }
+}

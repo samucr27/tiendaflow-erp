@@ -1,0 +1,139 @@
+@page "/seguridad/parametros"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityParametersManage)]
+@inject ParameterService ParameterService
+@inject NavigationManager Navigation
+
+<PageTitle>Parámetros · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad"
+            Title="Parámetros del sistema"
+            Subtitle="Valores configurables con vigencia, alcance global o por tienda e historial de versiones">
+    <Actions>
+        <a class="button button-secondary" href="seguridad/auditoria">Ver auditoría</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_rows is null)
+{
+    <p class="muted">Cargando los parámetros…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Valores vigentes</h2>
+                <p class="card-subtitle">
+                    @(_storeFilter == 0
+                        ? "Mostrando el valor global. Selecciona una tienda para ver y configurar su valor propio."
+                        : "Mostrando el valor efectivo para la tienda seleccionada.")
+                </p>
+            </div>
+            <div class="field">
+                <label for="store-filter">Alcance</label>
+                <select id="store-filter" class="input" @bind="_storeFilter" @bind:after="Load">
+                    <option value="0">Global (todas las tiendas)</option>
+                    @foreach (var store in _stores ?? Array.Empty<ParameterStoreOption>())
+                    {
+                        <option value="@store.Id">
+                            @store.Name@(store.Active ? string.Empty : " (inactiva)")
+                        </option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Parámetro</th>
+                        <th>Tipo</th>
+                        <th>Valor vigente</th>
+                        <th>Origen</th>
+                        <th>Vigente desde</th>
+                        <th>Versiones</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@row.Name</strong>
+                                <div class="muted"><code>@row.Key</code></div>
+                                <div class="muted">@row.Description</div>
+                            </td>
+                            <td>@ParameterText.Type(row.ValueType)</td>
+                            <td>
+                                <strong>@ParameterText.Value(row.ValueType, row.Value)</strong>
+                                @if (!string.IsNullOrWhiteSpace(row.Unit))
+                                {
+                                    <span class="muted">@row.Unit</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @(row.SourceLabel == "Valor de código" ? "badge-muted" : "badge-success")">
+                                    @row.SourceLabel
+                                </span>
+                            </td>
+                            <td>@(row.EffectiveFrom?.ToString("dd/MM/yyyy") ?? "—")</td>
+                            <td>@row.VersionCount</td>
+                            <td class="table-actions">
+                                <a class="button button-secondary button-small"
+                                   href="@HistoryUrl(row.Key)">
+                                    Historial
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <p class="muted">
+            Si no existe una versión registrada, el sistema usa el valor de código
+            documentado para cada parámetro. Los cambios nunca sobrescriben la versión
+            anterior: se agrega una nueva con fecha de vigencia y quedan en la auditoría.
+        </p>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<ParameterRow>? _rows;
+    private IReadOnlyList<ParameterStoreOption>? _stores;
+    private string? _error;
+    private int _storeFilter;
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        _error = null;
+
+        try
+        {
+            _stores = ParameterService.Stores();
+            _rows = ParameterService.List(_storeFilter == 0 ? null : _storeFilter);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private string HistoryUrl(string key) =>
+        _storeFilter == 0
+            ? $"seguridad/parametros/{key}?scope=Global"
+            : $"seguridad/parametros/{key}?scope=Store&storeId={_storeFilter}";
+}

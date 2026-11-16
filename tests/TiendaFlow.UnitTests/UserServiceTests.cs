@@ -160,6 +160,56 @@ public class UserServiceTests
         Assert.Contains("Store Manager", entry.Detail);
     }
 
+    private AppUser AddUser(string idNumber, string email, int roleId)
+    {
+        var employee = new Employee(0, StoreId, idNumber, "Empleado " + idNumber, "Cargo", "Indefinido", 0m);
+        _employees.Add(employee);
+        var user = new AppUser(employee.Id, roleId, email, "hash");
+        _users.Add(user);
+        return user;
+    }
+
+    private static UpdateUserRequest SameDataWithRole(AppUser user, string idNumber, int roleId, bool active = true) =>
+        new(user.Email, "Empleado " + idNumber, idNumber, "Cargo", StoreId, roleId, Active: active);
+
+    [Fact]
+    public void UpdateUser_CannotRemoveTheRoleOfTheLastActiveAdministrator()
+    {
+        var administratorRoleId = SystemRoles.IdFor(RoleNames.Administrator);
+        AddUser("900000010", "cajero.base@tiendaflow.local", CashierRoleId);
+        var admin = AddUser("900000011", "unico.admin@tiendaflow.local", administratorRoleId);
+
+        var error = Assert.Throws<InvalidUserException>(() =>
+            CreateService().UpdateUser(admin.Id, SameDataWithRole(admin, "900000011", CashierRoleId)));
+
+        Assert.Contains("al menos un administrador activo", error.Message);
+        Assert.Equal(administratorRoleId, admin.RoleId);
+    }
+
+    [Fact]
+    public void DeactivateUser_CannotDeactivateTheLastActiveAdministrator()
+    {
+        var administratorRoleId = SystemRoles.IdFor(RoleNames.Administrator);
+        AddUser("900000012", "relleno@tiendaflow.local", CashierRoleId);
+        var admin = AddUser("900000013", "admin.unico@tiendaflow.local", administratorRoleId);
+
+        Assert.Throws<InvalidUserException>(() => CreateService().DeactivateUser(admin.Id));
+        Assert.True(admin.Active);
+    }
+
+    [Fact]
+    public void UpdateUser_CanChangeAnAdministratorWhileAnotherOneRemainsActive()
+    {
+        var administratorRoleId = SystemRoles.IdFor(RoleNames.Administrator);
+        AddUser("900000014", "relleno2@tiendaflow.local", CashierRoleId);
+        AddUser("900000015", "admin.a@tiendaflow.local", administratorRoleId);
+        var adminB = AddUser("900000016", "admin.b@tiendaflow.local", administratorRoleId);
+
+        CreateService().UpdateUser(adminB.Id, SameDataWithRole(adminB, "900000016", CashierRoleId));
+
+        Assert.Equal(CashierRoleId, adminB.RoleId);
+    }
+
     [Fact]
     public void ResetPassword_StoresOnlyTheHash()
     {

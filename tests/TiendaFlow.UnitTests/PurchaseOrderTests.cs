@@ -6,6 +6,7 @@ namespace TiendaFlow.UnitTests;
 public class PurchaseOrderTests
 {
     private static readonly DateTime Date = new(2026, 11, 7, 15, 0, 0, DateTimeKind.Utc);
+    private static readonly DateOnly ReceivedOn = new(2026, 11, 7);
 
     private static PurchaseOrder DraftWithLines()
     {
@@ -137,13 +138,13 @@ public class PurchaseOrderTests
     {
         var order = SentWithLines();
 
-        order.ReceiveLine("SKU-1", 4);
+        order.ReceiveLine("SKU-1", 4, ReceivedOn);
         Assert.Equal(PurchaseOrderStatus.PartiallyReceived, order.Status);
 
-        order.ReceiveLine("SKU-1", 6);
+        order.ReceiveLine("SKU-1", 6, ReceivedOn);
         Assert.Equal(PurchaseOrderStatus.PartiallyReceived, order.Status);
 
-        order.ReceiveLine("SKU-2", 5);
+        order.ReceiveLine("SKU-2", 5, ReceivedOn);
         Assert.Equal(PurchaseOrderStatus.Received, order.Status);
     }
 
@@ -153,7 +154,7 @@ public class PurchaseOrderTests
         var order = SentWithLines();
         order.Confirm();
 
-        order.ReceiveLine("SKU-1", 10);
+        order.ReceiveLine("SKU-1", 10, ReceivedOn);
 
         Assert.Equal(PurchaseOrderStatus.PartiallyReceived, order.Status);
     }
@@ -163,7 +164,7 @@ public class PurchaseOrderTests
     {
         var order = DraftWithLines();
 
-        Assert.Throws<InvalidPurchaseOrderException>(() => order.ReceiveLine("SKU-1", 1));
+        Assert.Throws<InvalidPurchaseOrderException>(() => order.ReceiveLine("SKU-1", 1, ReceivedOn));
     }
 
     [Fact]
@@ -171,7 +172,7 @@ public class PurchaseOrderTests
     {
         var order = SentWithLines();
 
-        Assert.Throws<InvalidPurchaseOrderException>(() => order.ReceiveLine("SKU-404", 1));
+        Assert.Throws<InvalidPurchaseOrderException>(() => order.ReceiveLine("SKU-404", 1, ReceivedOn));
     }
 
     [Fact]
@@ -179,7 +180,7 @@ public class PurchaseOrderTests
     {
         var order = SentWithLines();
 
-        Assert.Throws<InvalidPurchaseOrderException>(() => order.ReceiveLine("SKU-1", 11));
+        Assert.Throws<InvalidPurchaseOrderException>(() => order.ReceiveLine("SKU-1", 11, ReceivedOn));
     }
 
     [Fact]
@@ -205,7 +206,7 @@ public class PurchaseOrderTests
     public void Cancel_WithReceivedUnits_Throws()
     {
         var order = SentWithLines();
-        order.ReceiveLine("SKU-1", 1);
+        order.ReceiveLine("SKU-1", 1, ReceivedOn);
 
         Assert.Throws<InvalidPurchaseOrderException>(() => order.Cancel());
     }
@@ -214,10 +215,72 @@ public class PurchaseOrderTests
     public void Cancel_WhenFullyReceived_Throws()
     {
         var order = SentWithLines();
-        order.ReceiveLine("SKU-1", 10);
-        order.ReceiveLine("SKU-2", 5);
+        order.ReceiveLine("SKU-1", 10, ReceivedOn);
+        order.ReceiveLine("SKU-2", 5, ReceivedOn);
 
         Assert.Throws<InvalidPurchaseOrderException>(() => order.Cancel());
+    }
+
+    [Fact]
+    public void Promise_StoresThePromisedBusinessDate()
+    {
+        var order = DraftWithLines();
+        var promised = new DateOnly(2026, 11, 20);
+
+        order.Promise(promised);
+
+        Assert.Equal(promised, order.PromisedDate);
+    }
+
+    [Fact]
+    public void New_WithPromisedDate_StoresIt()
+    {
+        var promised = new DateOnly(2026, 11, 20);
+
+        var order = new PurchaseOrder(7, 5, 1, Date, promised);
+
+        Assert.Equal(promised, order.PromisedDate);
+    }
+
+    [Fact]
+    public void Promise_WhenAlreadySent_Throws()
+    {
+        var order = SentWithLines();
+
+        Assert.Throws<InvalidPurchaseOrderException>(
+            () => order.Promise(new DateOnly(2026, 11, 20)));
+    }
+
+    [Fact]
+    public void Promise_WithDefaultDate_Throws()
+    {
+        var order = DraftWithLines();
+
+        Assert.Throws<InvalidPurchaseOrderException>(() => order.Promise(default));
+    }
+
+    [Fact]
+    public void ReceiveLine_StoresTheReceiptDateOfTheLastDelivery()
+    {
+        var order = SentWithLines();
+        var first = new DateOnly(2026, 11, 10);
+        var second = new DateOnly(2026, 11, 12);
+
+        order.ReceiveLine("SKU-1", 4, first);
+        Assert.Equal(first, order.ReceivedDate);
+
+        order.ReceiveLine("SKU-2", 5, second);
+        Assert.Equal(second, order.ReceivedDate);
+        Assert.Equal(PurchaseOrderStatus.PartiallyReceived, order.Status);
+    }
+
+    [Fact]
+    public void ReceiveLine_WithDefaultReceiptDate_Throws()
+    {
+        var order = SentWithLines();
+
+        Assert.Throws<InvalidPurchaseOrderException>(
+            () => order.ReceiveLine("SKU-1", 1, default));
     }
 }
 

@@ -10,10 +10,23 @@ public sealed class EfStoreRepository : IStoreRepository
 
     public EfStoreRepository(TiendaFlowDbContext context) => _context = context;
 
-    public Store? GetById(int id) => _context.Stores.Find(id);
+    public Store? GetById(int id) =>
+        _context.LoadFresh<Store>(store => store.Id == id, () => _context.Stores.Find(id));
 
     public IReadOnlyList<Store> List() =>
         _context.Stores.AsNoTracking().OrderBy(store => store.Name).ToList();
+
+    public bool ExistsName(string name, int? exceptStoreId = null)
+    {
+        var normalized = name.Trim();
+
+        return _context.Stores.Any(store =>
+            store.Name == normalized
+            && (exceptStoreId == null || store.Id != exceptStoreId));
+    }
+
+    public int NextId() =>
+        (_context.Stores.Max(store => (int?)store.Id) ?? 0) + 1;
 
     public void Add(Store store)
     {
@@ -36,7 +49,8 @@ public sealed class EfRoleRepository : IRoleRepository
 
     public EfRoleRepository(TiendaFlowDbContext context) => _context = context;
 
-    public Role? GetById(int id) => _context.Roles.Find(id);
+    public Role? GetById(int id) =>
+        _context.LoadFresh<Role>(role => role.Id == id, () => _context.Roles.Find(id));
 
     public IReadOnlyList<Role> List() =>
         _context.Roles.AsNoTracking().OrderBy(role => role.Id).ToList();

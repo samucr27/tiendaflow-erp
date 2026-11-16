@@ -8,7 +8,12 @@ namespace TiendaFlow.Domain;
 /// </summary>
 public class PurchaseOrder
 {
-    public PurchaseOrder(int id, int supplierId, int storeId, DateTime orderDate)
+    public PurchaseOrder(
+        int id,
+        int supplierId,
+        int storeId,
+        DateTime orderDate,
+        DateOnly? promisedDate = null)
     {
         if (supplierId <= 0)
             throw new InvalidPurchaseOrderException("A supplier is required.");
@@ -21,6 +26,9 @@ public class PurchaseOrder
         OrderDate = UtcTimestamp.Normalize(orderDate);
         Status = PurchaseOrderStatus.Draft;
         Total = 0m;
+
+        if (promisedDate is DateOnly promised)
+            Promise(promised);
     }
 
     public int Id { get; private set; }
@@ -31,11 +39,40 @@ public class PurchaseOrder
 
     public DateTime OrderDate { get; private set; }
 
+    /// <summary>
+    /// Business date promised by the supplier. It is a calendar date, so a
+    /// delivery accepted on that day is on time even if it arrived late in the
+    /// afternoon.
+    /// </summary>
+    public DateOnly? PromisedDate { get; private set; }
+
+    /// <summary>
+    /// Date of the last receipt. It is only used for punctuality when the
+    /// order is fully received; partial deliveries keep the KPI at "sin
+    /// recepciones" because the order is still open.
+    /// </summary>
+    public DateOnly? ReceivedDate { get; private set; }
+
     public PurchaseOrderStatus Status { get; private set; }
 
     public decimal Total { get; private set; }
 
     public List<PurchaseOrderLine> Lines { get; } = new();
+
+    public void Promise(DateOnly promisedDate)
+    {
+        if (promisedDate == default)
+            throw new InvalidPurchaseOrderException("The promised date is required.");
+
+        if (Status is not (PurchaseOrderStatus.Draft
+            or PurchaseOrderStatus.PendingApproval
+            or PurchaseOrderStatus.Approved))
+        {
+            throw InvalidTransition("change the promised date");
+        }
+
+        PromisedDate = promisedDate;
+    }
 
     public void AddLine(string productSku, int quantity, decimal unitCost)
     {
@@ -69,7 +106,7 @@ public class PurchaseOrder
     public void Confirm() =>
         MoveTo(PurchaseOrderStatus.Sent, PurchaseOrderStatus.Confirmed, "confirm");
 
-    public void ReceiveLine(string productSku, int quantity)
+    public void ReceiveLine(string productSku, int quantity, DateOnly receivedOn)
     {
         if (Status is not (PurchaseOrderStatus.Sent
             or PurchaseOrderStatus.Confirmed
@@ -78,10 +115,14 @@ public class PurchaseOrder
             throw InvalidTransition("receive");
         }
 
+        if (receivedOn == default)
+            throw new InvalidPurchaseOrderException("The receipt date is required.");
+
         var line = Lines.FirstOrDefault(item => item.ProductSku == productSku)
             ?? throw new InvalidPurchaseOrderException($"{productSku} is not part of the order.");
 
         line.Receive(quantity);
+        ReceivedDate = receivedOn;
 
         Status = Lines.All(item => item.PendingQuantity == 0)
             ? PurchaseOrderStatus.Received

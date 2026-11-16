@@ -1,0 +1,161 @@
+@page "/seguridad/tiendas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityStoresView)]
+@inject StoreDirectoryService StoreDirectory
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Tiendas · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad"
+            Title="Tiendas"
+            Subtitle="Sucursales de la cadena, su estado y la carga operativa que las mantiene activas">
+    <Actions>
+        @if (AccessControl.Has(Permissions.SecurityStoresManage))
+        {
+            <a class="button button-primary" href="seguridad/tiendas/nueva">+ Crear tienda</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_stores is null)
+{
+    <p class="muted">Cargando las tiendas…</p>
+}
+else if (!_stores.Any())
+{
+    <EmptyState Title="Todavía no hay tiendas"
+                Message="Crea la primera tienda para asignarle usuarios, empleados e inventario." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Red de tiendas</h2>
+                <p class="card-subtitle">@_stores.Count tiendas registradas</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tienda</th>
+                        <th>Dirección</th>
+                        <th>Usuarios activos</th>
+                        <th>Empleados</th>
+                        <th>Unidades en stock</th>
+                        <th>Órdenes abiertas</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var store in VisibleStores)
+                    {
+                        <tr>
+                            <td>@store.Name</td>
+                            <td>@store.Address</td>
+                            <td>@store.ActiveUsers</td>
+                            <td>@store.EmployeeCount</td>
+                            <td>@store.UnitsInStock</td>
+                            <td>@store.OpenOrders</td>
+                            <td>
+                                <span class="badge @(store.Active ? "badge-success" : "badge-muted")">
+                                    @(store.Active ? "Activa" : "Inactiva")
+                                </span>
+                            </td>
+                            <td class="table-actions">
+                                <a class="button button-secondary button-small"
+                                   href="@($"seguridad/tiendas/{store.Id}")">
+                                    @(AccessControl.Has(Permissions.SecurityStoresManage) ? "Administrar" : "Consultar")
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_stores.Count > PageSize)
+        {
+            <div class="pager">
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_page == 1)" @onclick="PreviousPage">
+                    Anterior
+                </button>
+                <span class="muted">Página @_page de @TotalPages</span>
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_page == TotalPages)" @onclick="NextPage">
+                    Siguiente
+                </button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    [SupplyParameterFromQuery(Name = "guardado")]
+    public string? Guardado { get; set; }
+
+    private IReadOnlyList<StoreListItem>? _stores;
+    private string? _error;
+    private string? _success;
+    private int _page = 1;
+
+    private int TotalPages => _stores is null || _stores.Count == 0
+        ? 1
+        : (int)Math.Ceiling(_stores.Count / (double)PageSize);
+
+    private IEnumerable<StoreListItem> VisibleStores =>
+        (_stores ?? Array.Empty<StoreListItem>())
+            .Skip((_page - 1) * PageSize)
+            .Take(PageSize);
+
+    protected override void OnParametersSet()
+    {
+        _success = Guardado == "1" ? "La tienda se guardó correctamente." : null;
+        Load();
+    }
+
+    private void Load()
+    {
+        try
+        {
+            _stores = StoreDirectory.List();
+            _page = Math.Clamp(_page, 1, TotalPages);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (_page > 1)
+            _page--;
+    }
+
+    private void NextPage()
+    {
+        if (_page < TotalPages)
+            _page++;
+    }
+}

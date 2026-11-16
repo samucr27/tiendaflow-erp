@@ -21,8 +21,28 @@ public class SupplierServiceTests
             new FakeCurrentUser(userId: 5, permissions: new HashSet<string>()),
             _audit));
 
-    private static SupplierRow Row(int id, string name, decimal rating) =>
-        new(id, $"90000{id}", name, "Calle 1", rating, true, 0, 0m);
+    private static SupplierRow Row(
+        int id,
+        string name,
+        decimal rating,
+        int measuredOrders = 0,
+        int onTimeOrders = 0,
+        int orderedUnits = 0,
+        int receivedUnits = 0) =>
+        new(
+            id,
+            $"90000{id}",
+            name,
+            "Calle 1",
+            rating,
+            true,
+            0,
+            0m,
+            0,
+            measuredOrders,
+            onTimeOrders,
+            orderedUnits,
+            receivedUnits);
 
     [Fact]
     public void List_ReturnsTheRowsOfTheQuery()
@@ -186,5 +206,74 @@ public class SupplierServiceTests
             () => CreateRestrictedService().Evaluate(1, 80m));
 
         Assert.Equal(Permissions.PurchasingEvaluationsManage, exception.Permission);
+    }
+
+    [Fact]
+    public void SupplierRow_WithoutMeasuredDeliveries_ReportsSinRecepciones()
+    {
+        var row = Row(1, "Alfa", 90m);
+
+        Assert.Null(row.PunctualityRate);
+        Assert.Null(row.FulfillmentRate);
+        Assert.Equal("Sin recepciones", row.PunctualityLabel);
+        Assert.Equal("Sin recepciones", row.FulfillmentLabel);
+    }
+
+    [Fact]
+    public void SupplierRow_ComputesPunctualityAndFulfillmentFromRealOrders()
+    {
+        var row = Row(
+            1,
+            "Alfa",
+            90m,
+            measuredOrders: 4,
+            onTimeOrders: 3,
+            orderedUnits: 200,
+            receivedUnits: 150);
+
+        Assert.Equal(75m, row.PunctualityRate);
+        Assert.Equal(75m, row.FulfillmentRate);
+        Assert.Equal("75 %", row.PunctualityLabel);
+        Assert.Equal("75 %", row.FulfillmentLabel);
+    }
+
+    [Fact]
+    public void RankingCsv_ExportsTheKpisWithHeaders()
+    {
+        _query.Setup(q => q.List()).Returns(new[]
+        {
+            Row(1, "Alfa", 95m, measuredOrders: 2, onTimeOrders: 2, orderedUnits: 10, receivedUnits: 10),
+            Row(2, "Beta", 80m)
+        });
+
+        var lines = CreateService().RankingCsv()
+            .Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+
+        Assert.Equal(3, lines.Length);
+        Assert.StartsWith("Posicion,Proveedor,NIT", lines[0]);
+        Assert.Contains("Puntualidad", lines[0]);
+        Assert.Contains("Cumplimiento", lines[0]);
+        Assert.Contains("Alfa,900001,95 %,0,0,100 %,100 %,Activo", lines[1]);
+        Assert.Contains("Beta,900002,80 %,0,0,Sin recepciones,Sin recepciones,Activo", lines[2]);
+    }
+
+    [Fact]
+    public void RankingCsv_NeutralizesFormulaInjection()
+    {
+        _query.Setup(q => q.List()).Returns(new[] { Row(1, "=HOJA", 90m) });
+
+        var csv = CreateService().RankingCsv();
+
+        Assert.Contains("'=HOJA", csv);
+        Assert.DoesNotContain(",=HOJA", csv);
+    }
+
+    [Fact]
+    public void RankingCsv_WithoutPermission_Throws()
+    {
+        var exception = Assert.Throws<AccessDeniedException>(
+            () => CreateRestrictedService().RankingCsv());
+
+        Assert.Equal(Permissions.PurchasingReportsView, exception.Permission);
     }
 }

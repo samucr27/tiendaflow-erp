@@ -223,9 +223,179 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.HasIndex("IdNumber")
                         .IsUnique();
 
-                    b.HasIndex("StoreId");
+                    b.HasIndex("StoreId", "Active")
+                        .HasDatabaseName("IX_employee_store_active");
 
                     b.ToTable("employee", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryCount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("AdjustedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("adjusted_at");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("closed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_inventory_count_created_at");
+
+                    b.HasIndex("StoreId", "Status")
+                        .HasDatabaseName("IX_inventory_count_store_status");
+
+                    b.ToTable("inventory_count", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryCountLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CountId")
+                        .HasColumnType("int")
+                        .HasColumnName("count_id");
+
+                    b.Property<int?>("CountedQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("counted_quantity");
+
+                    b.Property<string>("ProductSku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("product_sku");
+
+                    b.Property<int>("SystemQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("system_quantity");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductSku");
+
+                    b.HasIndex("CountId", "ProductSku")
+                        .IsUnique()
+                        .HasDatabaseName("IX_inventory_count_line_count_sku");
+
+                    b.ToTable("inventory_count_line", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryTransfer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DestinationStoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("destination_store_id");
+
+                    b.Property<int>("OriginStoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("origin_store_id");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("received_at");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DestinationStoreId", "Status")
+                        .HasDatabaseName("IX_inventory_transfer_destination_status");
+
+                    b.HasIndex("OriginStoreId", "Status")
+                        .HasDatabaseName("IX_inventory_transfer_origin_status");
+
+                    b.ToTable("inventory_transfer", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryTransferLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ProductSku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("product_sku");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<int>("TransferId")
+                        .HasColumnType("int")
+                        .HasColumnName("transfer_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductSku");
+
+                    b.HasIndex("TransferId", "ProductSku")
+                        .IsUnique()
+                        .HasDatabaseName("IX_inventory_transfer_line_transfer_sku");
+
+                    b.ToTable("inventory_transfer_line", (string)null);
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.InvoiceLine", b =>
@@ -269,6 +439,91 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("sales_invoice_line", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CashierUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("cashier_user_id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("SoldAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("sold_at");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("SoldAt", "StoreId")
+                        .HasDatabaseName("IX_pos_sale_sold_at_store");
+
+                    b.ToTable("pos_sale", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PosSaleLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PosSaleId")
+                        .HasColumnType("int")
+                        .HasColumnName("pos_sale_id");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("product_name");
+
+                    b.Property<string>("ProductSku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("product_sku");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("unit_price");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PosSaleId");
+
+                    b.HasIndex("ProductSku");
+
+                    b.ToTable("pos_sale_line", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.Product", b =>
                 {
                     b.Property<string>("Sku")
@@ -301,6 +556,38 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("product", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.ProductSupplier", b =>
+                {
+                    b.Property<string>("ProductSku")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("product_sku");
+
+                    b.Property<int>("SupplierId")
+                        .HasColumnType("int")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_default");
+
+                    b.Property<decimal>("LastCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("last_cost");
+
+                    b.HasKey("ProductSku", "SupplierId");
+
+                    b.HasIndex("ProductSku")
+                        .IsUnique()
+                        .HasDatabaseName("IX_product_supplier_default")
+                        .HasFilter("[is_default] = 1");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("product_supplier", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.PurchaseOrder", b =>
                 {
                     b.Property<int>("Id")
@@ -313,6 +600,14 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2")
                         .HasColumnName("order_date");
+
+                    b.Property<DateOnly?>("PromisedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("promised_date");
+
+                    b.Property<DateOnly?>("ReceivedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("received_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -335,9 +630,10 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StoreId");
-
                     b.HasIndex("SupplierId");
+
+                    b.HasIndex("StoreId", "Status")
+                        .HasDatabaseName("IX_purchase_order_store_status");
 
                     b.ToTable("purchase_order", (string)null);
                 });
@@ -424,12 +720,18 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("status");
 
+                    b.Property<int?>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
                     b.Property<decimal>("Total")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("total");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
 
                     b.HasIndex("CustomerDocument", "IssueDate");
 
@@ -461,7 +763,16 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("int")
                         .HasColumnName("quantity");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("row_version");
+
                     b.HasKey("Sku", "StoreId");
+
+                    b.HasIndex("StoreId", "QuantityAvailable")
+                        .HasDatabaseName("IX_stock_store_quantity");
 
                     b.ToTable("stock", (string)null);
                 });
@@ -540,6 +851,78 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("supplier", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.SystemParameter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_from");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)")
+                        .HasColumnName("parameter_key");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("int")
+                        .HasColumnName("scope");
+
+                    b.Property<int?>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<int>("StoreScopeKey")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasColumnName("store_scope_key")
+                        .HasComputedColumnSql("ISNULL([store_id], 0)", true);
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("value");
+
+                    b.Property<int>("ValueType")
+                        .HasColumnType("int")
+                        .HasColumnName("value_type");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("Key", "Scope", "StoreScopeKey", "EffectiveFrom")
+                        .IsUnique()
+                        .HasDatabaseName("IX_system_parameter_key_scope_store_effective");
+
+                    b.HasIndex("Key", "Scope", "StoreScopeKey", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("IX_system_parameter_key_scope_store_version");
+
+                    b.ToTable("system_parameter", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Application.AuditEntry", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.AppUser", null)
@@ -571,12 +954,99 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryCount", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryCountLine", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.InventoryCount", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("CountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductSku")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryTransfer", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("DestinationStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("OriginStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryTransferLine", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductSku")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.InventoryTransfer", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("TransferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.InvoiceLine", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.SalesInvoice", null)
                         .WithMany("Lines")
                         .HasForeignKey("InvoiceId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PosSaleLine", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.PosSale", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("PosSaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.ProductSupplier", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductSku")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -608,6 +1078,14 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProductSku")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.SalesInvoice", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.StockItem", b =>
@@ -643,6 +1121,34 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("LastMovement");
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.SystemParameter", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryCount", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.InventoryTransfer", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.PurchaseOrder", b =>

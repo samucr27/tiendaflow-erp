@@ -13,6 +13,15 @@ public static class LocalTime
     public static DateTime ToLocal(DateTime value) =>
         TimeZoneInfo.ConvertTimeFromUtc(UtcTimestamp.Normalize(value), Zone.Value);
 
+    /// <summary>
+    /// Converts the start of a business date in Colombia to its UTC instant.
+    /// It is the inverse of ToLocal for date ranges (invoice windows).
+    /// </summary>
+    public static DateTime ToUtc(DateOnly date) =>
+        TimeZoneInfo.ConvertTimeToUtc(
+            DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified),
+            Zone.Value);
+
     private static TimeZoneInfo ResolveZone()
     {
         foreach (var id in new[] { "America/Bogota", "SA Pacific Standard Time" })
