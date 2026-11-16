@@ -24,11 +24,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 592 | 0 | 0 | 592 |
+| `TiendaFlow.UnitTests` | 607 | 0 | 0 | 607 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 46 | 0 | 0 | 46 |
+| `TiendaFlow.IntegrationTests` | 49 | 0 | 0 | 49 |
 
-Total ejecutado: **644 pruebas superadas**, sin omisiones ni errores. Las 7
+Total ejecutado: **662 pruebas superadas**, sin omisiones ni errores. Las
 pruebas nuevas de la revisión final se describen en la sección
 "Revisión final del 16 de noviembre".
 
@@ -234,11 +234,14 @@ prueba que fallaba antes del cambio o que cubre la regla nueva.
 | **Fuerza bruta en el acceso.** `POST /login` no limitaba intentos. | Límite por IP (`Security:LoginAttemptsPerMinute`, 10 por minuto) con mensaje en la pantalla de acceso. | `WebSmokeTests.LoginThrottlesRepeatedAttemptsFromTheSameClient` |
 | **HU-05 sin aviso en la venta.** El comprobante no indicaba que la venta dejaba el producto en stock crítico, y el panel decía "Faltan 0 unidades" para un producto justo en su mínimo. | Aviso de stock crítico en el comprobante del POS y texto "En el mínimo" en el panel. | Verificado en el navegador con el cajero |
 | **Reposición sin proveedores en la demo.** El sembrado no creaba relaciones producto · proveedor, así que la pantalla de reposición marcaba todo "Sin proveedor" y no generaba borradores. | `DevDataSeeder.SeedProductSuppliersAsync` asigna un proveedor predeterminado a cada producto demo. | Verificado: 3 borradores por $ 118.700 |
+| **Ventas del POS sin documento.** La venta descontaba stock y mostraba un comprobante, pero no guardaba nada: el panel, el reporte de ventas y el consumo de la reposición la ignoraban. | `PosSaleService` guarda la venta (`pos_sale`, `pos_sale_line`) en la misma transacción del descuento; el panel, el reporte, su CSV y `EfConsumptionQuery` la suman. Migración `Phase11PosSalesAndInvoiceStock`. | `PosSaleServiceTests`, `SalesDocumentsIntegrationTests.PosSale_IsSavedWithTheStockDiscountAndShowsInTheSalesReport` |
+| **Facturas sin efecto en inventario.** Emitir o anular una factura no movía stock. | La factura guarda la tienda del usuario, descuenta al emitir y devuelve (movimiento `Return`) al anular, en una transacción. Las facturas anteriores, sin tienda, no devuelven nada al anularse. | `SalesInvoiceServiceTests`, `Invoice_TakesStockWhenIssuedAndReturnsItWhenCancelled`, `Invoice_WithMoreUnitsThanTheStock_RollsBackEverything` |
+| **Facturas emitidas editables.** Una factura emitida se podía cambiar. | Se quitaron `UpdateDetails` y `ClearLines`; `/facturacion/{id}` es un detalle de solo lectura y la corrección es anular y emitir otra. El formulario elige productos del catálogo con su precio. | `SalesInvoiceTests.AnIssuedInvoiceOffersNoWayToEditItsData` |
 | **Detalles de interfaz.** La barra lateral decía "Tienda Tienda Centro" y el aviso de parámetros de nómina usaba el estilo de error. | Nombre de la tienda sin prefijo y aviso con estilo de advertencia. | Verificado en capturas |
 
 Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en esta
-verificación (unión de las tres suites, `coverlet.collector`): **97,0 %**
-(Application 97,4 %, Domain 95,7 %).
+verificación (unión de las tres suites, `coverlet.collector`): **96,9 %**
+(Application 97,3 %, Domain 95,6 %).
 
 ## Cómo reproducir la verificación
 

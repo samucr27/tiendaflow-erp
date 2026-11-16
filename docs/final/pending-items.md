@@ -28,9 +28,18 @@ continuación se documentan con el permiso que las reserva.
 | CRM | `crm.points.manage` | Puntos de fidelización | El cliente no tiene saldo ni movimientos de puntos | Libro de puntos con acumulación y canje |
 | CRM | `crm.pqrs.manage` | PQRS | No hay entidad de peticiones, quejas o reclamos | Radicado, responsable, estados y tiempos |
 | CRM | `crm.campaigns.manage` | Campañas | La segmentación es de solo consulta | Campaña sobre un segmento, vigencia y resultado |
-| Ventas | `sales.pos.use` | Registro de la venta del POS | La venta del punto de venta descuenta stock y muestra un comprobante, pero no guarda un documento de venta; el panel y el reporte de ventas solo cuentan facturas | Persistir la venta (encabezado y líneas) en la misma transacción del descuento y sumarla a los indicadores |
-| Facturación | `sales.invoices.manage` | Efecto de la factura en inventario | Emitir o anular una factura no mueve stock | Descontar al emitir y devolver al anular, en una transacción |
 | Facturación | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
+
+## Resuelto en la revisión final (16 de noviembre)
+
+- **Venta del POS:** se guarda como documento y la cuentan el panel, el reporte
+  de ventas y la reposición.
+- **Facturas e inventario:** emitir descuenta stock y anular lo devuelve.
+- **Facturas emitidas:** ya no se editan; se anulan y se emite otra.
+
+Queda pendiente un proceso, no código: los pull requests deben tener una
+revisión registrada en GitHub por otro integrante antes de fusionarse, como
+exige la Definition of Done.
 
 ## Aclaraciones importantes
 
