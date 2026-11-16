@@ -233,6 +233,8 @@ prueba que fallaba antes del cambio o que cubre la regla nueva.
 | **Mensajes de usuario ocultos.** "No puedes desactivar tu propia cuenta" o la longitud de la contraseña se mostraban como un mensaje genérico. | `DomainErrorTranslator` muestra los mensajes en español de `UserService` y deja el genérico para las validaciones del dominio. | Cubierto por las pruebas anteriores y `WebSmokeTests` |
 | **Fuerza bruta en el acceso.** `POST /login` no limitaba intentos. | Límite por IP (`Security:LoginAttemptsPerMinute`, 10 por minuto) con mensaje en la pantalla de acceso. | `WebSmokeTests.LoginThrottlesRepeatedAttemptsFromTheSameClient` |
 | **HU-05 sin aviso en la venta.** El comprobante no indicaba que la venta dejaba el producto en stock crítico, y el panel decía "Faltan 0 unidades" para un producto justo en su mínimo. | Aviso de stock crítico en el comprobante del POS y texto "En el mínimo" en el panel. | Verificado en el navegador con el cajero |
+| **Reposición sin proveedores en la demo.** El sembrado no creaba relaciones producto · proveedor, así que la pantalla de reposición marcaba todo "Sin proveedor" y no generaba borradores. | `DevDataSeeder.SeedProductSuppliersAsync` asigna un proveedor predeterminado a cada producto demo. | Verificado: 3 borradores por $ 118.700 |
+| **Detalles de interfaz.** La barra lateral decía "Tienda Tienda Centro" y el aviso de parámetros de nómina usaba el estilo de error. | Nombre de la tienda sin prefijo y aviso con estilo de advertencia. | Verificado en capturas |
 
 Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en esta
 verificación (unión de las tres suites, `coverlet.collector`): **97,0 %**
