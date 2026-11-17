@@ -7,8 +7,16 @@ public sealed record SalesReport(
     DateOnly FromDate,
     DateOnly ToDate,
     IReadOnlyList<InvoiceRow> Invoices,
-    IReadOnlyList<PosSaleRow>? PosSales = null)
+    IReadOnlyList<PosSaleRow>? PosSales = null,
+    IReadOnlyList<SalesReturnRow>? Returns = null)
 {
+    public IReadOnlyList<SalesReturnRow> SalesReturns => Returns ?? Array.Empty<SalesReturnRow>();
+
+    public decimal ReturnsTotal => SalesReturns.Sum(item => item.Total);
+
+    /// <summary>Invoices plus POS sales minus returns (credit notes).</summary>
+    public decimal NetTotal => GrandTotal - ReturnsTotal;
+
     public IReadOnlyList<PosSaleRow> PointOfSaleSales => PosSales ?? Array.Empty<PosSaleRow>();
 
     public int PosSalesCount => PointOfSaleSales.Count;
@@ -63,12 +71,15 @@ public sealed class SalesReportService
     private readonly IInvoiceQuery _invoices;
     private readonly IAccessControl _accessControl;
     private readonly IPosSaleQuery? _posSales;
+    private readonly IEntityStore<SalesReturn>? _returns;
 
     public SalesReportService(
         IInvoiceQuery invoices,
         IAccessControl accessControl,
-        IPosSaleQuery? posSales = null)
+        IPosSaleQuery? posSales = null,
+        IEntityStore<SalesReturn>? returns = null)
     {
+        _returns = returns;
         _invoices = invoices;
         _accessControl = accessControl;
         _posSales = posSales;
@@ -98,6 +109,16 @@ public sealed class SalesReportService
             .ToList()
             ?? new List<PosSaleRow>();
 
-        return new SalesReport(fromDate, toDate, invoices, posSales);
+        var fromUtc = LocalTime.ToUtc(fromDate);
+        var toUtc = LocalTime.ToUtc(toDate.AddDays(1));
+        var returns = _returns?.All()
+            .Where(item => item.CreatedAt >= fromUtc && item.CreatedAt < toUtc)
+            .OrderByDescending(item => item.CreatedAt)
+            .Select(item => new SalesReturnRow(item.Id, item.InvoiceId, item.CreatedAt, item.Reason,
+                item.Lines.Sum(line => line.Quantity), item.Total))
+            .ToList()
+            ?? new List<SalesReturnRow>();
+
+        return new SalesReport(fromDate, toDate, invoices, posSales, returns);
     }
 }

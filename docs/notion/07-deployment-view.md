@@ -10,7 +10,7 @@ Terraform.
 |---|---|---|
 | Grupo de recursos | `azurerm_resource_group`, región `canadacentral` por defecto | Agrupa todos los recursos del ERP con las mismas etiquetas. |
 | Servidor de aplicación | Azure App Service Linux, plan `B1`, .NET 9 (`azurerm_service_plan`, `azurerm_linux_web_app`) | Blazor Web App `TiendaFlow.Web` con renderizado interactivo en servidor. Solo HTTPS, WebSockets activos (los usa Blazor Server), *Always On*, FTP deshabilitado y sonda de salud en `/healthz`. URL actual: `app-tiendaflow-ba67bx.azurewebsites.net`. |
-| Base de datos | Azure SQL, servidor `azurerm_mssql_server` (TLS 1.2 mínimo) y base `TiendaFlow` nivel `Basic` | Esquema creado con las migraciones de EF Core, de `InitialCreate` a `Phase11PosSalesAndInvoiceStock`. |
+| Base de datos | Azure SQL, servidor `azurerm_mssql_server` (TLS 1.2 mínimo) y base `TiendaFlow` nivel `Basic` | Esquema creado con las migraciones de EF Core, de `InitialCreate` a `Phase12CloseoutModules`. |
 | Firewall de Azure SQL | `AllowAzureServices` y, opcional, `AllowClientIp` | El App Service entra por la regla de servicios de Azure; la IP del operador solo se abre para ejecutar migraciones desde su equipo. |
 | Estado de Terraform | HCP Terraform, organización `Tienda-Flow`, workspace `tiendaflow-infra`, modo de ejecución *Local* | HCP guarda y bloquea el state compartido; `plan` y `apply` corren en la máquina del operador con `az login`. |
 | Integración continua | GitHub Actions: `ci.yml`, `terraform-plan.yml` (Terraform Validate) y `azure-deploy.yml` (manual) | Build y pruebas en cada push; validación de Terraform en PR a `develop`; publicación manual con perfil de publicación. |
@@ -81,4 +81,4 @@ El procedimiento completo, con comandos y solución de problemas, está en
 - El despliegue automático no ejecuta las migraciones; si se publica una versión con
   migraciones nuevas sin aplicarlas antes, las pantallas que usan tablas nuevas fallan
   aunque `/healthz` responda `200`.
-- La corrida de nómina no se persiste; no hay tablas de corrida ni de detalle.
+- La versión final agrega la migración `Phase12CloseoutModules`; debe aplicarse en Azure SQL antes de publicar.

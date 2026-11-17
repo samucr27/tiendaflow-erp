@@ -103,12 +103,25 @@ builder.Services
         options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
             ? CookieSecurePolicy.SameAsRequest
             : CookieSecurePolicy.Always;
+        // Pages redirect to the login or access-denied screens; API clients
+        // under /api get a plain 401 or 403 instead of an HTML redirect.
         options.Events = new CookieAuthenticationEvents
         {
+            OnRedirectToLogin = context =>
+            {
+                if (IsApiRequest(context.Request))
+                    AnswerApi(context.HttpContext, StatusCodes.Status401Unauthorized);
+                else
+                    context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            },
             OnRedirectToAccessDenied = context =>
             {
                 RecordDeniedPageAccess(context.HttpContext);
-                context.Response.Redirect(context.RedirectUri);
+                if (IsApiRequest(context.Request))
+                    AnswerApi(context.HttpContext, StatusCodes.Status403Forbidden);
+                else
+                    context.Response.Redirect(context.RedirectUri);
                 return Task.CompletedTask;
             }
         };
@@ -274,6 +287,19 @@ static async Task<IResult> HealthCheckAsync(
         new { status = "unhealthy" },
         statusCode: StatusCodes.Status503ServiceUnavailable);
 }
+
+// The status code pages middleware would re-execute the 401/403 as the HTML
+// not-found page; API clients get the bare status code.
+static void AnswerApi(HttpContext context, int statusCode)
+{
+    var statusPages = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IStatusCodePagesFeature>();
+    if (statusPages is not null)
+        statusPages.Enabled = false;
+    context.Response.StatusCode = statusCode;
+}
+
+static bool IsApiRequest(HttpRequest request) =>
+    request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase);
 
 static bool IsLocalUrl(string? value) =>
     !string.IsNullOrWhiteSpace(value)

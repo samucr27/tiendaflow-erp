@@ -1,0 +1,222 @@
+@page "/rrhh/contratos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrContractsManage)]
+@using TiendaFlow.Application.Payroll
+@inject HumanResourcesRecordsService Records
+@inject IEmployeeRepository Employees
+@inject NavigationManager Navigation
+
+<PageTitle>Contratos · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Contratos laborales"
+            Subtitle="Vigencia, prórrogas y terminación. El contrato activo define el tipo y el salario que usa la nómina." />
+
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_expiring.Count > 0)
+{
+    <div class="alert alert-warning" role="status">
+        @_expiring.Count contrato(s) terminan en los próximos 30 días:
+        @string.Join(", ", _expiring.Select(row => $"{row.EmployeeName} ({row.EndDate:dd/MM/yyyy})"))
+    </div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Registrar contrato</h2>
+            <p class="card-subtitle">Un empleado tiene como máximo un contrato activo.</p>
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="field">
+            <label for="contract-employee">Empleado</label>
+            <select id="contract-employee" class="input" @bind="_employeeId">
+                <option value="0">Elige un empleado</option>
+                @foreach (var employee in _employees)
+                {
+                    <option value="@employee.Id">@employee.Name · @employee.Position</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label for="contract-type">Tipo de contrato</label>
+            <select id="contract-type" class="input" @bind="_type">
+                @foreach (var type in ContractTypeLabels.All)
+                {
+                    <option value="@type">@ContractTypeLabels.ToLabel(type)</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label for="contract-start">Fecha de inicio</label>
+            <input id="contract-start" type="date" class="input" @bind="_start" />
+        </div>
+        <div class="field">
+            <label for="contract-end">Fecha de terminación</label>
+            <input id="contract-end" type="date" class="input" @bind="_end" />
+            <span class="table-meta">Obligatoria para término fijo; vacía para indefinido.</span>
+        </div>
+        <div class="field">
+            <label for="contract-salary">Salario mensual</label>
+            <input id="contract-salary" type="number" min="0" step="1000" class="input" @bind="_salary" />
+        </div>
+        <div class="field">
+            <label for="contract-notes">Notas</label>
+            <input id="contract-notes" class="input" @bind="_notes" />
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="button" class="button button-primary" @onclick="Add">Registrar contrato</button>
+    </div>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Contratos</h2>
+            <p class="card-subtitle">@_contracts.Count contratos registrados</p>
+        </div>
+    </div>
+
+    @if (_contracts.Count == 0)
+    {
+        <EmptyState Title="Sin contratos" Message="Registra el contrato de cada empleado para controlar su vigencia." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Empleado</th>
+                        <th>Tipo</th>
+                        <th>Inicio</th>
+                        <th>Terminación</th>
+                        <th class="num">Salario</th>
+                        <th class="num">Prórrogas</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _contracts)
+                    {
+                        <tr>
+                            <td>@row.EmployeeName</td>
+                            <td>@ContractTypeLabels.ToLabel(row.Type)</td>
+                            <td>@row.StartDate.ToString("dd/MM/yyyy")</td>
+                            <td>@(row.EndDate?.ToString("dd/MM/yyyy") ?? "Indefinido")</td>
+                            <td class="num">@Formatters.Money(row.Salary)</td>
+                            <td class="num">@row.Extensions</td>
+                            <td>
+                                <StatusBadge Text="@(row.Status == EmploymentContractStatus.Active ? "Activo" : "Terminado")"
+                                             Tone="@(row.Status == EmploymentContractStatus.Active ? "ok" : "neutral")" />
+                            </td>
+                            <td class="table-actions">
+                                @if (row.Status == EmploymentContractStatus.Active)
+                                {
+                                    <input type="date" class="input input-small" aria-label="Nueva fecha"
+                                           @bind="_actionDates[row.Id]" />
+                                    @if (row.EndDate is not null)
+                                    {
+                                        <button type="button" class="button button-secondary button-small"
+                                                @onclick="() => Extend(row.Id)">Prorrogar</button>
+                                    }
+                                    <button type="button" class="button button-secondary button-small"
+                                            @onclick="() => End(row.Id)">Terminar</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<Employee> _employees = [];
+    private IReadOnlyList<ContractRow> _contracts = [];
+    private IReadOnlyList<ContractRow> _expiring = [];
+    private readonly Dictionary<int, DateTime?> _actionDates = new();
+    private int _employeeId;
+    private ContractType _type = ContractType.Indefinite;
+    private DateTime? _start = DateTime.Today;
+    private DateTime? _end;
+    private decimal _salary = 1_750_905m;
+    private string? _notes;
+    private string? _error;
+    private string? _message;
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _employees = Employees.List().Where(employee => employee.Active).OrderBy(employee => employee.Name).ToList();
+            _contracts = Records.Contracts();
+            _expiring = Records.ExpiringContracts(DateOnly.FromDateTime(DateTime.Today), 30);
+            foreach (var row in _contracts)
+                _actionDates.TryAdd(row.Id, DateTime.Today);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Run(Action action, string message)
+    {
+        _error = null;
+        _message = null;
+        try
+        {
+            action();
+            _message = message;
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Add()
+    {
+        if (_employeeId == 0 || _start is null)
+        {
+            _error = "Elige el empleado y la fecha de inicio.";
+            return;
+        }
+
+        Run(() => Records.AddContract(new NewContractRequest(
+            _employeeId,
+            _type,
+            DateOnly.FromDateTime(_start.Value),
+            _end is null ? null : DateOnly.FromDateTime(_end.Value),
+            _salary,
+            _notes)), "Contrato registrado. El empleado quedó con el tipo de contrato y el salario del contrato.");
+    }
+
+    private void Extend(int id) =>
+        Run(() => Records.ExtendContract(id, DateOnly.FromDateTime(_actionDates[id] ?? DateTime.Today)),
+            "Contrato prorrogado.");
+
+    private void End(int id) =>
+        Run(() => Records.EndContract(id, DateOnly.FromDateTime(_actionDates[id] ?? DateTime.Today)),
+            "Contrato terminado.");
+}

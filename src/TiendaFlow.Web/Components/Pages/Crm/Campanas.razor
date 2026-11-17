@@ -1,0 +1,179 @@
+@page "/crm/campanas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmCampaignsManage)]
+@using TiendaFlow.Application.Crm
+@inject CampaignService Campaigns
+@inject NavigationManager Navigation
+
+<PageTitle>Campañas · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="Campañas"
+            Subtitle="Campañas dirigidas a un segmento A, B o C, con el resultado en facturas de esos clientes durante la vigencia." />
+
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Nueva campaña</h2>
+            <p class="card-subtitle">El segmento sale de la segmentación A/B/C por valor facturado.</p>
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="field">
+            <label for="campaign-name">Nombre</label>
+            <input id="campaign-name" class="input" @bind="_name" />
+        </div>
+        <div class="field">
+            <label for="campaign-segment">Segmento</label>
+            <select id="campaign-segment" class="input" @bind="_segment">
+                <option value="A">A · mayor volumen</option>
+                <option value="B">B · volumen medio</option>
+                <option value="C">C · bajo volumen o sin compras</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="campaign-start">Inicio</label>
+            <input id="campaign-start" type="date" class="input" @bind="_start" />
+        </div>
+        <div class="field">
+            <label for="campaign-end">Fin</label>
+            <input id="campaign-end" type="date" class="input" @bind="_end" />
+        </div>
+        <div class="field field-wide">
+            <label for="campaign-message">Mensaje</label>
+            <textarea id="campaign-message" class="input" rows="2" @bind="_text"></textarea>
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="button" class="button button-primary" @onclick="Create">Crear campaña</button>
+    </div>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Campañas registradas</h2>
+            <p class="card-subtitle">@_rows.Count campañas</p>
+        </div>
+    </div>
+    @if (_rows.Count == 0)
+    {
+        <EmptyState Title="Sin campañas" Message="Crea una campaña para un segmento de clientes." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Campaña</th>
+                        <th>Segmento</th>
+                        <th>Vigencia</th>
+                        <th class="num">Clientes</th>
+                        <th class="num">Facturas</th>
+                        <th class="num">Ventas</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>@row.Name <span class="table-meta">@row.Message</span></td>
+                            <td>@row.Segment</td>
+                            <td>@row.StartDate.ToString("dd/MM/yyyy") a @row.EndDate.ToString("dd/MM/yyyy")</td>
+                            <td class="num">@row.TargetCustomers</td>
+                            <td class="num">@row.InvoicesInPeriod</td>
+                            <td class="num">@Formatters.Money(row.SalesInPeriod)</td>
+                            <td><StatusBadge Text="@(row.Cancelled ? "Cancelada" : "Vigente")" Tone="@(row.Cancelled ? "neutral" : "ok")" /></td>
+                            <td class="table-actions">
+                                @if (!row.Cancelled)
+                                {
+                                    <button type="button" class="button button-secondary button-small" @onclick="() => Cancel(row.Id)">Cancelar</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<CampaignRow> _rows = [];
+    private string? _name;
+    private string _segment = "A";
+    private DateTime? _start = DateTime.Today;
+    private DateTime? _end = DateTime.Today.AddDays(30);
+    private string? _text;
+    private string? _error;
+    private string? _message;
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _rows = Campaigns.List();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Create()
+    {
+        _error = null;
+        _message = null;
+
+        if (_start is null || _end is null)
+        {
+            _error = "Indica las fechas de la campaña.";
+            return;
+        }
+
+        try
+        {
+            Campaigns.Create(new NewCampaignRequest(_name ?? "", _segment,
+                DateOnly.FromDateTime(_start.Value), DateOnly.FromDateTime(_end.Value), _text ?? ""));
+            _message = "Campaña creada.";
+            _name = _text = null;
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Cancel(int id)
+    {
+        try
+        {
+            Campaigns.Cancel(id);
+            _message = "Campaña cancelada.";
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

@@ -54,9 +54,9 @@ else
                  Value="@Formatters.Number(_report.IssuedCount)"
                  Hint="@($"{_report.FromDate:dd/MM/yyyy} a {_report.ToDate:dd/MM/yyyy}")"
                  Tone="primary" />
-        <KpiCard Label="Total vendido"
-                 Value="@Formatters.Money(_report.GrandTotal)"
-                 Hint="@($"Facturas {Formatters.Money(_report.IssuedTotal)} + POS {Formatters.Money(_report.PosSalesTotal)}")"
+        <KpiCard Label="Venta neta"
+                 Value="@Formatters.Money(_report.NetTotal)"
+                 Hint="@($"Facturas {Formatters.Money(_report.IssuedTotal)} + POS {Formatters.Money(_report.PosSalesTotal)} − devoluciones {Formatters.Money(_report.ReturnsTotal)}")"
                  Tone="ok" />
         <KpiCard Label="Ventas POS"
                  Value="@Formatters.Number(_report.PosSalesCount)"
@@ -121,6 +121,36 @@ else
             </div>
         }
     </section>
+
+    @if (_report.SalesReturns.Count > 0)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Devoluciones (notas crédito)</h2>
+                    <p class="card-subtitle">@_report.SalesReturns.Count devoluciones por @Formatters.Money(_report.ReturnsTotal)</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Nota</th><th>Factura</th><th>Fecha</th><th>Motivo</th><th class="num">Unidades</th><th class="num">Valor</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in _report.SalesReturns)
+                        {
+                            <tr>
+                                <td>NC-@item.Id.ToString("D5")</td>
+                                <td><a class="table-link" href="@($"facturacion/{item.InvoiceId}")">FV-@item.InvoiceId.ToString("D5")</a></td>
+                                <td>@Formatters.ShortDateTime(item.CreatedAt)</td>
+                                <td>@item.Reason</td>
+                                <td class="num">@Formatters.Quantity(item.Units)</td>
+                                <td class="num">@Formatters.Money(item.Total)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
 
     <section class="card">
         <div class="card-header">

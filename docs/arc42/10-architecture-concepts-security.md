@@ -3,7 +3,7 @@
 ## 10.1 Conceptos
 
 - **Autenticación:** autenticación por cookie de ASP.NET Core (`TiendaFlow.Auth`, HttpOnly, SameSite Lax, expiración deslizante de 8 horas). Las contraseñas se guardan solo como hash detrás de `IPasswordHasher`; nunca en texto plano.
-- **Roles y permisos:** cada usuario tiene exactamente uno de 7 roles. Cada función del ERP tiene un código de permiso (`Permissions`) y la matriz rol-permiso vive en código (`RolePermissions`), de modo que la autorización es determinista entre despliegues. La base de datos solo guarda usuarios, roles y su asignación.
+- **Roles y permisos:** cada usuario tiene exactamente uno de 7 roles. Cada función del ERP tiene un código de permiso (`Permissions`) y la matriz rol-permiso por defecto vive en código (`RolePermissions`). El administrador puede reemplazar los permisos de un rol desde la interfaz; esos cambios se guardan en `role_permission` y se aplican en el siguiente inicio de sesión.
 - **Autorización en tres niveles (defensa en profundidad):**
   1. **Página o endpoint:** una política de autorización por permiso, aplicada con `[Authorize(Policy=...)]` o `RequireAuthorization(permission)`.
   2. **Interfaz:** las entradas de menú y los botones se muestran solo cuando el usuario tiene el permiso. Es comodidad, nunca el control real.
@@ -76,7 +76,7 @@ La tabla se genera a partir de `Permissions` y `RolePermissions` de la versión 
 | `/rrhh/nomina` | `hr.payroll.manage` | Página completa solo con el permiso | `PayrollRunService.Calculate` exige `hr.payroll.manage` |
 | `POST /api/nomina/calculate` | `hr.payroll.manage` | No aplica: es un endpoint | La autorización se exige en el borde; el motor no tiene permisos propios |
 | `/seguridad/usuarios` | `security.users.view` | Alta y edición ocultas sin `security.users.manage` | `UserService` exige `security.users.manage` en cada escritura |
-| `/seguridad/roles` | `security.roles.view` | Matriz de solo lectura | `RoleCatalogService.GetMatrix` exige `security.roles.view` |
+| `/seguridad/roles` | `security.roles.view` | Edición por rol solo con `security.roles.manage`; el resto la ve en solo lectura | `RoleCatalogService.GetMatrix` exige `security.roles.view` |
 | `/seguridad/auditoria` | `security.audit.view` | Sin acciones de escritura | `AuditTrailService.Recent` exige `security.audit.view` |
 | `/inventario/alertas` | `inventory.alerts.view` | Acciones según `inventory.stock.receive` | `InventoryDashboardService.Get` exige `inventory.stock.view` |
 | `/proveedores` | `purchasing.suppliers.view` | Alta, edición y desactivación ocultas sin `purchasing.suppliers.manage` | `SupplierService.List` exige vista; `Create`, `Update` y el cambio de estado exigen `purchasing.suppliers.manage` |
@@ -94,12 +94,17 @@ La tabla se genera a partir de `Permissions` y `RolePermissions` de la versión 
 | `/reportes/inventario`, `/reportes/ventas`, `/reportes/nomina` | `inventory.reports.view`, `sales.reports.view`, `hr.payroll.manage` | Exportación CSV con el mismo permiso | Cada servicio de reporte exige su permiso |
 | `/seguridad/tiendas` y `/{id}` | `security.stores.view` | Alta y desactivación ocultas sin `security.stores.manage` | `StoreService` exige `security.stores.manage` en cada escritura |
 | `/seguridad/parametros` y `/{clave}` | `security.parameters.manage` | Solo ADM | `ParameterService` exige `security.parameters.manage` |
+| `/reportes/seguridad` | `security.reports.view` | Exportación CSV con el mismo permiso | `SecurityReportService` exige `security.reports.view` |
+| `/rrhh/contratos`, `/rrhh/asistencia`, `/rrhh/turnos` | `hr.contracts.manage`, `hr.attendance.manage`, `hr.shifts.manage` | Entradas de menú según el permiso | `HumanResourcesRecordsService` exige el permiso de cada operación |
+| `/crm/puntos`, `/crm/pqrs`, `/crm/campanas` | `crm.points.manage`, `crm.pqrs.manage`, `crm.campaigns.manage` | Entradas de menú según el permiso | `LoyaltyService`, `PqrsService` y `CampaignService` exigen su permiso |
+| Devoluciones en `/facturacion/{id}` | `sales.invoices.view` | Formulario visible solo con `sales.returns.authorize` | `SalesReturnService.Register` exige `sales.returns.authorize` |
+| `/api/*` | El permiso del endpoint | No aplica | Sin sesión responde `401` y sin permiso `403`, en lugar de redirigir |
 | `/crm/clientes` | `crm.customers.view` | Alta, edición y desactivación ocultas sin `crm.customers.manage` | `CustomerService.List` exige vista; `Create` y `Update` exigen `crm.customers.manage` |
 | `/crm/clientes/nuevo` y `/{id}` | `crm.customers.manage` | Formulario completo solo para quien administra | `CustomerService.Create` y `Update` exigen `crm.customers.manage` |
 
 ## 10.4 Asignación de roles (HU-06)
 
-El administrador asigna un rol desde `/seguridad/usuarios`. La matriz se muestra en solo lectura en `/seguridad/roles`. En el siguiente inicio de sesión, los permisos del usuario se construyen a partir de la matriz, de modo que solo alcanza las páginas, entradas de menú y servicios permitidos.
+El administrador asigna un rol desde `/seguridad/usuarios`. En `/seguridad/roles` puede además editar los permisos de cada rol: los cambios se guardan en la tabla `role_permission`, reemplazan la matriz por defecto de ese rol y se auditan; el rol Administrador conserva siempre `security.users.*` y `security.roles.*`, y "Restablecer por defecto" vuelve a la matriz del código. En el siguiente inicio de sesión, los permisos del usuario se construyen a partir de la matriz, de modo que solo alcanza las páginas, entradas de menú y servicios permitidos.
 
 ## 10.5 Auditoría y datos personales
 
@@ -110,7 +115,11 @@ El administrador asigna un rol desde `/seguridad/usuarios`. La matriz se muestra
 | Crear, actualizar o desactivar usuario | id del usuario, rol y estado | No |
 | Crear o actualizar proveedor | id del proveedor, NIT y estado | No |
 | Emitir o anular factura | id de la factura, cliente, total y unidades descontadas o devueltas | Sí, nombre del cliente en el detalle; decisión pendiente |
-| Venta del punto de venta | id de la venta, código, SKU, cantidad y stock restante | No |
+| Venta del punto de venta | id de la venta, código, productos, unidades y total | No |
+| Devolución (nota crédito) | id de la devolución, factura, unidades y valor | No |
+| Contratos, asistencia, turnos y corrida guardada | id del registro, tipo, fecha y periodo | No |
+| Canje de puntos, PQRS y campañas | id del registro, puntos, radicado o segmento | No |
+| Cambio de permisos de un rol | id del rol y permisos agregados y quitados | No |
 | Borradores de reposición | id de la orden, proveedor y total | No |
 | Crear o actualizar cliente CRM | id del cliente y estado | No; el detalle usa el nombre, no el documento |
 | Inicio de sesión correcto | id del usuario y texto fijo | No |

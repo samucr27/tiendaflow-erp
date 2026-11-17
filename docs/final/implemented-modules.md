@@ -237,6 +237,22 @@ firma certificada, transmisión ni almacenamiento del documento.
 - `terraform-plan.yml` ya no ejecuta `plan`: solo `fmt -check`, `init
   -backend=false` y `validate`, porque no hay credenciales de Azure en GitHub.
 
+## Módulos de cierre del proyecto (16 de noviembre)
+
+| Módulo | Ruta | Qué hace |
+| --- | --- | --- |
+| Venta POS con carrito | `/inventario/ventas` | Varios productos por venta en un documento y una transacción |
+| Devoluciones | `/facturacion/{id}` | Notas crédito parciales que devuelven unidades al stock; el reporte muestra la venta neta |
+| Roles editables | `/seguridad/roles` | El administrador cambia los permisos de cada rol |
+| Reporte de seguridad | `/reportes/seguridad` | Inicios de sesión, accesos denegados y cambios de usuarios y roles, con CSV |
+| Contratos | `/rrhh/contratos` | Vigencia, prórroga, terminación y aviso de vencimiento a 30 días |
+| Asistencia | `/rrhh/asistencia` | Horas trabajadas y novedades; la nómina descuenta ausencias |
+| Turnos | `/rrhh/turnos` | Programación semanal por tienda sin cruces |
+| Corridas de nómina | `/rrhh/nomina` | Guarda la corrida de cada mes |
+| Puntos de fidelización | `/crm/puntos` | Acumulación por factura, reversión al anular y canje |
+| PQRS | `/crm/pqrs` | Radicado, responsable, plazo de 15 días y respuesta |
+| Campañas | `/crm/campanas` | Campañas por segmento A/B/C con su resultado |
+
 ## Commits de la fase final
 
 | Commit | Contenido |

@@ -120,6 +120,28 @@ public static class ReportEndpoints
             }
         }).RequireAuthorization(Permissions.PurchasingReportsView);
 
+        app.MapGet("/reportes/seguridad/export.csv", (
+            SecurityReportService reports,
+            [FromQuery] DateOnly? from,
+            [FromQuery] DateOnly? to) =>
+        {
+            var today = DateOnly.FromDateTime(LocalTime.ToLocal(DateTime.UtcNow));
+
+            try
+            {
+                var report = reports.Get(from ?? today.AddDays(-30), to ?? today);
+                return Csv($"seguridad-{Stamp()}.csv", report.ToCsv());
+            }
+            catch (AccessDeniedException)
+            {
+                return Results.Forbid();
+            }
+            catch (ArgumentException)
+            {
+                return Results.BadRequest(new { error = "La fecha inicial no puede ser posterior a la final." });
+            }
+        }).RequireAuthorization(Permissions.SecurityReportsView);
+
         return app;
     }
 

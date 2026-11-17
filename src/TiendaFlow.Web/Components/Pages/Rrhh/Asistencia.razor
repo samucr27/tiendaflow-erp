@@ -1,0 +1,182 @@
+@page "/rrhh/asistencia"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrAttendanceManage)]
+@inject HumanResourcesRecordsService Records
+@inject IEmployeeRepository Employees
+@inject NavigationManager Navigation
+
+<PageTitle>Asistencia · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Asistencia y novedades"
+            Subtitle="Entradas, salidas, ausencias, incapacidades, permisos y vacaciones. Las ausencias se descuentan en la nómina del mes." />
+
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Registrar día</h2>
+            <p class="card-subtitle">Un registro por empleado y día.</p>
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="field">
+            <label for="att-employee">Empleado</label>
+            <select id="att-employee" class="input" @bind="_employeeId">
+                <option value="0">Elige un empleado</option>
+                @foreach (var employee in _employees)
+                {
+                    <option value="@employee.Id">@employee.Name</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label for="att-date">Fecha</label>
+            <input id="att-date" type="date" class="input" @bind="_date" />
+        </div>
+        <div class="field">
+            <label for="att-type">Novedad</label>
+            <select id="att-type" class="input" @bind="_type">
+                @foreach (var type in Enum.GetValues<AttendanceType>())
+                {
+                    <option value="@type">@HrText.Attendance(type)</option>
+                }
+            </select>
+        </div>
+        @if (_type == AttendanceType.Worked)
+        {
+            <div class="field">
+                <label for="att-in">Entrada</label>
+                <input id="att-in" type="time" class="input" @bind="_checkIn" />
+            </div>
+            <div class="field">
+                <label for="att-out">Salida</label>
+                <input id="att-out" type="time" class="input" @bind="_checkOut" />
+            </div>
+        }
+        <div class="field">
+            <label for="att-notes">Observación</label>
+            <input id="att-notes" class="input" @bind="_notes" />
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="button" class="button button-primary" @onclick="Save">Registrar</button>
+    </div>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Registros del mes</h2>
+            <p class="card-subtitle">
+                @_rows.Count registros · @_rows.Count(row => row.Type == AttendanceType.Absence) ausencias ·
+                @Formatters.Number(_rows.Sum(row => row.HoursWorked)) horas trabajadas
+            </p>
+        </div>
+        <input type="month" class="input" aria-label="Mes" @bind="_month" @bind:after="Load" />
+    </div>
+
+    @if (_rows.Count == 0)
+    {
+        <EmptyState Title="Sin registros en el mes" Message="Registra la asistencia o las novedades de los empleados." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Empleado</th>
+                        <th>Novedad</th>
+                        <th>Entrada</th>
+                        <th>Salida</th>
+                        <th class="num">Horas</th>
+                        <th>Observación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>@row.Date.ToString("dd/MM/yyyy")</td>
+                            <td>@row.EmployeeName</td>
+                            <td><StatusBadge Text="@HrText.Attendance(row.Type)" Tone="@HrText.AttendanceTone(row.Type)" /></td>
+                            <td>@(row.CheckIn?.ToString("HH:mm") ?? "—")</td>
+                            <td>@(row.CheckOut?.ToString("HH:mm") ?? "—")</td>
+                            <td class="num">@row.HoursWorked.ToString("0.#")</td>
+                            <td>@(row.Notes ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<Employee> _employees = [];
+    private IReadOnlyList<AttendanceRow> _rows = [];
+    private int _employeeId;
+    private DateTime? _date = DateTime.Today;
+    private AttendanceType _type = AttendanceType.Worked;
+    private TimeOnly? _checkIn = new(7, 0);
+    private TimeOnly? _checkOut = new(15, 0);
+    private string? _notes;
+    private DateTime _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private string? _error;
+    private string? _message;
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _employees = Employees.List().Where(employee => employee.Active).OrderBy(employee => employee.Name).ToList();
+            var from = DateOnly.FromDateTime(_month);
+            _rows = Records.Attendance(from, from.AddMonths(1).AddDays(-1));
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+        _message = null;
+
+        if (_employeeId == 0 || _date is null)
+        {
+            _error = "Elige el empleado y la fecha.";
+            return;
+        }
+
+        try
+        {
+            Records.RecordAttendance(new AttendanceRequest(
+                _employeeId, DateOnly.FromDateTime(_date.Value), _type, _checkIn, _checkOut, _notes));
+            _message = "Registro guardado.";
+            _notes = null;
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

@@ -74,7 +74,8 @@
 
     @if (AccessControl.Has(Permissions.InventoryReportsView)
          || AccessControl.Has(Permissions.SalesReportsView)
-         || AccessControl.Has(Permissions.HrPayrollManage))
+         || AccessControl.Has(Permissions.HrPayrollManage)
+         || AccessControl.Has(Permissions.SecurityReportsView))
     {
         <p class="nav-section">Reportes</p>
 
@@ -94,6 +95,12 @@
         {
             <NavLink class="nav-item" href="reportes/nomina" Match="NavLinkMatch.Prefix">
                 Nómina
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SecurityReportsView))
+        {
+            <NavLink class="nav-item" href="reportes/seguridad" Match="NavLinkMatch.Prefix">
+                Seguridad
             </NavLink>
         }
     }
@@ -139,7 +146,10 @@
     }
 
     @if (AccessControl.Has(Permissions.HrEmployeesView)
-         || AccessControl.Has(Permissions.HrPayrollManage))
+         || AccessControl.Has(Permissions.HrPayrollManage)
+         || AccessControl.Has(Permissions.HrContractsManage)
+         || AccessControl.Has(Permissions.HrAttendanceManage)
+         || AccessControl.Has(Permissions.HrShiftsManage))
     {
         <p class="nav-section">Talento humano</p>
 
@@ -153,6 +163,24 @@
         {
             <NavLink class="nav-item" href="rrhh/nomina" Match="NavLinkMatch.Prefix">
                 Nómina
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrContractsManage))
+        {
+            <NavLink class="nav-item" href="rrhh/contratos" Match="NavLinkMatch.Prefix">
+                Contratos
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrAttendanceManage))
+        {
+            <NavLink class="nav-item" href="rrhh/asistencia" Match="NavLinkMatch.Prefix">
+                Asistencia
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrShiftsManage))
+        {
+            <NavLink class="nav-item" href="rrhh/turnos" Match="NavLinkMatch.Prefix">
+                Turnos
             </NavLink>
         }
     }
@@ -198,7 +226,10 @@
     }
 
     @if (AccessControl.Has(Permissions.CrmCustomersView)
-         || AccessControl.Has(Permissions.CrmReportsView))
+         || AccessControl.Has(Permissions.CrmReportsView)
+         || AccessControl.Has(Permissions.CrmPointsManage)
+         || AccessControl.Has(Permissions.CrmPqrsManage)
+         || AccessControl.Has(Permissions.CrmCampaignsManage))
     {
         <p class="nav-section">CRM</p>
 
@@ -212,6 +243,24 @@
         {
             <NavLink class="nav-item" href="crm/segmentacion" Match="NavLinkMatch.Prefix">
                 Segmentación
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.CrmPointsManage))
+        {
+            <NavLink class="nav-item" href="crm/puntos" Match="NavLinkMatch.Prefix">
+                Puntos de fidelización
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.CrmPqrsManage))
+        {
+            <NavLink class="nav-item" href="crm/pqrs" Match="NavLinkMatch.Prefix">
+                PQRS
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.CrmCampaignsManage))
+        {
+            <NavLink class="nav-item" href="crm/campanas" Match="NavLinkMatch.Prefix">
+                Campañas
             </NavLink>
         }
     }

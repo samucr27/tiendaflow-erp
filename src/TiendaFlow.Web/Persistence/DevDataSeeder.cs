@@ -125,6 +125,8 @@ public sealed class DevDataSeeder : IHostedService
         await SeedInvoicesAsync(context, cancellationToken);
         await SeedInventoryCountsAsync(context, cancellationToken);
         await SeedInventoryTransfersAsync(context, cancellationToken);
+        await SeedHumanResourcesRecordsAsync(context, cancellationToken);
+        await SeedCrmRecordsAsync(context, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -407,6 +409,127 @@ public sealed class DevDataSeeder : IHostedService
             var lastCost = Math.Round(product.SalePrice * 0.65m / 100m) * 100m;
             context.ProductSuppliers.Add(new ProductSupplier(sku, supplier.Id, lastCost, isDefault: true));
         }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    // Contracts, attendance and shifts so the HR closing screens open with
+    // data: every employee gets an active contract; two fixed-term contracts
+    // end within 30 days; the current month has worked days and one absence.
+    private static async Task SeedHumanResourcesRecordsAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.EmploymentContracts.AnyAsync(cancellationToken))
+            return;
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var employees = await context.Employees
+            .OrderBy(employee => employee.Name)
+            .ToListAsync(cancellationToken);
+
+        for (var index = 0; index < employees.Count; index++)
+        {
+            var employee = employees[index];
+            var fixedTerm = index is 1 or 4;
+            context.EmploymentContracts.Add(new EmploymentContract(
+                employee.Id,
+                fixedTerm ? ContractType.FixedTerm : ContractType.Indefinite,
+                today.AddMonths(-10 - index),
+                fixedTerm ? today.AddDays(12 + index) : null,
+                employee.Salary,
+                fixedTerm ? "Contrato a término fijo de un año" : null));
+        }
+
+        var monthStart = new DateOnly(today.Year, today.Month, 1);
+        var storeOne = employees.Where(employee => employee.StoreId == DefaultStoreId).Take(4).ToList();
+
+        for (var day = monthStart; day < today && day < monthStart.AddDays(10); day = day.AddDays(1))
+        {
+            if (day.DayOfWeek == DayOfWeek.Sunday)
+                continue;
+
+            foreach (var employee in storeOne)
+            {
+                var absent = employee == storeOne.LastOrDefault() && day == monthStart.AddDays(2);
+                context.AttendanceRecords.Add(absent
+                    ? new AttendanceRecord(employee.Id, day, AttendanceType.Absence, null, null, "No se presentó")
+                    : new AttendanceRecord(employee.Id, day, AttendanceType.Worked, new TimeOnly(7, 0), new TimeOnly(15, 0)));
+            }
+        }
+
+        var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        for (var offset = 0; offset < 6; offset++)
+        {
+            for (var index = 0; index < storeOne.Count; index++)
+            {
+                var morning = (index + offset) % 2 == 0;
+                context.WorkShifts.Add(new WorkShift(
+                    DefaultStoreId,
+                    storeOne[index].Id,
+                    weekStart.AddDays(offset),
+                    morning ? new TimeOnly(6, 0) : new TimeOnly(14, 0),
+                    morning ? new TimeOnly(14, 0) : new TimeOnly(22, 0)));
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    // Loyalty points earned with the demo invoices, two PQRS cases and one
+    // campaign, so the CRM closing screens open with data.
+    private static async Task SeedCrmRecordsAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.LoyaltyPointsEntries.AnyAsync(cancellationToken)
+            || await context.PqrsCases.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var customers = await context.Customers
+            .ToDictionaryAsync(customer => customer.DocumentNumber, cancellationToken);
+        var invoices = await context.SalesInvoices
+            .Include(invoice => invoice.Lines)
+            .Where(invoice => invoice.Status == InvoiceStatus.Issued)
+            .ToListAsync(cancellationToken);
+
+        foreach (var invoice in invoices)
+        {
+            var points = (int)Math.Floor(invoice.Total / 1000m);
+            if (points > 0 && customers.TryGetValue(invoice.CustomerDocument, out var customer) && customer.Active)
+            {
+                context.LoyaltyPointsEntries.Add(new LoyaltyPointsEntry(
+                    customer.Id, points, $"Factura #{invoice.Id}", invoice.IssueDate, invoice.Id));
+            }
+        }
+
+        var first = customers.Values.OrderBy(customer => customer.Id).FirstOrDefault();
+        var now = DateTime.UtcNow;
+
+        context.PqrsCases.Add(new PqrsCase(
+            PqrsType.Complaint,
+            "Producto vencido en góndola",
+            "El cliente encontró un paquete de pan tajado con fecha vencida en la góndola 3.",
+            first?.Id,
+            first is null ? "3001234567" : null,
+            now.AddDays(-20)));
+        context.PqrsCases.Add(new PqrsCase(
+            PqrsType.Suggestion,
+            "Ampliar horario los domingos",
+            "Varios clientes piden abrir hasta las 10 p. m. los domingos.",
+            null,
+            "buzon@tiendaflow.local",
+            now.AddDays(-2)));
+
+        var today = DateOnly.FromDateTime(now);
+        context.MarketingCampaigns.Add(new MarketingCampaign(
+            "Clientes A: doble puntos",
+            "A",
+            today.AddDays(-10),
+            today.AddDays(20),
+            "Doble puntos en compras mayores a $ 30.000 durante el mes."));
 
         await context.SaveChangesAsync(cancellationToken);
     }
