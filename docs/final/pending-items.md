@@ -58,9 +58,22 @@ exige la Definition of Done.
   valor de código; los cambios se guardan como versiones inmutables con fecha de
   vigencia y quedan auditados.
 - **Devoluciones:** la devolución se registra contra una factura emitida y se
-  autoriza una sola vez. Como `SalesInvoice` no guarda `StoreId`, el formulario
-  pide elegir la tienda que recibe y reintegra el stock en esa tienda. Cambiar el
-  modelo de facturación para guardar la tienda queda fuera de esta entrega.
+  autoriza una sola vez. La factura guarda la tienda de emisión, así que el
+  reingreso se hace en esa misma tienda; el servicio rechaza una tienda distinta
+  antes de tocar el stock. Una factura antigua sin tienda conserva la selección
+  manual.
+- **Alcance por tienda:** los conteos, traslados y devoluciones aplican el
+  alcance en el servicio (`StoreScope`), no solo en la pantalla. El Jefe de
+  tienda y el Auxiliar de bodega trabajan únicamente con documentos de su tienda;
+  el Administrador y el Gerente corporativo no tienen esa restricción. Un usuario
+  sin tienda asignada no puede operar documentos de tienda.
+- **Doble envío de un traslado:** se resolvió con el token de concurrencia
+  `RowVersion` que ya tiene cada fila de stock. Si dos envíos del mismo traslado
+  compiten, el segundo actualiza una fila cuya versión cambió, EF Core lanza
+  `DbUpdateConcurrencyException`, la transacción se revierte y el usuario ve el
+  mensaje de reintento. Se eligió el token existente en lugar de un bloqueo
+  pesimista porque no requiere migración ni mantiene conexiones abiertas, y
+  porque el mismo token ya protege ventas y recepciones.
 - **Pruebas de integración:** requieren una cadena de conexión a SQL Server en
   `TIENDAFLOW_TEST_CONNECTION`. En la verificación de esta rama se ejecutaron
   contra un contenedor desechable que aplica las migraciones desde cero; no se

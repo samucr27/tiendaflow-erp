@@ -89,10 +89,16 @@ public sealed class EfSalesReturnQuery : ISalesReturnQuery
         return new SalesReturnDetail(ToRow(salesReturn, StoreNames()), lines);
     }
 
-    public IReadOnlyList<SalesReturnInvoiceOption> ListReturnableInvoices() =>
-        _context.SalesInvoices
+    public IReadOnlyList<SalesReturnInvoiceOption> ListReturnableInvoices(int? storeId = null)
+    {
+        var query = _context.SalesInvoices
             .AsNoTracking()
-            .Where(invoice => invoice.Status == InvoiceStatus.Issued)
+            .Where(invoice => invoice.Status == InvoiceStatus.Issued);
+
+        if (storeId is not null)
+            query = query.Where(invoice => invoice.StoreId == storeId);
+
+        return query
             .OrderByDescending(invoice => invoice.IssueDate)
             .ThenByDescending(invoice => invoice.Id)
             .Select(invoice => new SalesReturnInvoiceOption(
@@ -102,15 +108,18 @@ public sealed class EfSalesReturnQuery : ISalesReturnQuery
                 invoice.IssueDate,
                 invoice.Lines.Sum(line => line.Quantity * line.UnitPrice)))
             .ToList();
+    }
 
-    public IReadOnlyList<SalesReturnInvoiceLineOption> ListInvoiceLines(int invoiceId)
+    public IReadOnlyList<SalesReturnInvoiceLineOption> ListInvoiceLines(
+        int invoiceId,
+        int? storeId = null)
     {
         var invoice = _context.SalesInvoices
             .AsNoTracking()
             .Include(item => item.Lines)
             .FirstOrDefault(item => item.Id == invoiceId);
 
-        if (invoice is null)
+        if (invoice is null || (storeId is not null && invoice.StoreId != storeId))
             return Array.Empty<SalesReturnInvoiceLineOption>();
 
         var returned = _context.SalesReturns

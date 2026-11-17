@@ -115,19 +115,38 @@ política, el menú oculta el enlace y `InventoryCountService` /
 
 ## Cambios en la matriz por las devoluciones
 
-Las devoluciones y notas crédito no cambiaron la matriz: usan el permiso que ya
-existía y solo lo conserva el Jefe de tienda.
+Las devoluciones y notas crédito siguen usando un único permiso. En la revisión
+de alcance se amplió a los roles corporativos que ya administran ventas, para
+que puedan resolver una devolución de cualquier tienda:
 
 | Ruta o acción | Permiso | Roles |
 | --- | --- | --- |
-| `/ventas/devoluciones`, `/ventas/devoluciones/{id}`, autorizar y rechazar | `sales.returns.authorize` | Jefe de tienda |
+| `/ventas/devoluciones`, `/ventas/devoluciones/{id}`, autorizar y rechazar | `sales.returns.authorize` | Administrador, Gerente corporativo, Jefe de tienda |
 
 El Cajero registra ventas, pero no autoriza devoluciones: la nota crédito afecta
 el ingreso y repone inventario, así que la decisión queda en el responsable de la
-tienda. El Administrador conserva la administración del sistema y la matriz, no
-las operaciones de mostrador. La pantalla declara la política, el menú oculta el
+tienda o en un rol corporativo. La pantalla declara la política, el menú oculta el
 enlace y `SalesReturnService` vuelve a exigir el permiso antes de leer o
 escribir.
+
+## Alcance por tienda
+
+Los permisos deciden **qué** puede hacer un rol; el alcance decide **sobre qué
+tienda**. `StoreScope` aplica la segunda regla dentro de los servicios de
+conteos, traslados y devoluciones, antes de consultar cualquier repositorio.
+
+| Rol | Alcance |
+| --- | --- |
+| Administrador | Todas las tiendas |
+| Gerente corporativo | Todas las tiendas |
+| Jefe de tienda | Solo su tienda |
+| Auxiliar de bodega | Solo su tienda |
+
+Los roles con alcance limitado no pueden crear, listar, enviar, recibir, anular,
+autorizar ni rechazar documentos de otra tienda, aunque llamen al servicio
+directamente. Si el usuario no tiene tienda asignada, la operación se deniega.
+El Administrador y el Gerente corporativo también deben tener el permiso del
+módulo: el alcance global no concede permisos por sí solo.
 
 ## Comprobaciones automáticas
 

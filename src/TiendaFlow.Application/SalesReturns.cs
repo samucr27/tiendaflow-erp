@@ -84,7 +84,7 @@ public interface ISalesReturnQuery
 
     SalesReturnDetail? GetById(int id);
 
-    IReadOnlyList<SalesReturnInvoiceOption> ListReturnableInvoices();
+    IReadOnlyList<SalesReturnInvoiceOption> ListReturnableInvoices(int? storeId = null);
 
-    IReadOnlyList<SalesReturnInvoiceLineOption> ListInvoiceLines(int invoiceId);
+    IReadOnlyList<SalesReturnInvoiceLineOption> ListInvoiceLines(int invoiceId, int? storeId = null);
 }

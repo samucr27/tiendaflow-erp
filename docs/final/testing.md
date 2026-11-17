@@ -26,11 +26,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 615 | 0 | 0 | 615 |
+| `TiendaFlow.UnitTests` | 649 | 0 | 0 | 649 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 53 | 0 | 0 | 53 |
+| `TiendaFlow.IntegrationTests` | 54 | 0 | 0 | 54 |
 
-Total ejecutado: **692 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **709 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -54,10 +54,10 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 3337 | 3441 | **97,0 %** |
+| `TiendaFlow.Application` | 3371 | 3476 | **97,0 %** |
 | `TiendaFlow.Domain` | 896 | 946 | **94,7 %** |
-| Aplicación + dominio | 4233 | 4387 | **96,5 %** |
-| `TiendaFlow.Infrastructure` (con integración SQL) | 12151 | 12372 | **98,2 %** |
+| Aplicación + dominio | 4267 | 4422 | **96,5 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 12154 | 12375 | **98,2 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura de
 `TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
@@ -280,9 +280,27 @@ prueba que fallaba antes del cambio o que cubre la regla nueva.
 | **Facturas emitidas editables.** Una factura emitida se podía cambiar. | Se quitaron `UpdateDetails` y `ClearLines`; `/facturacion/{id}` es un detalle de solo lectura y la corrección es anular y emitir otra. El formulario elige productos del catálogo con su precio. | `SalesInvoiceTests.AnIssuedInvoiceOffersNoWayToEditItsData` |
 | **Detalles de interfaz.** La barra lateral decía "Tienda Tienda Centro" y el aviso de parámetros de nómina usaba el estilo de error. | Nombre de la tienda sin prefijo y aviso con estilo de advertencia. | Verificado en capturas |
 
-Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en esta
-verificación (unión de las tres suites, `coverlet.collector`): **96,9 %**
-(Application 97,3 %, Domain 95,6 %).
+Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en la
+verificación de esta rama (unión de las tres suites, `coverlet.collector`):
+**96,5 %** (Application 97,0 %, Domain 94,7 %).
+
+## Alcance por tienda en inventario (PASS 1B)
+
+La revisión de alcance agregó 17 pruebas que fijan la regla en el servicio, no
+solo en la pantalla:
+
+- `InventoryCountServiceTests` y `InventoryTransferServiceTests`: crear, enviar,
+  recibir, anular, contar, cerrar y ajustar un documento de otra tienda lanza
+  `AccessDeniedException` y no consulta stock ni abre transacción; un rol
+  corporativo sí opera cualquier tienda.
+- `SalesReturnServiceTests`: crear, listar, consultar, autorizar y rechazar una
+  devolución de otra tienda se deniega; el filtro de lista se fuerza a la tienda
+  del usuario; una factura emitida por otra tienda no se puede reintegrar en una
+  tienda distinta.
+- `InventoryDocumentsIntegrationTests.AStoreManagerCannotOperateTheDocumentsOfAnotherStore`:
+  contra SQL Server real, un Jefe de tienda no crea conteos ni traslados de otra
+  tienda y la base no recibe el documento, mientras su propia tienda sigue
+  funcionando.
 
 ## Cómo reproducir la verificación
 

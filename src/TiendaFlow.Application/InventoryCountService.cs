@@ -57,6 +57,7 @@ public sealed class InventoryCountService
     public int Create(int storeId, string? location)
     {
         _accessControl.Demand(Permissions.InventoryStockCount);
+        StoreScope.Demand(_currentUser, storeId);
 
         var store = _stores.GetById(storeId) ?? throw new StoreNotFoundException(storeId);
 
@@ -104,6 +105,7 @@ public sealed class InventoryCountService
         _accessControl.Demand(Permissions.InventoryStockCount);
 
         var count = _counts.GetById(countId) ?? throw new InventoryCountNotFoundException(countId);
+        StoreScope.Demand(_currentUser, count.StoreId);
         count.SetCounted(productSku, countedQuantity);
         _counts.Update(count);
     }
@@ -120,6 +122,7 @@ public sealed class InventoryCountService
             throw new InvalidInventoryCountException("No counted quantities were provided.");
 
         var count = _counts.GetById(countId) ?? throw new InventoryCountNotFoundException(countId);
+        StoreScope.Demand(_currentUser, count.StoreId);
 
         // Validate every pair before mutating the document so an invalid SKU
         // never leaves a half-updated sheet in the tracking context.
@@ -149,6 +152,7 @@ public sealed class InventoryCountService
         _accessControl.Demand(Permissions.InventoryStockCount);
 
         var count = _counts.GetById(countId) ?? throw new InventoryCountNotFoundException(countId);
+        StoreScope.Demand(_currentUser, count.StoreId);
 
         _unitOfWork.ExecuteInTransaction(() =>
         {
@@ -167,6 +171,7 @@ public sealed class InventoryCountService
         _accessControl.Demand(Permissions.InventoryStockCount);
 
         var count = _counts.GetById(countId) ?? throw new InventoryCountNotFoundException(countId);
+        StoreScope.Demand(_currentUser, count.StoreId);
 
         if (count.Status != InventoryCountStatus.Closed)
             throw new InvalidInventoryCountException("Only a closed count can be adjusted.");

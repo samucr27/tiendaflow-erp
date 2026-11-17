@@ -306,6 +306,66 @@ public class InventoryDocumentsIntegrationTests : IClassFixture<SqlServerDatabas
         }
     }
 
+    [SqlServerFact]
+    public void AStoreManagerCannotOperateTheDocumentsOfAnotherStore()
+    {
+        int ownStoreId;
+        int otherStoreId;
+        string sku;
+
+        using (var context = _database.CreateContext())
+        {
+            (ownStoreId, _) = NewStore(context);
+            (otherStoreId, _) = NewStore(context);
+            sku = NewProduct(context, "Producto de alcance por tienda", 4200m);
+            new EfStockRepository(context).Add(new StockItem(sku, otherStoreId, 5, "Bodega"));
+            new EfStockRepository(context).Add(new StockItem(sku, ownStoreId, 4, "Bodega"));
+        }
+
+        using (var context = _database.CreateContext())
+        {
+            var user = new TestCurrentUser(RoleNames.StoreManager, ownStoreId);
+
+            var counts = new InventoryCountService(
+                new EfInventoryCountRepository(context),
+                new EfStockRepository(context),
+                new EfStockQuery(context),
+                new EfStoreRepository(context),
+                new EfUnitOfWork(context),
+                new AllowAllAccessControl(),
+                new EfAuditLog(context),
+                user,
+                new TestClock(Now));
+
+            var transfers = new InventoryTransferService(
+                new EfInventoryTransferRepository(context),
+                new EfStockRepository(context),
+                new EfStoreRepository(context),
+                new EfUnitOfWork(context),
+                new AllowAllAccessControl(),
+                new EfAuditLog(context),
+                user,
+                new TestClock(Now));
+
+            var countDenial = Assert.Throws<AccessDeniedException>(
+                () => counts.Create(otherStoreId, "Bodega"));
+            var transferDenial = Assert.Throws<AccessDeniedException>(
+                () => transfers.Create(new CreateInventoryTransferRequest(
+                    otherStoreId,
+                    ownStoreId,
+                    new[] { new CreateInventoryTransferLine(sku, 1) })));
+
+            Assert.Equal("inventory.store.scope", countDenial.Permission);
+            Assert.Equal("inventory.store.scope", transferDenial.Permission);
+            Assert.False(context.InventoryCounts.Any(item => item.StoreId == otherStoreId));
+            Assert.False(context.InventoryTransfers.Any(item => item.OriginStoreId == otherStoreId));
+
+            // The store's own documents are still allowed.
+            var ownCountId = counts.Create(ownStoreId, "Bodega");
+            Assert.True(ownCountId > 0);
+        }
+    }
+
     private sealed class TestClock : IClock
     {
         public TestClock(DateTime utcNow) => UtcNow = utcNow;

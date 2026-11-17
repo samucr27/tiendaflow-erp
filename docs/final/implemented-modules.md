@@ -107,6 +107,16 @@ Reglas aplicadas en el dominio y en los servicios:
    movimientos parciales si algo falla.
 5. Las listas se paginan de 20 en 20 y los importes y fechas se muestran en
    español (es-CO), con la fecha almacenada en UTC.
+6. **Alcance por tienda:** el Jefe de tienda y el Auxiliar de bodega solo abren,
+   editan y consultan documentos de su propia tienda; el Administrador y el
+   Gerente corporativo trabajan sobre cualquier tienda. `StoreScope` exige el
+   alcance dentro del servicio, antes de leer el repositorio, y las listas
+   fuerzan el filtro a la tienda del usuario.
+7. **Doble envío:** el traslado descuenta con el token `RowVersion` de la fila de
+   stock. Si dos usuarios envían el mismo traslado a la vez, la segunda
+   escritura falla con `DbUpdateConcurrencyException` y la transacción se
+   revierte completa; nunca se descuenta dos veces. El detalle de la decisión
+   está en [pending-items.md](pending-items.md).
 
 ## Compras
 
@@ -240,12 +250,18 @@ Reglas aplicadas en el dominio y en `SalesReturnService`:
    antes de mutar, de modo que una fila faltante no deja una devolución a medias.
 6. Las pantallas paginan de 20 en 20 y muestran fechas e importes en español
    (es-CO), con la fecha almacenada en UTC.
+7. **Alcance por tienda:** el Jefe de tienda y el Auxiliar de bodega solo
+   registran, consultan, autorizan y rechazan devoluciones de su tienda; el
+   Administrador y el Gerente corporativo pueden operar cualquier tienda. La
+   lista y los selectores de factura se filtran por la tienda del usuario.
+8. La devolución debe reintegrar la misma tienda que emitió la factura. Si la
+   factura guarda otra tienda, el servicio rechaza la operación antes de tocar
+   el stock.
 
-**Limitación conocida:** `SalesInvoice` no guarda la tienda de emisión, así que el
-formulario pide elegir la tienda que recibe la devolución. El servicio exige que
-sea una tienda activa y usa esa tienda para el reingreso de stock. Documentar la
-tienda en la factura queda fuera del alcance de esta fase porque cambiaría el
-modelo de facturación y sus migraciones anteriores.
+**Tienda de la factura:** `SalesInvoice` guarda `StoreId` desde la integración
+de la fase de ventas. La devolución usa esa tienda para el reingreso de stock y
+rechaza una tienda distinta; una factura antigua sin tienda conserva el
+comportamiento anterior y permite elegirla en el formulario.
 
 ## Facturación simulada
 

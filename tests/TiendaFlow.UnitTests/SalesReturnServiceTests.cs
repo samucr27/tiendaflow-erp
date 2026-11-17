@@ -246,6 +246,124 @@ public class SalesReturnServiceTests
     }
 
     [Fact]
+    public void CreateByAStoreManagerForAnotherStoreIsDeniedBeforeReadingTheInvoice()
+    {
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StoreManager,
+            storeId: 2);
+
+        var exception = Assert.Throws<AccessDeniedException>(
+            () => CreateService(user: user).Create(Request(("SKU-1", 1))));
+
+        Assert.Equal("inventory.store.scope", exception.Permission);
+        _invoices.Verify(repository => repository.GetById(It.IsAny<int>()), Times.Never);
+        _returns.Verify(repository => repository.Add(It.IsAny<SalesReturn>()), Times.Never);
+        Assert.Equal(0, _unitOfWork.Executions);
+    }
+
+    [Fact]
+    public void CreateForAStoreOtherThanTheInvoicingStoreIsRejected()
+    {
+        var invoice = new SalesInvoice(0, "Ana Torres", "1020304050", Date.AddDays(-1), storeId: 2);
+        invoice.AddLine("SKU-1", "Agua 600 ml", 3, 2500m);
+        TestIds.Assign(invoice, 12);
+
+        _invoices.Setup(repository => repository.GetById(12)).Returns(invoice);
+        _stores.Setup(repository => repository.GetById(1)).Returns(_store);
+
+        var service = CreateService();
+
+        var exception = Assert.Throws<InvalidSalesReturnException>(
+            () => service.Create(Request(("SKU-1", 1))));
+
+        Assert.Contains("restock the store", exception.Message);
+        _returns.Verify(repository => repository.Add(It.IsAny<SalesReturn>()), Times.Never);
+    }
+
+    [Fact]
+    public void GetAFromAnotherStoreIsDenied()
+    {
+        var detail = new SalesReturnDetail(
+            new SalesReturnRow(
+                21, 12, 1, "Tienda Centro", "Ana Torres", "1020304050",
+                "Producto en mal estado", SalesReturnStatus.Pending, null, 1, 2500m,
+                Date.AddDays(-1), null),
+            Array.Empty<SalesReturnLineRow>());
+
+        _query.Setup(query => query.GetById(21)).Returns(detail);
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StockClerk,
+            storeId: 2);
+
+        var exception = Assert.Throws<AccessDeniedException>(
+            () => CreateService(user: user).Get(21));
+
+        Assert.Equal("inventory.store.scope", exception.Permission);
+    }
+
+    [Fact]
+    public void ListRestrictsTheFilterToTheUsersStore()
+    {
+        _query.Setup(query => query.List(1)).Returns(Array.Empty<SalesReturnRow>());
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StoreManager,
+            storeId: 1);
+
+        CreateService(user: user).List();
+
+        _query.Verify(query => query.List(1), Times.Once);
+        _query.Verify(query => query.List(null), Times.Never);
+    }
+
+    [Fact]
+    public void ListAsksForAnotherStoreAndIsDenied()
+    {
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StoreManager,
+            storeId: 1);
+
+        Assert.Throws<AccessDeniedException>(() => CreateService(user: user).List(2));
+        _query.Verify(query => query.List(It.IsAny<int?>()), Times.Never);
+    }
+
+    [Fact]
+    public void AuthorizeAFromAnotherStoreIsDeniedAndDoesNotTouchStock()
+    {
+        var salesReturn = Pending(id: 21, sku: "SKU-1", quantity: 2);
+        _returns.Setup(repository => repository.GetById(21)).Returns(salesReturn);
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StoreManager,
+            storeId: 2);
+
+        Assert.Throws<AccessDeniedException>(() => CreateService(user: user).Authorize(21));
+
+        Assert.Equal(SalesReturnStatus.Pending, salesReturn.Status);
+        _stock.Verify(repository => repository.Get(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+        Assert.Equal(0, _unitOfWork.Executions);
+    }
+
+    [Fact]
+    public void RejectAFromAnotherStoreIsDenied()
+    {
+        var salesReturn = Pending(id: 21, sku: "SKU-1", quantity: 2);
+        _returns.Setup(repository => repository.GetById(21)).Returns(salesReturn);
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StockClerk,
+            storeId: 2);
+
+        Assert.Throws<AccessDeniedException>(() => CreateService(user: user).Reject(21));
+
+        Assert.Equal(SalesReturnStatus.Pending, salesReturn.Status);
+        _returns.Verify(repository => repository.Update(It.IsAny<SalesReturn>()), Times.Never);
+    }
+
+    [Fact]
     public void GetThrowsWhenTheReturnDoesNotExist()
     {
         _query.Setup(query => query.GetById(99)).Returns((SalesReturnDetail?)null);
@@ -298,7 +416,7 @@ public class SalesReturnServiceTests
         _returns.Verify(repository => repository.Add(It.IsAny<SalesReturn>()), Times.Never);
     }
 
-    private SalesReturnService CreateService(IAccessControl? access = null) =>
+    private SalesReturnService CreateService(IAccessControl? access = null, ICurrentUser? user = null) =>
         new(
             _returns.Object,
             _query.Object,
@@ -308,7 +426,7 @@ public class SalesReturnServiceTests
             _unitOfWork,
             access ?? new AllowAllAccessControl(),
             _audit,
-            _user,
+            user ?? _user,
             _clock);
 
     private static CreateSalesReturnRequest Request(params (string Sku, int Quantity)[] lines) =>

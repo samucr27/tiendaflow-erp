@@ -22,6 +22,12 @@ internal sealed class AllowAllAccessControl : IAccessControl
 /// </summary>
 internal sealed class TestCurrentUser : ICurrentUser
 {
+    public TestCurrentUser(string role = RoleNames.Administrator, int? storeId = 1)
+    {
+        Role = role;
+        StoreId = storeId;
+    }
+
     public bool IsAuthenticated => true;
 
     public int? UserId => 1;
@@ -30,11 +36,11 @@ internal sealed class TestCurrentUser : ICurrentUser
 
     public string Email => "integration@tiendaflow.local";
 
-    public string Role => RoleNames.Administrator;
+    public string Role { get; }
 
     public string RoleLabel => "Administrador";
 
-    public int? StoreId => 1;
+    public int? StoreId { get; }
 
     public string StoreName => "Tienda Centro";
 

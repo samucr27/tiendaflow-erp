@@ -58,21 +58,26 @@ public sealed class SalesReturnService
     public IReadOnlyList<SalesReturnRow> List(int? storeId = null)
     {
         _accessControl.Demand(Permissions.SalesReturnsAuthorize);
-        return _query.List(storeId);
+        return _query.List(StoreScope.Restrict(_currentUser, storeId));
     }
 
     public SalesReturnDetail Get(int id)
     {
         _accessControl.Demand(Permissions.SalesReturnsAuthorize);
-        return _query.GetById(id) ?? throw new SalesReturnNotFoundException(id);
+
+        var detail = _query.GetById(id) ?? throw new SalesReturnNotFoundException(id);
+        StoreScope.Demand(_currentUser, detail.Return.StoreId);
+        return detail;
     }
 
     public IReadOnlyList<SalesReturnStoreOption> Stores()
     {
         _accessControl.Demand(Permissions.SalesReturnsAuthorize);
 
+        var scope = StoreScope.Restrict(_currentUser, null);
+
         return _stores.List()
-            .Where(store => store.Active)
+            .Where(store => store.Active && (scope is null || store.Id == scope))
             .OrderBy(store => store.Name, StringComparer.OrdinalIgnoreCase)
             .Select(store => new SalesReturnStoreOption(store.Id, store.Name))
             .ToList();
@@ -81,24 +86,31 @@ public sealed class SalesReturnService
     public IReadOnlyList<SalesReturnInvoiceOption> Invoices()
     {
         _accessControl.Demand(Permissions.SalesReturnsAuthorize);
-        return _query.ListReturnableInvoices();
+        return _query.ListReturnableInvoices(StoreScope.Restrict(_currentUser, null));
     }
 
     public IReadOnlyList<SalesReturnInvoiceLineOption> InvoiceLines(int invoiceId)
     {
         _accessControl.Demand(Permissions.SalesReturnsAuthorize);
-        return _query.ListInvoiceLines(invoiceId);
+        return _query.ListInvoiceLines(
+            invoiceId,
+            StoreScope.Restrict(_currentUser, null));
     }
 
     public int Create(CreateSalesReturnRequest request)
     {
         _accessControl.Demand(Permissions.SalesReturnsAuthorize);
+        StoreScope.Demand(_currentUser, request.StoreId);
 
         var invoice = _invoices.GetById(request.InvoiceId)
             ?? throw new InvoiceNotFoundException(request.InvoiceId);
 
         if (invoice.Status != InvoiceStatus.Issued)
             throw new InvalidSalesReturnException("Only an issued invoice can be returned.");
+
+        if (invoice.StoreId is not null && invoice.StoreId != request.StoreId)
+            throw new InvalidSalesReturnException(
+                "The return must restock the store that issued the invoice.");
 
         var store = _stores.GetById(request.StoreId)
             ?? throw new StoreNotFoundException(request.StoreId);
@@ -142,6 +154,8 @@ public sealed class SalesReturnService
 
         var salesReturn = _returns.GetById(id)
             ?? throw new SalesReturnNotFoundException(id);
+
+        StoreScope.Demand(_currentUser, salesReturn.StoreId);
 
         if (salesReturn.Status != SalesReturnStatus.Pending)
             throw new InvalidSalesReturnException("Only a pending return can be authorized.");
@@ -200,6 +214,8 @@ public sealed class SalesReturnService
 
         var salesReturn = _returns.GetById(id)
             ?? throw new SalesReturnNotFoundException(id);
+
+        StoreScope.Demand(_currentUser, salesReturn.StoreId);
 
         if (salesReturn.Status != SalesReturnStatus.Pending)
             throw new InvalidSalesReturnException("Only a pending return can be rejected.");

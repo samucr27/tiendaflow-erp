@@ -19,7 +19,7 @@ public class InventoryCountServiceTests
     private readonly FakeCurrentUser _user = new(userId: 5, ip: "10.0.0.7");
     private readonly FixedClock _clock = new(Date);
 
-    private InventoryCountService CreateService(IAccessControl? access = null) =>
+    private InventoryCountService CreateService(IAccessControl? access = null, ICurrentUser? user = null) =>
         new(
             _counts.Object,
             _stock.Object,
@@ -28,7 +28,7 @@ public class InventoryCountServiceTests
             _unitOfWork,
             access ?? new AllowAllAccessControl(),
             _audit,
-            _user,
+            user ?? _user,
             _clock);
 
     private static StockRow Row(
@@ -391,6 +391,67 @@ public class InventoryCountServiceTests
         _counts.Verify(repository => repository.GetById(It.IsAny<int>()), Times.Never);
     }
 
+    [Fact]
+    public void Create_ForAnotherStore_IsDeniedBeforeReadingStock()
+    {
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StoreManager,
+            storeId: 1);
+
+        var exception = Assert.Throws<AccessDeniedException>(
+            () => CreateService(user: user).Create(2, "Bodega"));
+
+        Assert.Equal("inventory.store.scope", exception.Permission);
+        _stockQuery.Verify(query => query.ListByStore(It.IsAny<int>()), Times.Never);
+        _counts.Verify(repository => repository.Add(It.IsAny<InventoryCount>()), Times.Never);
+    }
+
+    [Fact]
+    public void Adjust_ForAnotherStore_IsDeniedAndDoesNotTouchStock()
+    {
+        GivenCount();
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StockClerk,
+            storeId: 2);
+
+        var exception = Assert.Throws<AccessDeniedException>(
+            () => CreateService(user: user).Adjust(9));
+
+        Assert.Equal("inventory.store.scope", exception.Permission);
+        _stock.Verify(repository => repository.Get(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+        _stock.Verify(repository => repository.Update(It.IsAny<StockItem>()), Times.Never);
+        Assert.Equal(0, _unitOfWork.Executions);
+    }
+
+    [Fact]
+    public void Close_ForAnotherStore_IsDenied()
+    {
+        GivenCount();
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StoreManager,
+            storeId: 2);
+
+        Assert.Throws<AccessDeniedException>(() => CreateService(user: user).Close(9));
+        Assert.Equal(0, _unitOfWork.Executions);
+    }
+
+    [Fact]
+    public void SetCounted_ForAnotherStore_IsDenied()
+    {
+        GivenCount();
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StockClerk,
+            storeId: 2);
+
+        Assert.Throws<AccessDeniedException>(
+            () => CreateService(user: user).SetCounted(9, "SKU-1", 3));
+        _counts.Verify(repository => repository.Update(It.IsAny<InventoryCount>()), Times.Never);
+    }
+
     private InventoryCountService Restricted() =>
         CreateService(new AccessControl(
             new FakeCurrentUser(userId: 5, permissions: new HashSet<string>()),
@@ -420,7 +481,7 @@ public class InventoryTransferServiceTests
     private readonly FakeCurrentUser _user = new(userId: 5, ip: "10.0.0.7");
     private readonly FixedClock _clock = new(Date);
 
-    private InventoryTransferService CreateService(IAccessControl? access = null) =>
+    private InventoryTransferService CreateService(IAccessControl? access = null, ICurrentUser? user = null) =>
         new(
             _transfers.Object,
             _stock.Object,
@@ -428,7 +489,7 @@ public class InventoryTransferServiceTests
             _unitOfWork,
             access ?? new AllowAllAccessControl(),
             _audit,
-            _user,
+            user ?? _user,
             _clock);
 
     private static InventoryTransfer GivenTransfer(Action<InventoryTransfer>? prepare = null)
@@ -821,6 +882,83 @@ public class InventoryTransferServiceTests
 
         Assert.Equal(Permissions.InventoryStockTransfer, exception.Permission);
         _transfers.Verify(repository => repository.GetById(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public void Create_FromAnotherStore_IsDeniedBeforeReadingStock()
+    {
+        SetupStores();
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StockClerk,
+            storeId: 2);
+
+        var exception = Assert.Throws<AccessDeniedException>(() => CreateService(user: user).Create(
+            new CreateInventoryTransferRequest(1, 2, new[] { new CreateInventoryTransferLine("SKU-1", 1) })));
+
+        Assert.Equal("inventory.store.scope", exception.Permission);
+        _transfers.Verify(repository => repository.Add(It.IsAny<InventoryTransfer>()), Times.Never);
+        Assert.Equal(0, _unitOfWork.Executions);
+    }
+
+    [Fact]
+    public void Send_FromAnotherStore_IsDeniedAndDoesNotTouchStock()
+    {
+        SetupTransfer(GivenTransfer());
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StoreManager,
+            storeId: 2);
+
+        Assert.Throws<AccessDeniedException>(() => CreateService(user: user).Send(9));
+        _stock.Verify(repository => repository.Get(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+        _stock.Verify(repository => repository.Update(It.IsAny<StockItem>()), Times.Never);
+        Assert.Equal(0, _unitOfWork.Executions);
+    }
+
+    [Fact]
+    public void Receive_FromAnotherStore_IsDenied()
+    {
+        SetupTransfer(GivenTransfer(item => item.Send(Date)));
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StockClerk,
+            storeId: 2);
+
+        Assert.Throws<AccessDeniedException>(() => CreateService(user: user).Receive(9));
+        _stock.Verify(repository => repository.Get(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+        Assert.Equal(0, _unitOfWork.Executions);
+    }
+
+    [Fact]
+    public void Cancel_FromAnotherStore_IsDenied()
+    {
+        SetupTransfer(GivenTransfer());
+        var user = new FakeCurrentUser(
+            userId: 5,
+            role: RoleNames.StoreManager,
+            storeId: 2);
+
+        Assert.Throws<AccessDeniedException>(() => CreateService(user: user).Cancel(9));
+        _transfers.Verify(repository => repository.Update(It.IsAny<InventoryTransfer>()), Times.Never);
+        Assert.Equal(0, _unitOfWork.Executions);
+    }
+
+    [Fact]
+    public void CorporateManager_CanOperateOnAnyStore()
+    {
+        SetupStores();
+        var user = new FakeCurrentUser(
+            userId: 2,
+            role: RoleNames.CorporateManager,
+            storeId: 2);
+
+        var id = CreateService(user: user).Create(
+            new CreateInventoryTransferRequest(1, 2, new[] { new CreateInventoryTransferLine("SKU-1", 1) }));
+
+        _transfers.Verify(repository => repository.Add(It.IsAny<InventoryTransfer>()), Times.Once);
+        Assert.Equal(1, _unitOfWork.Executions);
+        Assert.Equal(0, id);
     }
 
     private InventoryTransferService Restricted() =>

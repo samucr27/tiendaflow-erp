@@ -55,6 +55,7 @@ public sealed class InventoryTransferService
     public int Create(CreateInventoryTransferRequest request)
     {
         _accessControl.Demand(Permissions.InventoryStockTransfer);
+        StoreScope.Demand(_currentUser, request.OriginStoreId);
 
         var origin = _stores.GetById(request.OriginStoreId)
             ?? throw new StoreNotFoundException(request.OriginStoreId);
@@ -95,6 +96,8 @@ public sealed class InventoryTransferService
 
         var transfer = _transfers.GetById(transferId)
             ?? throw new InventoryTransferNotFoundException(transferId);
+
+        StoreScope.Demand(_currentUser, transfer.OriginStoreId);
 
         if (transfer.Status != InventoryTransferStatus.Draft)
             throw new InvalidInventoryTransferException(
@@ -146,6 +149,8 @@ public sealed class InventoryTransferService
         var transfer = _transfers.GetById(transferId)
             ?? throw new InventoryTransferNotFoundException(transferId);
 
+        StoreScope.Demand(_currentUser, transfer.OriginStoreId);
+
         if (transfer.Status != InventoryTransferStatus.Sent)
             throw new InvalidInventoryTransferException(
                 $"Cannot receive a transfer in status {transfer.Status}.");
@@ -192,6 +197,8 @@ public sealed class InventoryTransferService
 
         var transfer = _transfers.GetById(transferId)
             ?? throw new InventoryTransferNotFoundException(transferId);
+
+        StoreScope.Demand(_currentUser, transfer.OriginStoreId);
 
         if (transfer.Status is not (InventoryTransferStatus.Draft or InventoryTransferStatus.Sent))
             throw new InvalidInventoryTransferException(
