@@ -24,11 +24,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 607 | 0 | 0 | 607 |
+| `TiendaFlow.UnitTests` | 635 | 0 | 0 | 635 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 49 | 0 | 0 | 49 |
+| `TiendaFlow.IntegrationTests` | 53 | 0 | 0 | 53 |
 
-Total ejecutado: **662 pruebas superadas**, sin omisiones ni errores. Las
+Total ejecutado: **694 pruebas superadas**, sin omisiones ni errores. Las
 pruebas nuevas de la revisión final se describen en la sección
 "Revisión final del 16 de noviembre".
 
@@ -240,8 +240,22 @@ prueba que fallaba antes del cambio o que cubre la regla nueva.
 | **Detalles de interfaz.** La barra lateral decía "Tienda Tienda Centro" y el aviso de parámetros de nómina usaba el estilo de error. | Nombre de la tienda sin prefijo y aviso con estilo de advertencia. | Verificado en capturas |
 
 Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en esta
-verificación (unión de las tres suites, `coverlet.collector`): **96,9 %**
-(Application 97,3 %, Domain 95,6 %).
+verificación (unión de las tres suites, `coverlet.collector`): **95,5 %**
+(Application 96,2 %, Domain 93,2 %), medida con los módulos de cierre.
+
+## Módulos de cierre del proyecto
+
+| Módulo | Pruebas |
+| --- | --- |
+| Venta POS con varios productos | `PosCartTests` |
+| Devoluciones (notas crédito) y venta neta | `SalesReturnServiceTests`, `CloseoutIntegrationTests.PartialReturn_IsSavedWithItsLinesAndPutsUnitsBack` |
+| Matriz de roles editable | `RoleEditorServiceTests`, `CloseoutIntegrationTests.RoleMatrix_IsStoredAndUsedAtSignIn` |
+| Reporte de seguridad | `SecurityReportServiceTests` |
+| Contratos, asistencia, turnos y ausencias en nómina | `HumanResourcesRecordsServiceTests` |
+| Corrida de nómina guardada | `PayrollHistoryServiceTests` |
+| Puntos, PQRS y campañas | `CrmRecordsTests`, `CloseoutIntegrationTests.HrAndCrmRecords_RoundTripThroughSqlServer` |
+| `401`/`403` en `/api` | `WebSmokeTests.ApiRoutesAnswer401And403InsteadOfRedirecting` |
+| Pantallas nuevas por rol | `WebSmokeTests` (siete rutas nuevas) |
 
 ## Cómo reproducir la verificación
 

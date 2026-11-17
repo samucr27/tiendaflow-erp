@@ -184,11 +184,11 @@ service principal, fuera del alcance de la suscripción de estudiante.
 
 | Criterio | Estado | Evidencia |
 |---|---|---|
-| Cobertura de lógica de negocio mayor al 80 % | Cumplido | 96,9 % de líneas en Application + Domain (versión final, 16 de noviembre) |
+| Cobertura de lógica de negocio mayor al 80 % | Cumplido | 95,5 % de líneas en Application + Domain (versión final, 16 de noviembre) |
 | arc42 actualizado por cada HU terminada | Cumplido | Secciones 05, 07 y 10 actualizadas en el mismo PR que los módulos |
 | Build sin advertencias ni errores | Cumplido | `dotnet build` con 0 advertencias y 0 errores |
-| `dotnet test` en verde antes de cada commit | Cumplido | 662 pruebas en verde: 607 unitarias, 6 de aceptación y 49 de integración contra SQL Server |
-| Una migración de EF Core por fase | Cumplido | De `Phase3Purchasing` a `Phase11PosSalesAndInvoiceStock` |
+| `dotnet test` en verde antes de cada commit | Cumplido | 694 pruebas en verde: 635 unitarias, 6 de aceptación y 53 de integración contra SQL Server |
+| Una migración de EF Core por fase | Cumplido | De `Phase3Purchasing` a `Phase12CloseoutModules` |
 | Nada de datos personales en logs | Cumplido | La auditoría guarda ids, estados, conteos y totales |
 | Pull request revisado por un compañero | **Pendiente** | Los PR #2 a #8 se fusionaron sin una revisión aprobada en GitHub; GitHub no permite que el autor apruebe su propio PR |
 
@@ -210,22 +210,20 @@ service principal, fuera del alcance de la suscripción de estudiante.
 - La fecha de entrega (antes del 11 de noviembre de 2026) dejó poco margen para
   CRM, Facturación y la interfaz de Compras y RR. HH.
 
-## 11. Acciones de mejora para el Sprint 3
+## 11. Lecciones aprendidas
 
-1. **Spike antes de estimar** toda HU con complejidad legal o regulatoria
+El proyecto termina con este sprint, así que estas lecciones quedan como cierre
+y no como acciones de un sprint siguiente:
+
+1. **Investigar antes de estimar** toda HU con complejidad legal o regulatoria
    (nómina, impuestos, facturación electrónica), con la regla de la sección 6.
-2. **IaC:** mantener el workflow que valida Terraform en cada PR a `develop`
-   con cambios `.tf` y recuperar el `terraform plan` automático cuando el equipo
-   tenga una suscripción que permita credenciales dinámicas de HCP Terraform o
-   un service principal; mientras tanto, adjuntar al PR la salida del `plan`
-   ejecutado a mano.
-3. **Reparto de trabajo:** asignar desde el Sprint Planning al menos una HU o
-   tarea por integrante y exigir la revisión de cada PR por un compañero.
-4. **Cerrar la brecha de cobertura de integración:** definir una base SQL Server
-   efímera en CI o un contenedor de servicio para ejecutar en GitHub Actions las
-   49 pruebas de integración, que hoy solo corren en local.
-5. **Registrar horas por HU** en el tablero para poder comparar estimado y real
-   en la próxima retrospectiva.
+2. **Infraestructura como código:** el `terraform plan` automático necesita
+   credenciales de nube desde el principio; sin ellas, el CI solo valida.
+3. **Reparto y revisión:** asignar trabajo a todos los integrantes desde el
+   Sprint Planning y exigir la revisión de cada pull request por un compañero.
+4. **Pruebas con varios usuarios:** los errores de concurrencia solo
+   aparecieron al probar con varias sesiones a la vez.
+5. **Registrar horas por HU** para poder comparar estimado y real.
 
 ## 12. Cierre de la entrega (16 de noviembre de 2026)
 
@@ -245,6 +243,13 @@ La revisión y sus correcciones llegaron a `main` con los PR #6, #7 y #8
 - **HU-05:** el comprobante de la venta avisa cuando el producto queda en stock
   crítico.
 
-Detalle y pruebas en `docs/final/testing.md`. Quedan pendientes la revisión
-cruzada de los PR, el video del tour de arquitectura (Tarea 2) y la publicación
-de `main` en Azure con las migraciones hasta `Phase11PosSalesAndInvoiceStock`.
+Con el cierre del proyecto se implementaron también las funciones que los
+permisos reservaban: venta POS con varios productos, devoluciones (notas
+crédito), respuestas `401`/`403` en `/api`, matriz de roles editable, reporte de
+seguridad, contratos, asistencia, turnos, corrida de nómina guardada, puntos de
+fidelización, PQRS y campañas (migración `Phase12CloseoutModules`). La factura
+electrónica real ante la DIAN queda fuera del alcance.
+
+Detalle y pruebas en `docs/final/testing.md`. Quedan pendientes de operación la
+revisión cruzada de los PR y la publicación de `main` en Azure con las
+migraciones hasta `Phase12CloseoutModules`.

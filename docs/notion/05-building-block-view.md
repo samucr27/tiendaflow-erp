@@ -37,7 +37,7 @@ TiendaFlow es una única aplicación Blazor Web App organizada en cuatro capas c
 | `ContractTypeLabels` (Application) | Traduce entre el enum `ContractType` y las etiquetas en español guardadas en `Employees.ContractType` (`Indefinido`, `Término fijo`, `Obra o labor`, `Prestación de servicios`). Al parsear acepta variantes sin tilde y nombres del enum. | Mantiene desacopladas las etiquetas de persistencia y el enum de nómina. |
 | Páginas `/rrhh/empleados`, `/rrhh/empleados/nuevo`, `/rrhh/empleados/{id}` y `/rrhh/nomina` (Web) | Listado de empleados, formulario de alta/edición y pantalla de corrida mensual. Políticas: `hr.employees.view`, `hr.employees.manage` y `hr.payroll.manage`. La pantalla de nómina muestra un aviso visible de que los parámetros son de referencia y están pendientes de validación legal. | Defensa en profundidad: política de página, visibilidad en la interfaz y `Demand` en el servicio. |
 
-**Limitación explícita:** las corridas de nómina **no se persisten**. `PayrollRunService` calcula y devuelve un resultado en memoria; al cerrar o recalcular la página se descarta. Persistir corridas, sus líneas y un cierre de período queda para un sprint posterior y requeriría tablas nuevas (y por tanto una migración).
+**Corridas guardadas:** `PayrollHistoryService` guarda la corrida de cada mes (tablas `payroll_run` y `payroll_run_line`) con una copia del resultado de cada empleado. Las ausencias registradas en asistencia se descuentan de los días trabajados. *Texto anterior:* las corridas de nómina **no se persistían**. `PayrollRunService` calcula y devuelve un resultado en memoria; al cerrar o recalcular la página se descarta. Persistir corridas, sus líneas y un cierre de período queda para un sprint posterior y requeriría tablas nuevas (y por tanto una migración).
 
 ## 5.4 Vista de nivel 2: proveedores y órdenes de compra (Sprint 2)
 
@@ -73,7 +73,7 @@ TiendaFlow es una única aplicación Blazor Web App organizada en cuatro capas c
 | `EfCustomerRepository`, `EfCustomerQuery`, `CustomerConfiguration` (Infrastructure) | Mapeo EF Core de `customer` con índice único en `document_number`; migración `20261111010125_Phase5Crm`. | Ignorancia de la persistencia. |
 | Páginas `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id:int}` (Web) | Lista con búsqueda y acción de desactivación, formulario de alta/edición con datos de contacto y estado activo. | Política de página + visibilidad en la interfaz + `Demand` en el servicio. |
 
-**Segmentación A/B/C:** `CustomerSegmentationService` ordena a los clientes por valor facturado y asigna A al 20 % superior, B al 30 % siguiente y C al resto (pantalla `/crm/segmentacion`, permiso `crm.reports.view`). Campañas, puntos y PQRS quedan fuera de alcance.
+**Segmentación A/B/C:** `CustomerSegmentationService` ordena a los clientes por valor facturado y asigna A al 20 % superior, B al 30 % siguiente y C al resto (pantalla `/crm/segmentacion`, permiso `crm.reports.view`). Puntos de fidelización, PQRS y campañas se describen en la sección 5.6.3.
 
 ## 5.6.1 Vista de nivel 2: punto de venta (HU-05)
 
@@ -94,7 +94,22 @@ TiendaFlow es una única aplicación Blazor Web App organizada en cuatro capas c
 | Ranking de proveedores | Calificación, puntualidad y cumplimiento calculados con las recepciones reales (`/proveedores/ranking`). |
 | `InventoryCountService` / `InventoryTransferService` | Conteos físicos que ajustan el stock al cerrarse y traslados entre tiendas con salida y entrada. |
 | `StoreService` / `ParameterService` | Administración de tiendas con desactivación protegida y parámetros versionados con fecha de vigencia. |
-| Servicios de `Reporting` | Reportes de inventario, ventas (facturas y ventas POS) y nómina con exportación CSV. |
+| Servicios de `Reporting` | Reportes de inventario, ventas (facturas, ventas POS y devoluciones), nómina y seguridad con exportación CSV. |
+
+## 5.6.3 Vista de nivel 2: módulos de cierre del proyecto
+
+| Componente | Responsabilidad | Permiso |
+|---|---|---|
+| `SalesReturn` / `SalesReturnService` | Devolución parcial de una factura emitida (nota crédito); limita las unidades a lo facturado menos lo ya devuelto y las regresa al stock. | `sales.returns.authorize` |
+| `PosSaleService.RegisterCart` | Venta POS con varios productos en un solo documento y una sola transacción. | `sales.pos.use` |
+| `EmploymentContract`, `AttendanceRecord`, `WorkShift` / `HumanResourcesRecordsService` | Contratos con vigencia y prórrogas, asistencia y novedades, y turnos sin cruces. | `hr.contracts.manage`, `hr.attendance.manage`, `hr.shifts.manage` |
+| `PayrollRunRecord` / `PayrollHistoryService` | Corrida de nómina guardada por mes. | `hr.payroll.manage` |
+| `LoyaltyPointsEntry` / `LoyaltyService` | Libro de puntos: un punto por cada $ 1.000 facturado a un cliente registrado; la anulación los revierte; canje. | `crm.points.manage` |
+| `PqrsCase` / `PqrsService` | PQRS con radicado, responsable y plazo de 15 días. | `crm.pqrs.manage` |
+| `MarketingCampaign` / `CampaignService` | Campañas por segmento A/B/C con su resultado en facturas. | `crm.campaigns.manage` |
+| `RolePermissionGrant` / `RoleEditorService` | Matriz de roles editable que reemplaza la configuración por defecto en el siguiente inicio de sesión. | `security.roles.manage` |
+| `SecurityReportService` | Conteos de inicios de sesión, accesos denegados y cambios de usuarios y roles. | `security.reports.view` |
+| `IEntityStore<T>` / `EfEntityStore<T>` | Puerto genérico de persistencia de los módulos de cierre (migración `Phase12CloseoutModules`). | — |
 
 ## 5.7 Coherencia con la Sección 10
 
