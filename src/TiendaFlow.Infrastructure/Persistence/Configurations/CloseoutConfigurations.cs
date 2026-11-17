@@ -158,6 +158,46 @@ public class MarketingCampaignConfiguration : IEntityTypeConfiguration<Marketing
     }
 }
 
+public class PayrollRunRecordConfiguration : IEntityTypeConfiguration<PayrollRunRecord>
+{
+    public void Configure(EntityTypeBuilder<PayrollRunRecord> builder)
+    {
+        builder.ToTable("payroll_run");
+        builder.HasKey(item => item.Id);
+        builder.Property(item => item.Id).HasColumnName("id").ValueGeneratedOnAdd();
+        builder.Property(item => item.Period).HasColumnName("period").HasMaxLength(7).IsRequired();
+        builder.Property(item => item.DaysWorked).HasColumnName("days_worked");
+        builder.Property(item => item.RiskClass).HasColumnName("risk_class");
+        builder.Property(item => item.CreatedByUserId).HasColumnName("created_by_user_id");
+        builder.Property(item => item.CreatedAt).HasColumnName("created_at").HasColumnType("datetime2");
+        builder.Ignore(item => item.TotalGross);
+        builder.Ignore(item => item.TotalDeductions);
+        builder.Ignore(item => item.TotalNet);
+        builder.Ignore(item => item.TotalEmployerCost);
+        builder.HasIndex(item => item.Period).IsUnique();
+        builder.HasMany(item => item.Lines).WithOne().HasForeignKey(line => line.PayrollRunRecordId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(item => item.Lines).UsePropertyAccessMode(PropertyAccessMode.Field).AutoInclude();
+    }
+}
+
+public class PayrollRunRecordLineConfiguration : IEntityTypeConfiguration<PayrollRunRecordLine>
+{
+    public void Configure(EntityTypeBuilder<PayrollRunRecordLine> builder)
+    {
+        builder.ToTable("payroll_run_line");
+        builder.HasKey(line => line.Id);
+        builder.Property(line => line.Id).HasColumnName("id").ValueGeneratedOnAdd();
+        builder.Property(line => line.PayrollRunRecordId).HasColumnName("payroll_run_id");
+        builder.Property(line => line.EmployeeId).HasColumnName("employee_id");
+        builder.Property(line => line.EmployeeName).HasColumnName("employee_name").HasMaxLength(200).IsRequired();
+        builder.Property(line => line.DaysApplied).HasColumnName("days_applied");
+        builder.Property(line => line.GrossEarnings).HasColumnName("gross_earnings").HasPrecision(18, 2);
+        builder.Property(line => line.Deductions).HasColumnName("deductions").HasPrecision(18, 2);
+        builder.Property(line => line.NetPay).HasColumnName("net_pay").HasPrecision(18, 2);
+        builder.Property(line => line.EmployerCost).HasColumnName("employer_cost").HasPrecision(18, 2);
+    }
+}
+
 public class RolePermissionGrantConfiguration : IEntityTypeConfiguration<RolePermissionGrant>
 {
     public void Configure(EntityTypeBuilder<RolePermissionGrant> builder)

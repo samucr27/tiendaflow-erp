@@ -80,6 +80,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SalesReturnService>();
         services.AddScoped<RoleEditorService>();
         services.AddScoped<HumanResourcesRecordsService>();
+        services.AddScoped<Application.Payroll.PayrollHistoryService>();
         services.AddScoped<LoyaltyService>();
         services.AddScoped<ILoyaltyProgram>(provider => provider.GetRequiredService<LoyaltyService>());
         services.AddScoped<PqrsService>();

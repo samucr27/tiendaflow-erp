@@ -159,6 +159,8 @@ public static class DomainErrorTranslator
         ["The employee already has a record for that day."] = "El empleado ya tiene un registro para ese día.",
         ["The shift must end after it starts."] = "El turno debe terminar después de empezar.",
         ["The shift overlaps another shift of the same employee."] = "El turno se cruza con otro turno del mismo empleado.",
+        ["A payroll run is already saved for the period."] = "Ya hay una corrida de nómina guardada para ese mes.",
+        ["The run has no calculated employees to save."] = "La corrida no tiene empleados calculados para guardar.",
         ["The points to redeem must be greater than zero."] = "Los puntos a canjear deben ser mayores que cero.",
         ["A customer or a contact is required."] = "Indica el cliente o un dato de contacto.",
         ["The subject is required."] = "El asunto es obligatorio.",

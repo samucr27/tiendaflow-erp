@@ -621,6 +621,99 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("marketing_campaign", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.PayrollRunRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<int>("DaysWorked")
+                        .HasColumnType("int")
+                        .HasColumnName("days_worked");
+
+                    b.Property<string>("Period")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)")
+                        .HasColumnName("period");
+
+                    b.Property<int>("RiskClass")
+                        .HasColumnType("int")
+                        .HasColumnName("risk_class");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Period")
+                        .IsUnique();
+
+                    b.ToTable("payroll_run", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PayrollRunRecordLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DaysApplied")
+                        .HasColumnType("int")
+                        .HasColumnName("days_applied");
+
+                    b.Property<decimal>("Deductions")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("deductions");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int")
+                        .HasColumnName("employee_id");
+
+                    b.Property<string>("EmployeeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("employee_name");
+
+                    b.Property<decimal>("EmployerCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("employer_cost");
+
+                    b.Property<decimal>("GrossEarnings")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("gross_earnings");
+
+                    b.Property<decimal>("NetPay")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("net_pay");
+
+                    b.Property<int>("PayrollRunRecordId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_run_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PayrollRunRecordId");
+
+                    b.ToTable("payroll_run_line", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
                 {
                     b.Property<int>("Id")
@@ -1439,6 +1532,15 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.PayrollRunRecordLine", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.PayrollRunRecord", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("PayrollRunRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.Store", null)
@@ -1620,6 +1722,11 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.InventoryTransfer", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PayrollRunRecord", b =>
                 {
                     b.Navigation("Lines");
                 });

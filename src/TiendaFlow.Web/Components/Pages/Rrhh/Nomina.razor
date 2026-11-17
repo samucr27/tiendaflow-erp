@@ -4,6 +4,7 @@
 @using TiendaFlow.Application.Payroll
 @inject PayrollRunService PayrollRunService
 @inject HumanResourcesRecordsService Records
+@inject PayrollHistoryService History
 @inject IAccessControl AccessControl
 @inject NavigationManager Navigation
 
@@ -266,6 +267,65 @@ else if (_run is not null)
     }
 }
 
+@if (_saveMessage is not null)
+{
+    <div class="alert alert-success" role="status">@_saveMessage</div>
+}
+@if (_saveError is not null)
+{
+    <div class="alert alert-error" role="alert">@_saveError</div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Corridas guardadas</h2>
+            <p class="card-subtitle">Una corrida por mes. Guarda la corrida calculada para consultarla después.</p>
+        </div>
+        @if (_run is not null && _run.CalculatedCount > 0)
+        {
+            <button type="button" class="button button-primary" @onclick="SaveRun">Guardar corrida de @_month.ToString("yyyy-MM")</button>
+        }
+    </div>
+
+    @if (_saved.Count == 0)
+    {
+        <EmptyState Title="Sin corridas guardadas" Message="Calcula la nómina del mes y guárdala." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Periodo</th>
+                        <th class="num">Días</th>
+                        <th class="num">Empleados</th>
+                        <th class="num">Devengado</th>
+                        <th class="num">Neto</th>
+                        <th class="num">Costo empleador</th>
+                        <th>Guardada</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var saved in _saved)
+                    {
+                        <tr>
+                            <td>@saved.Period</td>
+                            <td class="num">@saved.DaysWorked</td>
+                            <td class="num">@saved.EmployeeCount</td>
+                            <td class="num">@Formatters.Money(saved.TotalGross)</td>
+                            <td class="num">@Formatters.Money(saved.TotalNet)</td>
+                            <td class="num">@Formatters.Money(saved.TotalEmployerCost)</td>
+                            <td>@Formatters.ShortDateTime(saved.CreatedAt)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
 @code {
     private int _daysWorked = 30;
     private int _riskClass = 1;
@@ -275,6 +335,42 @@ else if (_run is not null)
 
     private DateTime _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private bool _discountAbsences = true;
+    private IReadOnlyList<SavedPayrollRunRow> _saved = [];
+    private string? _saveMessage;
+    private string? _saveError;
+
+    protected override void OnInitialized() => LoadSaved();
+
+    private void LoadSaved()
+    {
+        try
+        {
+            _saved = History.List();
+        }
+        catch (Exception exception)
+        {
+            _saveError = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void SaveRun()
+    {
+        if (_run is null)
+            return;
+
+        _saveError = null;
+        _saveMessage = null;
+        try
+        {
+            History.Save(_run, _month.Year, _month.Month);
+            _saveMessage = $"Corrida de {_month:yyyy-MM} guardada.";
+            LoadSaved();
+        }
+        catch (Exception exception)
+        {
+            _saveError = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
 
     private void Calculate()
     {

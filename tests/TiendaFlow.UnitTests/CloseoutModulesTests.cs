@@ -523,3 +523,28 @@ public class SecurityReportServiceTests
         Assert.Contains("Accesos denegados", report.ToCsv());
     }
 }
+
+public class PayrollHistoryServiceTests
+{
+    [Fact]
+    public void Save_KeepsOneRunPerMonthWithTheCalculatedEmployees()
+    {
+        var store = new InMemoryEntityStore<PayrollRunRecord>();
+        var service = new PayrollHistoryService(store, new AllowAllAccessControl(), new RecordingAuditLog(),
+            new FakeCurrentUser(), new FixedClock(new DateTime(2026, 11, 16, 15, 0, 0, DateTimeKind.Utc)));
+        var run = new PayrollRun(30, 1, new[]
+        {
+            new PayrollRunLine(1, "Ana", "Cajera", "Indefinido",
+                new PayrollResult { GrossEarnings = 2_099_095m, EmployeeHealth = 74_000m, EmployeePension = 74_000m }, null, 30),
+            new PayrollRunLine(2, "Sin salario", "Cajero", "Indefinido", null, "Sin salario")
+        });
+
+        service.Save(run, 2026, 11);
+
+        var saved = Assert.Single(service.List());
+        Assert.Equal("2026-11", saved.Period);
+        Assert.Equal(1, saved.EmployeeCount);
+        Assert.Equal(1_951_095m, saved.TotalNet);
+        Assert.Throws<InvalidHrRecordException>(() => service.Save(run, 2026, 11));
+    }
+}

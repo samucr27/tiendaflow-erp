@@ -103,6 +103,23 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "payroll_run",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    period = table.Column<string>(type: "nvarchar(7)", maxLength: 7, nullable: false),
+                    days_worked = table.Column<int>(type: "int", nullable: false),
+                    risk_class = table.Column<int>(type: "int", nullable: false),
+                    created_by_user_id = table.Column<int>(type: "int", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_payroll_run", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "pqrs_case",
                 columns: table => new
                 {
@@ -209,6 +226,32 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "payroll_run_line",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    payroll_run_id = table.Column<int>(type: "int", nullable: false),
+                    employee_id = table.Column<int>(type: "int", nullable: false),
+                    employee_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    days_applied = table.Column<int>(type: "int", nullable: false),
+                    gross_earnings = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    deductions = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    net_pay = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    employer_cost = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_payroll_run_line", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_payroll_run_line_payroll_run_payroll_run_id",
+                        column: x => x.payroll_run_id,
+                        principalTable: "payroll_run",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "sales_return_line",
                 columns: table => new
                 {
@@ -251,6 +294,17 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                 name: "IX_loyalty_points_entry_invoice_id",
                 table: "loyalty_points_entry",
                 column: "invoice_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_payroll_run_period",
+                table: "payroll_run",
+                column: "period",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_payroll_run_line_payroll_run_id",
+                table: "payroll_run_line",
+                column: "payroll_run_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_pqrs_case_customer_id",
@@ -304,6 +358,9 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                 name: "marketing_campaign");
 
             migrationBuilder.DropTable(
+                name: "payroll_run_line");
+
+            migrationBuilder.DropTable(
                 name: "pqrs_case");
 
             migrationBuilder.DropTable(
@@ -314,6 +371,9 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "work_shift");
+
+            migrationBuilder.DropTable(
+                name: "payroll_run");
 
             migrationBuilder.DropTable(
                 name: "sales_return");

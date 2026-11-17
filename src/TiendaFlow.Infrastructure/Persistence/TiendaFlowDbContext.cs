@@ -55,6 +55,8 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<RolePermissionGrant> RolePermissionGrants => Set<RolePermissionGrant>();
 
+    public DbSet<PayrollRunRecord> PayrollRuns => Set<PayrollRunRecord>();
+
     public DbSet<Customer> Customers => Set<Customer>();
 
     public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
