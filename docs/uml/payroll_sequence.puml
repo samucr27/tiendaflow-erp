@@ -11,7 +11,7 @@ participant "IWithholdingCalculator" as Withholding
 
 Client -> Auth : POST PayrollInput (cookie)
 alt not authenticated or missing hr.payroll.manage
-    Auth --> Client : redirect to /login or /acceso-denegado\n(denied attempt audited)
+    Auth --> Client : 401 Unauthorized (no session) or\n403 Forbidden (no permission, audited)
 else authorized
     Auth -> Endpoint : request
     Endpoint -> Engine : Calculate(input)
