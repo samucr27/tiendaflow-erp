@@ -1,29 +1,59 @@
 # 07 — Vista de despliegue
 
-## 7.1 Nivel 1 de infraestructura
+Versión final del Sprint 2 (16 de noviembre de 2026). TiendaFlow tiene dos entornos: el
+de desarrollo en la máquina de cada integrante y el de producción en Azure, descrito con
+Terraform.
+
+## 7.1 Nivel 1 de infraestructura: producción en Azure
 
 | Nodo | Tecnología | Contenido |
 |---|---|---|
-| Servidor de aplicación | .NET 9, Kestrel (`http://localhost:5212` en desarrollo) | Blazor Web App `TiendaFlow.Web` con renderizado interactivo en servidor: interfaz, endpoints Minimal API y autenticación por cookie. |
-| Servidor de base de datos | SQL Server 2022 en un contenedor Docker (`tiendaflow-sql`, puerto 1433) | Base de datos `TiendaFlow_OpenCode`, creada a partir de las migraciones de EF Core. |
-| Integración continua | GitHub Actions (`.github/workflows/ci.yml`, .NET 9.0.x) | Restore, build y test con cobertura XPlat en cada push. |
-| Infraestructura como código | Terraform con estado remoto en HCP Terraform (`.github/workflows/terraform-plan.yml`, `infra/terraform/main.tf`) | `terraform init`, `validate` y `plan` en pull requests a `develop`; el plan se ejecutó en verde contra el backend remoto. El recurso actual es un *placeholder* y no hubo `apply`. |
+| Grupo de recursos | `azurerm_resource_group`, región `canadacentral` por defecto | Agrupa todos los recursos del ERP con las mismas etiquetas. |
+| Servidor de aplicación | Azure App Service Linux, plan `B1`, .NET 9 (`azurerm_service_plan`, `azurerm_linux_web_app`) | Blazor Web App `TiendaFlow.Web` con renderizado interactivo en servidor. Solo HTTPS, WebSockets activos (los usa Blazor Server), *Always On*, FTP deshabilitado y sonda de salud en `/healthz`. URL actual: `app-tiendaflow-ba67bx.azurewebsites.net`. |
+| Base de datos | Azure SQL, servidor `azurerm_mssql_server` (TLS 1.2 mínimo) y base `TiendaFlow` nivel `Basic` | Esquema creado con las migraciones de EF Core, de `InitialCreate` a `Phase11PosSalesAndInvoiceStock`. |
+| Firewall de Azure SQL | `AllowAzureServices` y, opcional, `AllowClientIp` | El App Service entra por la regla de servicios de Azure; la IP del operador solo se abre para ejecutar migraciones desde su equipo. |
+| Estado de Terraform | HCP Terraform, organización `Tienda-Flow`, workspace `tiendaflow-infra`, modo de ejecución *Local* | HCP guarda y bloquea el state compartido; `plan` y `apply` corren en la máquina del operador con `az login`. |
+| Integración continua | GitHub Actions: `ci.yml`, `terraform-plan.yml` (Terraform Validate) y `azure-deploy.yml` (manual) | Build y pruebas en cada push; validación de Terraform en PR a `develop`; publicación manual con perfil de publicación. |
 
-## 7.2 Configuración y secretos
+## 7.2 Nivel 1 de infraestructura: desarrollo
 
-- La cadena de conexión y las contraseñas de los usuarios de demostración viven solo en `dotnet user-secrets` durante el desarrollo. Nunca se versionan.
-- En Development, un seeder hospedado crea el administrador y un usuario de demostración por rol cuando la base está vacía.
-- Las pruebas de integración solo se ejecutan si existe la variable `TIENDAFLOW_TEST_CONNECTION`. En GitHub Actions, donde no hay SQL Server, se omiten y las pruebas unitarias y de aceptación siguen ejecutándose.
-- Los nombres de los secretos de desarrollo son `Seed:AdminPassword` y `Seed:DemoPassword`. Sus valores no se escriben en la documentación.
+| Nodo | Tecnología | Contenido |
+|---|---|---|
+| Servidor de aplicación | .NET 9, Kestrel (`http://localhost:5212`) | La misma aplicación en entorno `Development`. |
+| Base de datos | SQL Server 2022 en Docker (contenedor `tiendaflow-sql`, puerto 1433) | Migraciones aplicadas al arrancar (`Database:MigrateOnStartup = true`) y datos de demostración (`Seed:Enabled = true`). |
+| Pruebas de integración | La misma instancia de SQL Server | Cada corrida crea una base única, aplica todas las migraciones y la borra al terminar. |
 
-## 7.3 Flujo de despliegue
+## 7.3 Configuración y secretos
 
-1. El equipo trabaja en una rama de feature y ejecuta build y pruebas en local.
-2. El push dispara el CI: build y pruebas con cobertura.
-3. `dotnet ef database update` aplica las migraciones, una por fase.
-4. La automatización de infraestructura con Terraform y estado remoto ejecuta `init`, `validate` y `plan` en pull requests a `develop`; el plan se verificó en verde. Todavía no hay `apply`, así que no se crea infraestructura real.
+| Ajuste | Desarrollo | Producción (App Service) |
+|---|---|---|
+| Cadena de conexión | `dotnet user-secrets` | `ConnectionStrings__DefaultConnection`, generada por Terraform; se fuerza `Encrypt=True` fuera de `Development` |
+| Migraciones al arrancar | `Database:MigrateOnStartup = true` | `false`: el esquema se actualiza con el bundle de EF Core |
+| Datos de demostración | `Seed:Enabled = true` con `Seed:AdminPassword` y `Seed:DemoPassword` en user-secrets | `Seed__Enabled` según la variable `seed_enabled` (por defecto `false`) |
+| Claves de Data Protection | Almacén por defecto de ASP.NET Core en el perfil del usuario | `/home/.tiendaflow/keys`, la ruta persistente de App Service Linux, para que las cookies sobrevivan a reinicios |
+| Encabezados reenviados | No aplica | `ASPNETCORE_FORWARDEDHEADERS_ENABLED = true`: App Service termina TLS y reenvía protocolo e IP del cliente |
 
-## 7.4 Integración continua
+Las contraseñas y cadenas de conexión nunca se versionan. En Terraform, la contraseña del
+administrador de Azure SQL y las de demostración son variables sensibles del workspace.
+
+## 7.4 Flujo de despliegue
+
+1. El equipo trabaja en una rama de feature; el push ejecuta `ci.yml` (restore, build y
+   pruebas con cobertura).
+2. El pull request a `develop` ejecuta además **Terraform Validate** cuando cambian
+   archivos `.tf`.
+3. `develop` se lleva a `main` con un pull request de entrega.
+4. **Infraestructura:** el operador ejecuta `terraform plan` y `terraform apply` desde su
+   máquina contra el workspace de HCP Terraform.
+5. **Esquema:** se genera el bundle (`dotnet ef migrations bundle`) y se ejecuta contra
+   Azure SQL desde la IP autorizada.
+6. **Aplicación:** `dotnet publish` y `az webapp deploy`, o el workflow manual
+   `azure-deploy.yml`. Al terminar se comprueba que `/healthz` responda `200`.
+
+El procedimiento completo, con comandos y solución de problemas, está en
+`docs/final/deploy-azure.md`.
+
+## 7.5 Integración continua
 
 | Paso | Comando o acción | Resultado esperado |
 |---|---|---|
@@ -31,21 +61,24 @@
 | SDK | `actions/setup-dotnet@v4` con .NET 9.0.x | SDK disponible |
 | Restore | `dotnet restore` | Paquetes restaurados |
 | Build | `dotnet build --no-restore` | 0 advertencias y 0 errores |
-| Test | `dotnet test --no-build --collect:"XPlat Code Coverage"` | Pruebas unitarias y de aceptación; integración omitida sin SQL Server |
+| Test | `dotnet test --no-build --collect:"XPlat Code Coverage"` | Pruebas unitarias y de aceptación; las de integración se omiten porque el runner no tiene SQL Server y se ejecutan en local |
 
-## 7.5 Infraestructura como código
+## 7.6 Infraestructura como código
 
-- `infra/terraform/main.tf` declara el estado remoto en la organización `Tienda-Flow`, workspace `tiendaflow-infra`.
-- El proveedor `random` y el recurso `random_pet` demuestran el flujo de estado remoto y el plan automático sin necesitar credenciales de nube.
-- El workflow de Terraform se ejecuta solo en pull requests a `develop` y solo cuando cambian archivos `.tf`.
-- El token de HCP Terraform se toma del secreto `TF_API_TOKEN`; no se escribe en el repositorio.
-- El workflow `Terraform Plan` se ejecutó con éxito en el pull request hacia `develop` (job `plan`, unos 20 segundos) contra el estado remoto. Solo planificó el recurso de ejemplo `random_pet`; no hubo `apply` ni se creó infraestructura real.
-- Cuando se elija el destino real de despliegue, el recurso de ejemplo se reemplaza por la base de datos y el hosting de la aplicación.
+- `infra/terraform/main.tf` declara el backend `cloud` de HCP Terraform y los recursos de
+  la sección 7.1; `variables.tf` define región, nombres, SKU y variables sensibles, y
+  `outputs.tf` expone la URL de la aplicación y el servidor de base de datos.
+- El workflow de pull request pasó por dos etapas: primero ejecutó `terraform plan`
+  automático sobre un recurso de ejemplo (`random_pet`) y quedó en verde; con la
+  infraestructura real necesita credenciales de Azure, que Azure for Students no permite
+  entregar a GitHub Actions, así que el CI ejecuta `fmt`, `init -backend=false` y
+  `validate`. El detalle está en `docs/sprint2/terraform-plan-workflow.md`.
 
-## 7.6 Limitaciones y notas de operación
+## 7.7 Limitaciones y notas de operación
 
-- El despliegue actual es de **desarrollo local**: no hay ambiente de staging ni producción automatizada.
-- Terraform se limita a `plan`: el workspace y el estado remoto funcionan, pero no se ha ejecutado `apply` y el repositorio todavía no define la infraestructura real del ERP.
-- La base de datos de desarrollo se recrea con el seeder; los salarios vuelven a `0` y la corrida de nómina debe recalcularse.
-- La corrida de nómina no se persiste; no hay tablas de corrida ni de detalle en esta entrega.
-- El contenedor `tiendaflow-sql` es el único entorno que usa la demo. No se deben borrar volúmenes ni contenedores de otros entornos.
+- No hay entorno de *staging*: los cambios se prueban en local y se publican en
+  producción.
+- El despliegue automático no ejecuta las migraciones; si se publica una versión con
+  migraciones nuevas sin aplicarlas antes, las pantallas que usan tablas nuevas fallan
+  aunque `/healthz` responda `200`.
+- La corrida de nómina no se persiste; no hay tablas de corrida ni de detalle.
