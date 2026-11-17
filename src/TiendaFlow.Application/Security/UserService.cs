@@ -320,20 +320,29 @@ public sealed class AuditTrailService
 public sealed class RoleCatalogService
 {
     private readonly IAccessControl _accessControl;
+    private readonly IRolePermissionStore? _store;
 
-    public RoleCatalogService(IAccessControl accessControl) => _accessControl = accessControl;
+    public RoleCatalogService(IAccessControl accessControl, IRolePermissionStore? store = null)
+    {
+        _accessControl = accessControl;
+        _store = store;
+    }
 
     public RoleMatrix GetMatrix()
     {
         _accessControl.Demand(Permissions.SecurityRolesView);
 
         var roles = RoleNames.All;
+        var effective = roles.ToDictionary(
+            role => role,
+            role => EffectivePermissions.For(role, _store),
+            StringComparer.Ordinal);
         var rows = Permissions.All
             .Select(permission => new RoleMatrixRow(
                 permission,
                 roles.ToDictionary(
                     role => role,
-                    role => RolePermissions.IsAllowed(role, permission),
+                    role => effective[role].Contains(permission),
                     StringComparer.Ordinal)))
             .ToList();
 

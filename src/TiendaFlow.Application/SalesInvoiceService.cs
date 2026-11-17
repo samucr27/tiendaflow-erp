@@ -32,6 +32,7 @@ public sealed class SalesInvoiceService
     private readonly IAccessControl _accessControl;
     private readonly IAuditLog _auditLog;
     private readonly ICurrentUser _currentUser;
+    private readonly Crm.ILoyaltyProgram? _loyalty;
 
     public SalesInvoiceService(
         IInvoiceRepository invoices,
@@ -40,8 +41,10 @@ public sealed class SalesInvoiceService
         IUnitOfWork unitOfWork,
         IAccessControl accessControl,
         IAuditLog auditLog,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        Crm.ILoyaltyProgram? loyalty = null)
     {
+        _loyalty = loyalty;
         _invoices = invoices;
         _query = query;
         _stock = stock;
@@ -95,6 +98,7 @@ public sealed class SalesInvoiceService
             }
 
             _invoices.Add(invoice);
+            _loyalty?.EarnForInvoice(invoice);
             Record("InvoiceCreated", invoice.Id,
                 $"Factura #{invoice.Id} emitida para {invoice.CustomerName} por {invoice.Total:C0}; descontó {invoice.Lines.Sum(line => line.Quantity)} unidades.");
         });
@@ -127,6 +131,7 @@ public sealed class SalesInvoiceService
             }
 
             _invoices.Update(invoice);
+            _loyalty?.ReverseForInvoice(invoice);
             Record("InvoiceCancelled", invoice.Id,
                 invoice.StoreId is null
                     ? $"Factura #{invoice.Id} anulada para {invoice.CustomerName}."

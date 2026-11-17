@@ -23,14 +23,17 @@ public sealed class AuthenticationService
     private readonly IStoreRepository _stores;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IAuditLog _auditLog;
+    private readonly IRolePermissionStore? _rolePermissions;
 
     public AuthenticationService(
         IAppUserRepository users,
         IEmployeeRepository employees,
         IStoreRepository stores,
         IPasswordHasher passwordHasher,
-        IAuditLog auditLog)
+        IAuditLog auditLog,
+        IRolePermissionStore? rolePermissions = null)
     {
+        _rolePermissions = rolePermissions;
         _users = users;
         _employees = employees;
         _stores = stores;
@@ -62,7 +65,7 @@ public sealed class AuthenticationService
             roleName,
             employee?.StoreId,
             store?.Name ?? "Sin tienda",
-            RolePermissions.ForRole(roleName));
+            EffectivePermissions.For(roleName, _rolePermissions));
 
         _auditLog.Record(new AuditEntry(
             "LoginSucceeded",

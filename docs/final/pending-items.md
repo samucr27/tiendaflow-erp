@@ -1,77 +1,70 @@
-# Auditoría de pendientes
+# Estado final del proyecto
 
-La auditoría se hizo sobre el código de `feature/erp-final` y se actualiza en
-`feature/erp-complete` a medida que cada fase cierra un pendiente:
+**Cierre:** 16 de noviembre de 2026. El proyecto termina con el Sprint 2; no hay
+un Sprint 3.
 
-1. Se compararon las constantes de `Permissions.cs` con sus usos en páginas,
-   menú y servicios.
-2. Se listaron las rutas `.razor` y la política declarada en cada una.
-3. Se revisó el menú para descartar enlaces sin pantalla o textos
-   “Próximamente”.
-4. Se buscaron `TODO`, `FIXME`, `HACK`, `NotImplementedException` y datos de
-   ejemplo fuera del sembrado de desarrollo.
+## Auditoría de permisos
 
-Resultado: no hay pantallas de relleno, enlaces rotos ni datos falsos en tiempo
-de ejecución. Lo que falta son funciones que nunca se implementaron; a
-continuación se documentan con el permiso que las reserva.
+Se compararon las 45 constantes de `Permissions.cs` con sus usos en páginas,
+menú y servicios, se listaron las rutas `.razor` con su política y se buscaron
+`TODO`, `FIXME`, `HACK`, `NotImplementedException` y datos de ejemplo fuera del
+sembrado de desarrollo.
 
-## Pendientes funcionales
+Resultado: **cada permiso de la matriz tiene una función implementada**. No hay
+pantallas de relleno, enlaces rotos ni datos falsos en tiempo de ejecución.
 
-| Área | Permiso reservado | Qué falta | Por qué queda pendiente | Siguiente paso sugerido |
-| --- | --- | --- | --- | --- |
-| Seguridad | `security.roles.manage` | Editar roles desde la interfaz | La matriz es código para que la autorización sea determinista; la pantalla es de solo lectura | Persistir roles solo si el negocio lo exige, con auditoría y pruebas de autorización |
-| Seguridad | `security.reports.view` | Reportes de seguridad | La auditoría ya es consultable en `/seguridad/auditoria`; no hay reportes agregados | Agregar conteos de accesos, cambios de usuario y exportación CSV |
-| Ventas | `sales.returns.authorize` | Devoluciones y notas crédito | El módulo de facturación solo emite y anula | Documento de devolución, autorización y efecto en inventario |
-| RR. HH. | `hr.contracts.manage` | Contratos y documentos laborales | El empleado guarda tipo de contrato, pero no el contrato como documento | Contratos con vigencia, prórrogas y adjuntos |
-| RR. HH. | `hr.attendance.manage` | Asistencia | No hay registro de entrada/salida ni novedades | Marcaciones, ausencias y cálculo de días trabajados |
-| RR. HH. | `hr.shifts.manage` | Turnos | No hay calendario de turnos | Turnos por tienda, asignación y cruce con asistencia |
-| CRM | `crm.points.manage` | Puntos de fidelización | El cliente no tiene saldo ni movimientos de puntos | Libro de puntos con acumulación y canje |
-| CRM | `crm.pqrs.manage` | PQRS | No hay entidad de peticiones, quejas o reclamos | Radicado, responsable, estados y tiempos |
-| CRM | `crm.campaigns.manage` | Campañas | La segmentación es de solo consulta | Campaña sobre un segmento, vigencia y resultado |
-| Facturación | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
+| Permiso | Función | Pantalla |
+| --- | --- | --- |
+| `security.roles.manage` | Edición de la matriz de roles; el Administrador conserva siempre la gestión de usuarios y roles | `/seguridad/roles` |
+| `security.reports.view` | Reporte de seguridad con exportación CSV | `/reportes/seguridad` |
+| `sales.returns.authorize` | Devoluciones parciales (notas crédito) que devuelven unidades al stock | `/facturacion/{id}` |
+| `hr.contracts.manage` | Contratos con vigencia, prórroga y terminación | `/rrhh/contratos` |
+| `hr.attendance.manage` | Asistencia y novedades; la nómina descuenta las ausencias | `/rrhh/asistencia` |
+| `hr.shifts.manage` | Turnos por tienda sin cruces | `/rrhh/turnos` |
+| `crm.points.manage` | Libro de puntos: acumulación por factura y canje | `/crm/puntos` |
+| `crm.pqrs.manage` | PQRS con radicado, responsable y plazo de 15 días | `/crm/pqrs` |
+| `crm.campaigns.manage` | Campañas por segmento A/B/C con resultado | `/crm/campanas` |
 
-## Resuelto en la revisión final (16 de noviembre)
+Además, el punto de venta registra varios productos por venta, las rutas
+`/api/*` responden `401` y `403` en lugar de redirecciones, y la corrida de
+nómina se guarda por mes.
 
-- **Venta del POS:** se guarda como documento y la cuentan el panel, el reporte
-  de ventas y la reposición.
-- **Facturas e inventario:** emitir descuenta stock y anular lo devuelve.
-- **Facturas emitidas:** ya no se editan; se anulan y se emite otra.
+## Fuera del alcance
 
-Queda pendiente un proceso, no código: los pull requests deben tener una
-revisión registrada en GitHub por otro integrante antes de fusionarse, como
-exige la Definition of Done.
+| Tema | Motivo |
+| --- | --- |
+| Factura electrónica real ante la DIAN | Requiere un proveedor tecnológico autorizado, un certificado de firma digital y la habilitación del facturador ante la DIAN; no es posible en un proyecto académico. El sistema genera un XML **simulado** con un resumen SHA-256, sin CUFE ni firma certificada, y lo advierte en el documento y en la pantalla. |
+
+## Pendientes de operación (no de código)
+
+- **Publicar la versión final en Azure:** aplicar en Azure SQL las migraciones
+  hasta `Phase12CloseoutModules` y desplegar desde `main`
+  (`docs/final/deploy-azure.md`).
+- **Revisión cruzada de pull requests:** la Definition of Done pide que otro
+  integrante apruebe cada pull request; GitHub no permite que el autor apruebe
+  el suyo.
+- **`terraform plan` automático:** con la infraestructura real necesita
+  credenciales de Azure que la suscripción de estudiante no permite crear; el
+  CI valida y el `plan` se ejecuta a mano
+  (`docs/sprint2/terraform-plan-workflow.md`).
 
 ## Aclaraciones importantes
 
-- **XML simulado:** se genera un documento legible y un resumen SHA-256
-  determinista. No tiene CUFE, no está firmado con certificado y no se
-  transmite a la DIAN. El aviso está dentro del XML y en la pantalla de
-  facturación.
 - **Segmentación A/B/C:** es una regla académica (20 % / 30 % / resto). No es
   una política comercial validada ni usa un modelo estadístico.
 - **Nómina:** los parámetros son referencias académicas y están documentados en
-  `docs/sprint2/payroll-parameters-validation.md`. El sistema calcula la
-  corrida, pero no reemplaza una liquidación laboral certificada.
+  `docs/sprint2/payroll-parameters-validation.md`. El sistema calcula y guarda
+  la corrida, pero no reemplaza una liquidación laboral certificada.
 - **Parámetros:** los valores iniciales son referencias académicas documentadas
   en `ParameterCatalog`. Si no existe una versión en base, el sistema usa el
   valor de código; los cambios se guardan como versiones inmutables con fecha de
   vigencia y quedan auditados.
+- **Roles editables:** la matriz de `RolePermissions` es la configuración por
+  defecto. Cuando un administrador guarda los permisos de un rol, se guardan en
+  la tabla `role_permission` y reemplazan los de ese rol en el siguiente inicio
+  de sesión; "Restablecer por defecto" vuelve a la matriz del código.
 - **Pruebas de integración:** requieren una cadena de conexión a SQL Server en
-  `TIENDAFLOW_TEST_CONNECTION`. En la verificación de esta rama se ejecutaron
-  contra un contenedor desechable que aplica las migraciones desde cero; no se
-  usó la base de desarrollo.
-- **Datos de demostración:** el sembrado se registra siempre que
-  `Seed:Enabled` sea verdadero, sin importar el entorno; no está atado a
-  `Development`. Si la clave es falsa o no existe, ninguna ruta crea usuarios,
-  productos ni facturas de ejemplo. En la configuración de producción se deja
-  desactivada.
-
-## Lo que sí quedó completo
-
-Compras (órdenes, puntualidad y cumplimiento con datos de recepción,
-exportación del ranking y borradores de reposición con relación producto ·
-proveedor), panel, reportes, segmentación CRM, exportación XML simulada,
-administración de tiendas, parámetros configurables e inventario con conteos
-físicos y traslados entre tiendas están implementados, con permisos, pruebas y
-documentación. El detalle está en
-[implemented-modules.md](implemented-modules.md).
+  `TIENDAFLOW_TEST_CONNECTION`. Se ejecutan contra una base desechable que
+  aplica las migraciones desde cero.
+- **Datos de demostración:** el sembrado solo se activa con `Seed:Enabled`. En
+  producción queda desactivado.

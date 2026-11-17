@@ -1,0 +1,120 @@
+@page "/reportes/seguridad"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityReportsView)]
+@using TiendaFlow.Application.Reporting
+@inject SecurityReportService Reports
+@inject NavigationManager Navigation
+
+<PageTitle>Reporte de seguridad · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Reportes"
+            Title="Reporte de seguridad"
+            Subtitle="Inicios de sesión, accesos denegados y cambios de usuarios y roles según la auditoría">
+    <Actions>
+        <a class="button button-primary" href="@ExportUrl" target="_blank">Exportar CSV</a>
+    </Actions>
+</PageHeader>
+
+<section class="card">
+    <div class="form-grid">
+        <div class="field">
+            <label for="sec-from">Desde</label>
+            <input id="sec-from" type="date" class="input" @bind="_from" />
+        </div>
+        <div class="field">
+            <label for="sec-to">Hasta</label>
+            <input id="sec-to" type="date" class="input" @bind="_to" />
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="button" class="button button-secondary" @onclick="Load">Actualizar reporte</button>
+    </div>
+</section>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_report is not null)
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Inicios de sesión" Value="@Formatters.Number(_report.Count("LoginSucceeded"))" Hint="Correctos" Tone="ok" />
+        <KpiCard Label="Intentos fallidos" Value="@Formatters.Number(_report.Count("LoginFailed"))" Hint="Credenciales inválidas" Tone="alert" />
+        <KpiCard Label="Accesos denegados" Value="@Formatters.Number(_report.Count("AccessDenied"))" Hint="Sin el permiso" Tone="alert" />
+        <KpiCard Label="Cambios de roles" Value="@Formatters.Number(_report.Count("RolePermissionsUpdated") + _report.Count("RolePermissionsReset"))" Hint="Matriz editada" Tone="info" />
+    </div>
+
+    <section class="card">
+        <div class="card-header"><div><h2>Eventos del rango</h2></div></div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Evento</th><th class="num">Cantidad</th></tr></thead>
+                <tbody>
+                    @foreach (var item in _report.Actions)
+                    {
+                        <tr><td>@item.Label</td><td class="num">@Formatters.Number(item.Count)</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header"><div><h2>Últimos accesos denegados</h2></div></div>
+        @if (_report.DeniedAccesses.Count == 0)
+        {
+            <EmptyState Title="Sin accesos denegados" Message="Ningún usuario intentó abrir una función sin permiso en el rango." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Fecha</th><th>Usuario</th><th>Permiso</th><th>Detalle</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in _report.DeniedAccesses)
+                        {
+                            <tr>
+                                <td>@Formatters.ShortDateTime(row.Date)</td>
+                                <td>@(row.UserName ?? "—")</td>
+                                <td><code>@row.EntityId</code></td>
+                                <td>@row.Detail</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private DateTime _from = DateTime.Today.AddDays(-30);
+    private DateTime _to = DateTime.Today;
+    private SecurityReport? _report;
+    private string? _error;
+
+    private string ExportUrl => $"/reportes/seguridad/export.csv?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}";
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        _error = null;
+        try
+        {
+            _report = Reports.Get(DateOnly.FromDateTime(_from), DateOnly.FromDateTime(_to));
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (ArgumentException)
+        {
+            _error = "La fecha inicial no puede ser posterior a la fecha final.";
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

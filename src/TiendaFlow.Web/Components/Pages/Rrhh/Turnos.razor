@@ -1,0 +1,173 @@
+@page "/rrhh/turnos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrShiftsManage)]
+@inject HumanResourcesRecordsService Records
+@inject IEmployeeRepository Employees
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Turnos · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Turnos"
+            Subtitle="Programación semanal por tienda. Un empleado no puede tener dos turnos que se crucen." />
+
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Asignar turno</h2>
+            <p class="card-subtitle">El turno queda en la tienda del empleado.</p>
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="field">
+            <label for="shift-employee">Empleado</label>
+            <select id="shift-employee" class="input" @bind="_employeeId">
+                <option value="0">Elige un empleado</option>
+                @foreach (var employee in _employees)
+                {
+                    <option value="@employee.Id">@employee.Name · @employee.Position</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label for="shift-date">Fecha</label>
+            <input id="shift-date" type="date" class="input" @bind="_date" />
+        </div>
+        <div class="field">
+            <label for="shift-start">Inicio</label>
+            <input id="shift-start" type="time" class="input" @bind="_start" />
+        </div>
+        <div class="field">
+            <label for="shift-end">Fin</label>
+            <input id="shift-end" type="time" class="input" @bind="_end" />
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="button" class="button button-primary" @onclick="Assign">Asignar turno</button>
+    </div>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Semana del @_weekStart.ToString("dd/MM/yyyy")</h2>
+            <p class="card-subtitle">@_rows.Count turnos · @Formatters.Number(_rows.Sum(row => row.Hours)) horas programadas</p>
+        </div>
+        <div class="inline-form">
+            <button type="button" class="button button-secondary button-small" @onclick="() => Move(-7)">Semana anterior</button>
+            <button type="button" class="button button-secondary button-small" @onclick="() => Move(7)">Semana siguiente</button>
+        </div>
+    </div>
+
+    @if (_rows.Count == 0)
+    {
+        <EmptyState Title="Sin turnos en la semana" Message="Asigna los turnos de la tienda para esta semana." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Día</th>
+                        <th>Empleado</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th class="num">Horas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>@row.Date.ToString("dddd dd/MM", Formatters.Culture)</td>
+                            <td>@row.EmployeeName</td>
+                            <td>@row.Start.ToString("HH:mm")</td>
+                            <td>@row.End.ToString("HH:mm")</td>
+                            <td class="num">@row.Hours.ToString("0.#")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<Employee> _employees = [];
+    private IReadOnlyList<ShiftRow> _rows = [];
+    private int _employeeId;
+    private DateTime? _date = DateTime.Today;
+    private TimeOnly? _start = new(7, 0);
+    private TimeOnly? _end = new(15, 0);
+    private DateOnly _weekStart = StartOfWeek(DateOnly.FromDateTime(DateTime.Today));
+    private string? _error;
+    private string? _message;
+
+    private static DateOnly StartOfWeek(DateOnly date) =>
+        date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _employees = Employees.List()
+                .Where(employee => employee.Active)
+                .Where(employee => CurrentUser.Role == RoleNames.HumanResourcesOfficer || employee.StoreId == CurrentUser.StoreId)
+                .OrderBy(employee => employee.Name)
+                .ToList();
+            var storeFilter = CurrentUser.Role == RoleNames.HumanResourcesOfficer ? null : CurrentUser.StoreId;
+            _rows = Records.Shifts(_weekStart, _weekStart.AddDays(6), storeFilter);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Move(int days)
+    {
+        _weekStart = _weekStart.AddDays(days);
+        Load();
+    }
+
+    private void Assign()
+    {
+        _error = null;
+        _message = null;
+
+        if (_employeeId == 0 || _date is null || _start is null || _end is null)
+        {
+            _error = "Elige el empleado, la fecha y el horario.";
+            return;
+        }
+
+        try
+        {
+            Records.AssignShift(new ShiftRequest(_employeeId, DateOnly.FromDateTime(_date.Value), _start.Value, _end.Value));
+            _message = "Turno asignado.";
+            _weekStart = StartOfWeek(DateOnly.FromDateTime(_date.Value));
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}

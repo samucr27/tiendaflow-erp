@@ -67,7 +67,7 @@ descontando clases y entregas de otras asignaturas.
 | (Pruebas) Pruebas unitarias del motor (`PayrollEngineTests`) | Hecho |
 | (Documentación) Diagrama de secuencia UML (`docs/uml/payroll_sequence.puml`) | Hecho |
 | (Pantallas) Empleados y corrida de nómina sin persistencia | Hecho |
-| (Persistencia) Guardar las corridas de nómina | Por hacer |
+| (Persistencia) Guardar las corridas de nómina | Hecho (cierre del proyecto) |
 
 ### HU-05 Alerta de stock crítico (5)
 

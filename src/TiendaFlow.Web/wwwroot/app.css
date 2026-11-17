@@ -2013,3 +2013,46 @@ h1:focus {
         transition: none;
     }
 }
+
+/* ------------------------------------------------- Closing modules */
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.field-wide {
+    grid-column: 1 / -1;
+}
+
+.input-small {
+    width: 150px;
+    padding: 6px 8px;
+}
+
+.permission-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.permission-group {
+    display: grid;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.permission-group legend {
+    padding: 0 6px;
+    font-weight: 600;
+}
+
+.cart-table .input {
+    max-width: 110px;
+}

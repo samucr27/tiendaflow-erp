@@ -9,7 +9,8 @@ public sealed record PayrollRunLine(
     string Position,
     string ContractLabel,
     PayrollResult? Result,
-    string? Problem);
+    string? Problem,
+    int? DaysApplied = null);
 
 public sealed record PayrollRun(
     int DaysWorked,
@@ -62,7 +63,15 @@ public sealed class PayrollRunService
         _currentUser = currentUser;
     }
 
-    public PayrollRun Calculate(int daysWorked, int riskClass)
+    /// <summary>
+    /// Calculates the month for every active employee. When the unpaid
+    /// absences recorded in attendance are given, each employee is paid for
+    /// the days worked minus their absences.
+    /// </summary>
+    public PayrollRun Calculate(
+        int daysWorked,
+        int riskClass,
+        IReadOnlyDictionary<int, int>? unpaidAbsences = null)
     {
         _accessControl.Demand(Permissions.HrPayrollManage);
 
@@ -77,7 +86,10 @@ public sealed class PayrollRunService
             .ToList();
 
         var lines = employees
-            .Select(employee => CalculateLine(employee, daysWorked, riskClass))
+            .Select(employee => CalculateLine(
+                employee,
+                daysWorked - (unpaidAbsences?.GetValueOrDefault(employee.Id) ?? 0),
+                riskClass))
             .ToList();
 
         Record("PayrollCalculated", $"Nómina calculada para {employees.Count} empleados activos; {daysWorked} días");
@@ -88,6 +100,14 @@ public sealed class PayrollRunService
     private PayrollRunLine CalculateLine(Employee employee, int daysWorked, int riskClass)
     {
         var contractLabel = ContractTypeLabels.ToLabel(employee.ContractType);
+
+        if (daysWorked < 1)
+        {
+            return Line(
+                employee,
+                contractLabel,
+                problem: "Las ausencias registradas cubren todo el periodo: no hay días por liquidar.");
+        }
 
         if (employee.Salary <= 0m)
         {
@@ -115,7 +135,7 @@ public sealed class PayrollRunService
                 OtherSalaryEarnings: 0m,
                 RiskClass: riskClass));
 
-            return Line(employee, contractLabel, result: result);
+            return Line(employee, contractLabel, result: result, days: daysWorked);
         }
         catch (Exception exception) when (exception is InvalidPayrollInputException
                                              or UnsupportedContractTypeException)
@@ -132,8 +152,9 @@ public sealed class PayrollRunService
         Employee employee,
         string contractLabel,
         PayrollResult? result = null,
-        string? problem = null) =>
-        new(employee.Id, employee.Name, employee.Position, contractLabel, result, problem);
+        string? problem = null,
+        int? days = null) =>
+        new(employee.Id, employee.Name, employee.Position, contractLabel, result, problem, days);
 
     private void Record(string action, string detail) =>
         _auditLog.Record(new AuditEntry(

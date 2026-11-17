@@ -1,0 +1,241 @@
+@page "/crm/pqrs"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmPqrsManage)]
+@using TiendaFlow.Application.Crm
+@inject PqrsService PqrsCases
+@inject ICustomerQuery Customers
+@inject NavigationManager Navigation
+
+<PageTitle>PQRS · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="PQRS"
+            Subtitle="Peticiones, quejas, reclamos y sugerencias con radicado, responsable y plazo de 15 días." />
+
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<div class="kpi-grid">
+    <KpiCard Label="Abiertas" Value="@Formatters.Number(_rows.Count(row => row.Status == PqrsStatus.Open))" Hint="Sin responsable" Tone="alert" />
+    <KpiCard Label="En trámite" Value="@Formatters.Number(_rows.Count(row => row.Status == PqrsStatus.InProgress))" Hint="Con responsable" Tone="info" />
+    <KpiCard Label="Vencidas" Value="@Formatters.Number(_rows.Count(row => row.Overdue))" Hint="Pasaron el plazo" Tone="alert" />
+    <KpiCard Label="Cerradas" Value="@Formatters.Number(_rows.Count(row => row.Status == PqrsStatus.Closed))" Hint="Con respuesta" Tone="ok" />
+</div>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Radicar PQRS</h2>
+            <p class="card-subtitle">Asocia un cliente registrado o deja un dato de contacto.</p>
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="field">
+            <label for="pqrs-type">Tipo</label>
+            <select id="pqrs-type" class="input" @bind="_type">
+                @foreach (var type in Enum.GetValues<PqrsType>())
+                {
+                    <option value="@type">@HrText.Pqrs(type)</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label for="pqrs-customer">Cliente</label>
+            <select id="pqrs-customer" class="input" @bind="_customerId">
+                <option value="0">Sin cliente registrado</option>
+                @foreach (var customer in _customers)
+                {
+                    <option value="@customer.Id">@customer.FullName · @customer.DocumentNumber</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label for="pqrs-contact">Contacto</label>
+            <input id="pqrs-contact" class="input" placeholder="Teléfono o correo" @bind="_contact" />
+        </div>
+        <div class="field">
+            <label for="pqrs-subject">Asunto</label>
+            <input id="pqrs-subject" class="input" @bind="_subject" />
+        </div>
+        <div class="field field-wide">
+            <label for="pqrs-description">Descripción</label>
+            <textarea id="pqrs-description" class="input" rows="3" @bind="_description"></textarea>
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="button" class="button button-primary" @onclick="File">Radicar</button>
+    </div>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Casos</h2>
+            <p class="card-subtitle">Ordenados por estado y fecha límite</p>
+        </div>
+    </div>
+    @if (_rows.Count == 0)
+    {
+        <EmptyState Title="Sin PQRS" Message="Los casos radicados aparecen aquí." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Radicado</th>
+                        <th>Tipo</th>
+                        <th>Asunto</th>
+                        <th>Solicitante</th>
+                        <th>Vence</th>
+                        <th>Responsable</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>@row.FilingNumber</td>
+                            <td>@HrText.Pqrs(row.Type)</td>
+                            <td>@row.Subject</td>
+                            <td>@row.Requester</td>
+                            <td>@row.DueDate.ToString("dd/MM/yyyy")</td>
+                            <td>@(row.Responsible ?? "—")</td>
+                            <td><StatusBadge Text="@(row.Overdue ? "Vencida" : HrText.PqrsStatusText(row.Status))" Tone="@HrText.PqrsTone(row.Status, row.Overdue)" /></td>
+                            <td class="table-actions">
+                                <button type="button" class="button button-secondary button-small" @onclick="() => Open(row.Id)">Gestionar</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@if (_detail is not null)
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>@_detail.Row.FilingNumber · @_detail.Row.Subject</h2>
+                <p class="card-subtitle">@HrText.Pqrs(_detail.Row.Type) de @_detail.Row.Requester · radicada @Formatters.ShortDateTime(_detail.Row.CreatedAt)</p>
+            </div>
+        </div>
+        <p>@_detail.Description</p>
+
+        @if (_detail.Row.Status == PqrsStatus.Closed)
+        {
+            <div class="alert alert-success" role="status">
+                Respuesta (@Formatters.ShortDateTime(_detail.ClosedAt ?? DateTime.UtcNow)): @_detail.Response
+            </div>
+        }
+        else
+        {
+            <div class="form-grid">
+                <div class="field">
+                    <label for="pqrs-responsible">Responsable</label>
+                    <input id="pqrs-responsible" class="input" @bind="_responsible" />
+                </div>
+                <div class="field field-wide">
+                    <label for="pqrs-response">Respuesta</label>
+                    <textarea id="pqrs-response" class="input" rows="3" @bind="_response"></textarea>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="button button-secondary" @onclick="Assign">Asignar responsable</button>
+                <button type="button" class="button button-primary" @onclick="Close">Responder y cerrar</button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private IReadOnlyList<PqrsRow> _rows = [];
+    private IReadOnlyList<CustomerRow> _customers = [];
+    private PqrsDetail? _detail;
+    private PqrsType _type = PqrsType.Petition;
+    private int _customerId;
+    private string? _contact;
+    private string? _subject;
+    private string? _description;
+    private string? _responsible;
+    private string? _response;
+    private string? _error;
+    private string? _message;
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _rows = PqrsCases.List();
+            _customers = Customers.List().Where(customer => customer.Active).OrderBy(customer => customer.FullName).ToList();
+            if (_detail is not null)
+                _detail = PqrsCases.Get(_detail.Row.Id);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Run(Action action, string message)
+    {
+        _error = null;
+        _message = null;
+        try
+        {
+            action();
+            _message = message;
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void File() => Run(() =>
+    {
+        var id = PqrsCases.File(new NewPqrsRequest(_type, _subject ?? "", _description ?? "",
+            _customerId == 0 ? null : _customerId, _contact));
+        _detail = PqrsCases.Get(id);
+        _subject = _description = _contact = null;
+    }, "PQRS radicada.");
+
+    private void Open(int id)
+    {
+        _message = null;
+        _error = null;
+        _detail = PqrsCases.Get(id);
+        _responsible = _detail.Row.Responsible;
+        _response = null;
+    }
+
+    private void Assign()
+    {
+        if (_detail is not null)
+            Run(() => PqrsCases.Assign(_detail.Row.Id, _responsible ?? ""), "Responsable asignado.");
+    }
+
+    private void Close()
+    {
+        if (_detail is not null)
+            Run(() => PqrsCases.Close(_detail.Row.Id, _response ?? ""), "PQRS cerrada con respuesta.");
+    }
+}

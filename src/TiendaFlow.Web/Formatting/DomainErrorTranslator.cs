@@ -80,6 +80,13 @@ public static class DomainErrorTranslator
             "Ya existe un proveedor con ese NIT.",
         InvalidInvoiceException =>
             "Revisa los datos de la factura. El cliente, el documento y al menos un ítem con cantidad y precio mayores que cero son obligatorios.",
+        InvalidSalesReturnException invalidReturn => ReturnMessage(invalidReturn),
+        InvalidHrRecordException invalidHr => HrMessage(invalidHr),
+        HrRecordNotFoundException =>
+            "No encontramos el registro de talento humano solicitado.",
+        InvalidCrmRecordException invalidCrm => CrmMessage(invalidCrm),
+        CrmRecordNotFoundException =>
+            "No encontramos el registro de CRM solicitado.",
         InvalidPosSaleException =>
             "No se pudo registrar la venta. Revisa el producto, la cantidad y que tu usuario tenga una tienda asignada.",
         InvoiceNotFoundException =>
@@ -131,6 +138,69 @@ public static class DomainErrorTranslator
             "Otro usuario modificó estos datos al mismo tiempo. Revisa los valores actuales e intenta de nuevo.",
         _ => UnexpectedMessage
     };
+
+    // The closing modules raise English messages for code and tests; the user
+    // sees the Spanish equivalent of each known rule.
+    private static readonly Dictionary<string, string> RuleMessages = new(StringComparer.Ordinal)
+    {
+        ["Only an issued invoice accepts returns."] = "Solo una factura emitida admite devoluciones.",
+        ["The invoice predates stock movements; cancel it instead."] = "La factura es anterior al control de inventario; anúlala en lugar de registrar una devolución.",
+        ["Select at least one unit to return."] = "Indica al menos una unidad a devolver.",
+        ["The reason is required."] = "El motivo es obligatorio.",
+        ["The employee already has an active contract; end it first."] = "El empleado ya tiene un contrato activo; termínalo antes de registrar otro.",
+        ["A fixed-term contract needs an end date."] = "Un contrato a término fijo necesita fecha de terminación.",
+        ["The end date cannot be before the start date."] = "La fecha de terminación no puede ser anterior a la de inicio.",
+        ["Only an active contract can be extended."] = "Solo se puede prorrogar un contrato activo.",
+        ["An indefinite contract has no end date to extend."] = "Un contrato sin fecha de terminación no se prorroga.",
+        ["The new end date must be after the current one."] = "La nueva fecha debe ser posterior a la actual.",
+        ["The contract has already ended."] = "El contrato ya terminó.",
+        ["A worked day needs check-in and check-out times."] = "Un día trabajado necesita hora de entrada y de salida.",
+        ["The check-out must be after the check-in."] = "La salida debe ser posterior a la entrada.",
+        ["The employee already has a record for that day."] = "El empleado ya tiene un registro para ese día.",
+        ["The shift must end after it starts."] = "El turno debe terminar después de empezar.",
+        ["The shift overlaps another shift of the same employee."] = "El turno se cruza con otro turno del mismo empleado.",
+        ["A payroll run is already saved for the period."] = "Ya hay una corrida de nómina guardada para ese mes.",
+        ["The run has no calculated employees to save."] = "La corrida no tiene empleados calculados para guardar.",
+        ["The points to redeem must be greater than zero."] = "Los puntos a canjear deben ser mayores que cero.",
+        ["A customer or a contact is required."] = "Indica el cliente o un dato de contacto.",
+        ["The subject is required."] = "El asunto es obligatorio.",
+        ["The description is required."] = "La descripción es obligatoria.",
+        ["A closed PQRS cannot be reassigned."] = "Una PQRS cerrada no se puede reasignar.",
+        ["The responsible person is required."] = "El responsable es obligatorio.",
+        ["The PQRS is already closed."] = "La PQRS ya está cerrada.",
+        ["The response is required to close the PQRS."] = "La respuesta es obligatoria para cerrar la PQRS.",
+        ["The campaign name is required."] = "El nombre de la campaña es obligatorio.",
+        ["The segment must be A, B or C."] = "El segmento debe ser A, B o C.",
+        ["The campaign cannot end before it starts."] = "La campaña no puede terminar antes de empezar.",
+        ["The campaign message is required."] = "El mensaje de la campaña es obligatorio."
+    };
+
+    private static string ReturnMessage(Exception exception)
+    {
+        if (RuleMessages.TryGetValue(exception.Message, out var text))
+            return text;
+        var match = System.Text.RegularExpressions.Regex.Match(
+            exception.Message, @"^(.+): only (\d+) units can still be returned\.$");
+        return match.Success
+            ? $"{match.Groups[1].Value}: solo se pueden devolver {match.Groups[2].Value} unidades más."
+            : "Revisa la devolución: cada línea necesita una cantidad válida de un producto de la factura.";
+    }
+
+    private static string HrMessage(Exception exception) =>
+        RuleMessages.TryGetValue(exception.Message, out var text)
+            ? text
+            : "Revisa los datos del registro de talento humano.";
+
+    private static string CrmMessage(Exception exception)
+    {
+        if (RuleMessages.TryGetValue(exception.Message, out var text))
+            return text;
+        var match = System.Text.RegularExpressions.Regex.Match(
+            exception.Message, @"^The customer only has (-?\d+) points\.$");
+        return match.Success
+            ? $"El cliente solo tiene {match.Groups[1].Value} puntos."
+            : "Revisa los datos del registro de CRM.";
+    }
 
     private static bool ThrownByDomain(Exception exception) =>
         exception.TargetSite?.DeclaringType?.Assembly == typeof(AppUser).Assembly;

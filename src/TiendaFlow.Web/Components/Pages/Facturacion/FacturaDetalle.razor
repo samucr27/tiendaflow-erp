@@ -1,102 +1,219 @@
-@page "/facturacion/{Id:int}"
-@rendermode InteractiveServer
-@attribute [Authorize(Policy = Permissions.SalesInvoicesView)]
-@using TiendaFlow.Application
-@using TiendaFlow.Domain
-@inject SalesInvoiceService InvoiceService
-@inject NavigationManager Navigation
-
-<PageTitle>Factura #@Id · TiendaFlow</PageTitle>
-
-<PageHeader Eyebrow="Ventas / Facturación"
-            Title="@($"Factura #{Id}")"
-            Subtitle="Documento emitido: no se edita. Para corregirlo, anúlalo y emite una factura nueva.">
-    <Actions>
-        <a class="button button-secondary" href="facturacion">Volver</a>
-    </Actions>
-</PageHeader>
-
-@if (_error is not null)
-{
-    <div class="alert alert-error" role="alert">@_error</div>
-}
-else if (_invoice is null)
-{
-    <p class="muted">Cargando la factura…</p>
-}
-else
-{
-    @if (_invoice.Status == InvoiceStatus.Cancelled)
-    {
-        <div class="alert alert-warning" role="status">
-            Esta factura está anulada. Si movió inventario, sus unidades ya volvieron al stock.
-        </div>
-    }
-
-    <section class="card">
-        <div class="card-header">
-            <div>
-                <h2>@_invoice.CustomerName</h2>
-                <p class="card-subtitle">Documento @_invoice.CustomerDocument · @Formatters.ShortDate(_invoice.IssueDate)</p>
-            </div>
-            <StatusBadge Text="@_invoice.StatusLabel"
-                         Tone="@(_invoice.Status == InvoiceStatus.Cancelled ? "danger" : "ok")" />
-        </div>
-
-        <div class="table-wrap">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>SKU</th>
-                        <th>Descripción</th>
-                        <th class="num">Cantidad</th>
-                        <th class="num">Precio unitario</th>
-                        <th class="num">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var line in _invoice.Lines)
-                    {
-                        <tr>
-                            <td>@line.ProductSku</td>
-                            <td>@line.Description</td>
-                            <td class="num">@Formatters.Quantity(line.Quantity)</td>
-                            <td class="num">@Formatters.Money(line.UnitPrice)</td>
-                            <td class="num">@Formatters.Money(line.LineTotal)</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-
-        <div class="form-actions">
-            <strong>Total: @Formatters.Money(_invoice.Total)</strong>
-        </div>
-    </section>
-}
-
-@code {
-    [Parameter]
-    public int Id { get; set; }
-
-    private InvoiceDetail? _invoice;
-    private string? _error;
-
-    protected override void OnParametersSet()
-    {
-        _error = null;
-
-        try
-        {
-            _invoice = InvoiceService.Get(Id);
-        }
-        catch (AccessDeniedException)
-        {
-            Navigation.NavigateTo("/acceso-denegado");
-        }
-        catch (Exception exception)
-        {
-            _error = DomainErrorTranslator.ToSpanish(exception);
-        }
-    }
-}
+@page "/facturacion/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SalesInvoicesView)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject SalesInvoiceService InvoiceService
+@inject SalesReturnService Returns
+@inject IAccessControl AccessControl
+@inject NavigationManager Navigation
+
+<PageTitle>Factura #@Id · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Ventas / Facturación"
+            Title="@($"Factura #{Id}")"
+            Subtitle="Documento emitido: no se edita. Para corregirlo, anúlalo o registra una devolución.">
+    <Actions>
+        <a class="button button-secondary" href="facturacion">Volver</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_invoice is null)
+{
+    <p class="muted">Cargando la factura…</p>
+}
+else
+{
+    @if (_invoice.Status == InvoiceStatus.Cancelled)
+    {
+        <div class="alert alert-warning" role="status">
+            Esta factura está anulada. Si movió inventario, sus unidades ya volvieron al stock.
+        </div>
+    }
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>@_invoice.CustomerName</h2>
+                <p class="card-subtitle">Documento @_invoice.CustomerDocument · @Formatters.ShortDate(_invoice.IssueDate)</p>
+            </div>
+            <StatusBadge Text="@_invoice.StatusLabel"
+                         Tone="@(_invoice.Status == InvoiceStatus.Cancelled ? "danger" : "ok")" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Descripción</th>
+                        <th class="num">Cantidad</th>
+                        <th class="num">Precio unitario</th>
+                        <th class="num">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _invoice.Lines)
+                    {
+                        <tr>
+                            <td>@line.ProductSku</td>
+                            <td>@line.Description</td>
+                            <td class="num">@Formatters.Quantity(line.Quantity)</td>
+                            <td class="num">@Formatters.Money(line.UnitPrice)</td>
+                            <td class="num">@Formatters.Money(line.LineTotal)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-actions">
+            <strong>Total: @Formatters.Money(_invoice.Total)</strong>
+        </div>
+    </section>
+
+    @if (_message is not null)
+    {
+        <div class="alert alert-success" role="status">@_message</div>
+    }
+    @if (_returnError is not null)
+    {
+        <div class="alert alert-error" role="alert">@_returnError</div>
+    }
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Devoluciones (notas crédito)</h2>
+                <p class="card-subtitle">
+                    Las unidades devueltas vuelven al stock de la tienda y se restan de las ventas del periodo.
+                </p>
+            </div>
+        </div>
+
+        @if (_returns.Count == 0)
+        {
+            <p class="muted">Esta factura no tiene devoluciones.</p>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Nota</th><th>Fecha</th><th>Motivo</th><th class="num">Unidades</th><th class="num">Valor</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in _returns)
+                        {
+                            <tr>
+                                <td>NC-@item.Id.ToString("D5")</td>
+                                <td>@Formatters.ShortDateTime(item.CreatedAt)</td>
+                                <td>@item.Reason</td>
+                                <td class="num">@Formatters.Quantity(item.Units)</td>
+                                <td class="num">@Formatters.Money(item.Total)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (CanReturn && _returnable.Any(line => line.Returnable > 0))
+        {
+            <h3>Registrar devolución</h3>
+            <div class="table-wrap">
+                <table class="data-table cart-table">
+                    <thead><tr><th>Producto</th><th class="num">Facturado</th><th class="num">Ya devuelto</th><th class="num">Devolver</th></tr></thead>
+                    <tbody>
+                        @foreach (var line in _returnable)
+                        {
+                            <tr>
+                                <td>@line.Description <span class="table-meta">@line.ProductSku</span></td>
+                                <td class="num">@line.Invoiced</td>
+                                <td class="num">@line.AlreadyReturned</td>
+                                <td class="num">
+                                    <input type="number" min="0" max="@line.Returnable" class="input"
+                                           aria-label="Unidades a devolver de @line.ProductSku"
+                                           @bind="_quantities[line.ProductSku]" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-grid">
+                <div class="field field-wide">
+                    <label for="return-reason">Motivo</label>
+                    <input id="return-reason" class="input" @bind="_reason" placeholder="Producto en mal estado, error en la venta…" />
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="button button-primary" @onclick="RegisterReturn">Registrar devolución</button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private InvoiceDetail? _invoice;
+    private string? _error;
+    private string? _returnError;
+    private string? _message;
+    private string? _reason;
+    private IReadOnlyList<SalesReturnRow> _returns = [];
+    private IReadOnlyList<ReturnableLine> _returnable = [];
+    private Dictionary<string, int> _quantities = new(StringComparer.OrdinalIgnoreCase);
+
+    private bool CanReturn =>
+        AccessControl.Has(Permissions.SalesReturnsAuthorize) && _invoice?.Status == InvoiceStatus.Issued;
+
+    private void LoadReturns()
+    {
+        _returns = Returns.ListForInvoice(Id);
+        _returnable = CanReturn ? Returns.Returnable(Id) : [];
+        _quantities = _returnable.ToDictionary(line => line.ProductSku, _ => 0, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void RegisterReturn()
+    {
+        _returnError = null;
+        _message = null;
+        try
+        {
+            var id = Returns.Register(Id, _reason ?? "", _quantities
+                .Select(pair => new SalesReturnLineRequest(pair.Key, pair.Value))
+                .ToList());
+            _message = $"Devolución NC-{id:D5} registrada; las unidades volvieron al stock.";
+            _reason = null;
+            LoadReturns();
+        }
+        catch (Exception exception)
+        {
+            _returnError = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        _error = null;
+
+        try
+        {
+            _invoice = InvoiceService.Get(Id);
+            LoadReturns();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}
