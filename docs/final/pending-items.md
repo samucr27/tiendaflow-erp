@@ -80,9 +80,12 @@ exige la Definition of Done.
   usó la base de desarrollo.
 - **Datos de demostración:** el sembrado se registra siempre que
   `Seed:Enabled` sea verdadero, sin importar el entorno; no está atado a
-  `Development`. Si la clave es falsa o no existe, ninguna ruta crea usuarios,
-  productos ni facturas de ejemplo. En la configuración de producción se deja
-  desactivada.
+  `Development`. Decide por registro con claves naturales (NIT, documento, SKU,
+  correo, número de identificación, proveedor + tienda + SKU en órdenes y
+  traslados), así que ejecutarlo dos veces no duplica y una base vieja recupera
+  solo lo que falta. Si la clave es falsa o no existe, ninguna ruta crea
+  usuarios, productos ni facturas de ejemplo. En la configuración de producción
+  se deja desactivada.
 - **Roles:** la matriz es código y no se edita desde la interfaz. Es una decisión
   de diseño para que la autorización sea determinista entre despliegues, no un
   pendiente funcional.

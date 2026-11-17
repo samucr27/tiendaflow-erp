@@ -160,11 +160,32 @@ ejecutable `efbundle.exe` no se commitea.
 
 ## Sembrado de datos
 
-`DevDataSeeder` crea la tienda, los siete roles, un usuario por rol, productos,
-proveedores, facturas y clientes de demostración. Se registra siempre que
-`Seed:Enabled` sea `true`, **sin importar el entorno**; no está condicionado a
-`Development`. Cada tabla se llena únicamente si está vacía, así que el
-sembrado es idempotente.
+`DevDataSeeder` crea las tiendas, los siete roles, un usuario por rol, empleados,
+productos, existencias, proveedores, clientes, órdenes, facturas, devoluciones,
+conteos y traslados de demostración. Se registra siempre que `Seed:Enabled` sea
+`true`, **sin importar el entorno**; no está condicionado a `Development`.
+
+El sembrado decide **por registro**, no por tabla, con una clave natural estable:
+
+| Sección | Clave natural |
+| --- | --- |
+| Tiendas y roles | Id fijo del catálogo |
+| Empleados | Número de identificación |
+| Usuarios | Correo electrónico |
+| Productos y existencias | SKU y SKU + tienda |
+| Proveedores | NIT |
+| Clientes | Número de documento |
+| Relación producto · proveedor | SKU + proveedor |
+| Órdenes de compra | Proveedor + tienda + conjunto de SKU |
+| Facturas | Documento del cliente y estado |
+| Devoluciones | Factura (una devolución demo por factura) |
+| Conteos | Tienda + ubicación |
+| Traslados | Tienda origen + tienda destino + conjunto de SKU |
+
+Así, ejecutar la aplicación dos veces no duplica nada y una base sembrada por una
+versión anterior que perdió algunos registros recupera solo los que faltan. Las
+pruebas `SeedIdempotencyTests` ejecutan el seeder real dos veces y también borran
+filas de cuatro secciones para comprobar la reparación sin duplicados.
 
 - Si `Seed:Enabled` es `false` o no existe, el servicio no se registra y ninguna
   ruta crea datos de ejemplo.

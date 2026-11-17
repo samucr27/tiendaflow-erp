@@ -31,6 +31,16 @@ public sealed class ErpWebApplicationFactory : WebApplicationFactory<Program>
         ("rrhh@tiendaflow.local", false)
     };
 
+    /// <summary>
+    /// The connection string is handed to the application through process-wide
+    /// environment variables (see <see cref="CreateHost"/>). xUnit runs test
+    /// classes in parallel, so two factories could otherwise overwrite each
+    /// other's value between the write and the moment the host reads it, making
+    /// two hosts share one database and seed it twice. Host creation is
+    /// serialized for that reason.
+    /// </summary>
+    private static readonly SemaphoreSlim HostCreation = new(1, 1);
+
     private readonly string _connectionString;
     private readonly SemaphoreSlim _preparation = new(1, 1);
     private bool _prepared;
@@ -149,7 +159,9 @@ public sealed class ErpWebApplicationFactory : WebApplicationFactory<Program>
     /// environment for the duration of <see cref="CreateHost"/> is what keeps
     /// the smoke tests on their own disposable database instead of a
     /// developer's local one. The variables are restored immediately so the
-    /// rest of the suite is not affected.
+    /// rest of the suite is not affected. The global lock keeps two test
+    /// classes that build a host at the same time from reading each other's
+    /// connection string.
     /// </summary>
     protected override IHost CreateHost(IHostBuilder builder)
     {
@@ -162,22 +174,31 @@ public sealed class ErpWebApplicationFactory : WebApplicationFactory<Program>
             ["Seed__DemoPassword"] = DemoPassword
         };
 
-        var previous = settings.Keys.ToDictionary(
-            key => key,
-            Environment.GetEnvironmentVariable,
-            StringComparer.Ordinal);
+        HostCreation.Wait();
 
         try
         {
-            foreach (var setting in settings)
-                Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+            var previous = settings.Keys.ToDictionary(
+                key => key,
+                Environment.GetEnvironmentVariable,
+                StringComparer.Ordinal);
 
-            return base.CreateHost(builder);
+            try
+            {
+                foreach (var setting in settings)
+                    Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+
+                return base.CreateHost(builder);
+            }
+            finally
+            {
+                foreach (var setting in previous)
+                    Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+            }
         }
         finally
         {
-            foreach (var setting in previous)
-                Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+            HostCreation.Release();
         }
     }
 

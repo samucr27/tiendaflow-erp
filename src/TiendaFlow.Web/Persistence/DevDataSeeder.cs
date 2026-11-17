@@ -14,9 +14,11 @@ namespace TiendaFlow.Web.Persistence;
 /// are never stored in this file, in logs or in the repository. The schema is
 /// migrated separately through Database:MigrateOnStartup or the EF bundle.
 ///
-/// Every section checks what is already there before inserting, so starting the
-/// application twice never duplicates stores, products, suppliers, customers,
-/// stock rows, orders or invoices.
+/// Every section decides per record, not per table: each row is looked up by a
+/// stable natural key (NIT, document, SKU, email, id number, supplier + store +
+/// SKU set for orders, and so on). Starting the application twice never
+/// duplicates data, and an old database missing a single demo row gets that row
+/// back without touching the ones that already exist.
 /// </summary>
 public sealed class DevDataSeeder : IHostedService
 {
@@ -393,8 +395,17 @@ public sealed class DevDataSeeder : IHostedService
         TiendaFlowDbContext context,
         CancellationToken cancellationToken)
     {
-        if (await context.ProductSuppliers.AnyAsync(cancellationToken))
-            return;
+        // The natural key of the relation is (SKU, supplier id). A table-wide
+        // guard would skip the whole section when a single row exists, leaving
+        // an old database permanently incomplete.
+        var existing = await context.ProductSuppliers
+            .AsNoTracking()
+            .Select(item => new { item.ProductSku, item.SupplierId })
+            .ToListAsync(cancellationToken);
+
+        var keys = existing
+            .Select(item => (item.ProductSku, item.SupplierId))
+            .ToHashSet();
 
         var suppliers = await context.Suppliers
             .ToDictionaryAsync(supplier => supplier.Nit, cancellationToken);
@@ -403,6 +414,9 @@ public sealed class DevDataSeeder : IHostedService
         {
             var product = DemoProducts.FirstOrDefault(seed => seed.Sku == sku);
             if (product is null || !suppliers.TryGetValue(nit, out var supplier))
+                continue;
+
+            if (!keys.Add((sku, supplier.Id)))
                 continue;
 
             var lastCost = Math.Round(product.SalePrice * 0.65m / 100m) * 100m;
@@ -416,8 +430,37 @@ public sealed class DevDataSeeder : IHostedService
         TiendaFlowDbContext context,
         CancellationToken cancellationToken)
     {
-        if (await context.PurchaseOrders.AnyAsync(cancellationToken))
-            return;
+        // A purchase order has no business number in this demo, so its natural
+        // key is the combination the seed controls: supplier, store and the set
+        // of product SKUs. The record is inserted only when that combination is
+        // absent; an order with the same key is considered already seeded.
+        var existing = await context.PurchaseOrders
+            .AsNoTracking()
+            .Include(order => order.Lines)
+            .Select(order => new
+            {
+                order.SupplierId,
+                order.StoreId,
+                Skus = order.Lines.Select(line => line.ProductSku).ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        var keys = existing
+            .Select(order => PurchaseOrderKey(order.SupplierId, order.StoreId, order.Skus))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var orders = new List<PurchaseOrder>();
+
+        void AddIfMissing(PurchaseOrder order)
+        {
+            var key = PurchaseOrderKey(
+                order.SupplierId,
+                order.StoreId,
+                order.Lines.Select(line => line.ProductSku));
+
+            if (keys.Add(key))
+                orders.Add(order);
+        }
 
         var suppliers = await context.Suppliers
             .ToDictionaryAsync(supplier => supplier.Nit, cancellationToken);
@@ -521,18 +564,27 @@ public sealed class DevDataSeeder : IHostedService
         AddLine(cancelled, products, "SKU-1011", 10, 2100m);
         cancelled.Cancel();
 
-        context.PurchaseOrders.AddRange(
-            draft,
-            pendingApproval,
-            approved,
-            sent,
-            confirmed,
-            partiallyReceived,
-            received,
-            cancelled);
+        AddIfMissing(draft);
+        AddIfMissing(pendingApproval);
+        AddIfMissing(approved);
+        AddIfMissing(sent);
+        AddIfMissing(confirmed);
+        AddIfMissing(partiallyReceived);
+        AddIfMissing(received);
+        AddIfMissing(cancelled);
+
+        context.PurchaseOrders.AddRange(orders);
 
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    private static string PurchaseOrderKey(
+        int supplierId,
+        int storeId,
+        IEnumerable<string> skus) =>
+        $"{supplierId}|{storeId}|{string.Join(
+            ',',
+            skus.OrderBy(sku => sku, StringComparer.Ordinal))}";
 
     private static void AddLine(
         PurchaseOrder order,
@@ -591,27 +643,39 @@ public sealed class DevDataSeeder : IHostedService
                 new[] { new SeedInvoiceLine("SKU-1014", 2), new SeedInvoiceLine("SKU-1015", 3) })
         };
 
-        var issuedCount = await context.SalesInvoices.CountAsync(
-            invoice => invoice.Status == InvoiceStatus.Issued,
-            cancellationToken);
+        // The customer document is the natural key of each demo invoice. The
+        // previous index-based guard miscounted when an invoice was cancelled
+        // or deleted, so the seeder now inserts only the documents that are
+        // genuinely missing.
+        var issuedDocuments = (await context.SalesInvoices
+                .AsNoTracking()
+                .Where(invoice => invoice.Status == InvoiceStatus.Issued)
+                .Select(invoice => invoice.CustomerDocument)
+                .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
 
-        for (var index = issuedCount; index < issued.Length; index++)
+        foreach (var seed in issued)
         {
-            var seed = issued[index];
-            var invoice = CreateInvoice(seed, products);
-            context.SalesInvoices.Add(invoice);
+            if (!issuedDocuments.Add(seed.CustomerDocument))
+                continue;
+
+            context.SalesInvoices.Add(CreateInvoice(seed, products));
         }
 
-        if (!await context.SalesInvoices.AnyAsync(
-                invoice => invoice.Status == InvoiceStatus.Cancelled,
-                cancellationToken))
+        var cancelledSeed = new SeedInvoice(
+            "Ricardo Molina",
+            "80456789",
+            2,
+            new[] { new SeedInvoiceLine("SKU-1001", 1), new SeedInvoiceLine("SKU-1011", 2) });
+
+        var cancelledExists = await context.SalesInvoices.AnyAsync(
+            invoice => invoice.Status == InvoiceStatus.Cancelled
+                && invoice.CustomerDocument == cancelledSeed.CustomerDocument,
+            cancellationToken);
+
+        if (!cancelledExists)
         {
-            var seed = new SeedInvoice(
-                "Ricardo Molina",
-                "80456789",
-                2,
-                new[] { new SeedInvoiceLine("SKU-1001", 1), new SeedInvoiceLine("SKU-1011", 2) });
-            var invoice = CreateInvoice(seed, products);
+            var invoice = CreateInvoice(cancelledSeed, products);
             invoice.Cancel();
             context.SalesInvoices.Add(invoice);
         }
@@ -648,9 +712,6 @@ public sealed class DevDataSeeder : IHostedService
         TiendaFlowDbContext context,
         CancellationToken cancellationToken)
     {
-        if (await context.SalesReturns.AnyAsync(cancellationToken))
-            return;
-
         var invoices = await context.SalesInvoices
             .AsNoTracking()
             .Include(invoice => invoice.Lines)
@@ -662,28 +723,37 @@ public sealed class DevDataSeeder : IHostedService
         if (invoices.Count == 0)
             return;
 
+        // The demo owns at most one return per invoice, so the invoice id is
+        // the natural key. Checking per invoice keeps the authorized return and
+        // its stock re-entry from running twice.
+        var invoicesWithReturn = (await context.SalesReturns
+                .AsNoTracking()
+                .Select(salesReturn => salesReturn.InvoiceId)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
+
         var first = invoices[0];
         var firstLine = first.Lines.OrderBy(line => line.Id).FirstOrDefault();
 
-        if (firstLine is null)
-            return;
+        if (firstLine is not null && invoicesWithReturn.Add(first.Id))
+        {
+            var pending = new SalesReturn(
+                0,
+                first.Id,
+                DefaultStoreId,
+                first.CustomerName,
+                first.CustomerDocument,
+                "Producto vencido",
+                DateTime.UtcNow.AddDays(-3));
 
-        var pending = new SalesReturn(
-            0,
-            first.Id,
-            DefaultStoreId,
-            first.CustomerName,
-            first.CustomerDocument,
-            "Producto vencido",
-            DateTime.UtcNow.AddDays(-3));
+            pending.AddLine(
+                firstLine.ProductSku,
+                firstLine.Description,
+                Math.Min(1, firstLine.Quantity),
+                firstLine.UnitPrice);
 
-        pending.AddLine(
-            firstLine.ProductSku,
-            firstLine.Description,
-            Math.Min(1, firstLine.Quantity),
-            firstLine.UnitPrice);
-
-        context.SalesReturns.Add(pending);
+            context.SalesReturns.Add(pending);
+        }
 
         SalesReturn? authorized = null;
 
@@ -692,7 +762,7 @@ public sealed class DevDataSeeder : IHostedService
             var second = invoices[1];
             var secondLine = second.Lines.OrderBy(line => line.Id).FirstOrDefault();
 
-            if (secondLine is not null)
+            if (secondLine is not null && invoicesWithReturn.Add(second.Id))
             {
                 authorized = new SalesReturn(
                     0,
@@ -736,8 +806,17 @@ public sealed class DevDataSeeder : IHostedService
         TiendaFlowDbContext context,
         CancellationToken cancellationToken)
     {
-        if (await context.InventoryCounts.AnyAsync(cancellationToken))
-            return;
+        // A count is identified by its store and location: the demo only ever
+        // creates one per combination, independent of how many stock rows the
+        // store has by the time the seeder runs.
+        var existing = await context.InventoryCounts
+            .AsNoTracking()
+            .Select(count => new { count.StoreId, count.Location })
+            .ToListAsync(cancellationToken);
+
+        var keys = existing
+            .Select(count => InventoryCountKey(count.StoreId, count.Location))
+            .ToHashSet(StringComparer.Ordinal);
 
         var storeOneStock = await context.Stocks
             .AsNoTracking()
@@ -763,7 +842,8 @@ public sealed class DevDataSeeder : IHostedService
         var first = storeOneStock[0];
         open.SetCounted(first.Sku, Math.Max(0, first.QuantityAvailable - 2));
 
-        context.InventoryCounts.Add(open);
+        if (keys.Add(InventoryCountKey(open.StoreId, open.Location)))
+            context.InventoryCounts.Add(open);
 
         var northStock = await context.Stocks
             .AsNoTracking()
@@ -787,18 +867,41 @@ public sealed class DevDataSeeder : IHostedService
             }
 
             closed.Close(DateTime.UtcNow.AddDays(-3));
-            context.InventoryCounts.Add(closed);
+
+            if (keys.Add(InventoryCountKey(closed.StoreId, closed.Location)))
+                context.InventoryCounts.Add(closed);
         }
 
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    private static string InventoryCountKey(int storeId, string? location) =>
+        $"{storeId}|{location?.Trim() ?? string.Empty}";
+
     private static async Task SeedInventoryTransfersAsync(
         TiendaFlowDbContext context,
         CancellationToken cancellationToken)
     {
-        if (await context.InventoryTransfers.AnyAsync(cancellationToken))
-            return;
+        // A transfer has no business number, so the natural key is the route
+        // plus the set of products it moves. The draft and the cancelled
+        // transfer have different product sets, so both survive a second run.
+        var existing = await context.InventoryTransfers
+            .AsNoTracking()
+            .Include(transfer => transfer.Lines)
+            .Select(transfer => new
+            {
+                transfer.OriginStoreId,
+                transfer.DestinationStoreId,
+                Skus = transfer.Lines.Select(line => line.ProductSku).ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        var keys = existing
+            .Select(transfer => InventoryTransferKey(
+                transfer.OriginStoreId,
+                transfer.DestinationStoreId,
+                transfer.Skus))
+            .ToHashSet(StringComparer.Ordinal);
 
         var stock = await context.Stocks
             .AsNoTracking()
@@ -829,9 +932,32 @@ public sealed class DevDataSeeder : IHostedService
         cancelled.AddLine(stock[0].Sku, 1);
         cancelled.Cancel(DateTime.UtcNow.AddDays(-2));
 
-        context.InventoryTransfers.AddRange(draft, cancelled);
+        if (keys.Add(InventoryTransferKey(
+                draft.OriginStoreId,
+                draft.DestinationStoreId,
+                draft.Lines.Select(line => line.ProductSku))))
+        {
+            context.InventoryTransfers.Add(draft);
+        }
+
+        if (keys.Add(InventoryTransferKey(
+                cancelled.OriginStoreId,
+                cancelled.DestinationStoreId,
+                cancelled.Lines.Select(line => line.ProductSku))))
+        {
+            context.InventoryTransfers.Add(cancelled);
+        }
+
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    private static string InventoryTransferKey(
+        int originStoreId,
+        int destinationStoreId,
+        IEnumerable<string> skus) =>
+        $"{originStoreId}|{destinationStoreId}|{string.Join(
+            ',',
+            skus.OrderBy(sku => sku, StringComparer.Ordinal))}";
 
     private sealed record SeedStore(int Id, string Name, string Address);
 

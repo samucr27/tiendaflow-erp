@@ -28,9 +28,9 @@ Compilación correcta.
 | --- | ---: | ---: | ---: | ---: |
 | `TiendaFlow.UnitTests` | 649 | 0 | 0 | 649 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 54 | 0 | 0 | 54 |
+| `TiendaFlow.IntegrationTests` | 56 | 0 | 0 | 56 |
 
-Total ejecutado: **709 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **711 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -57,7 +57,7 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 | `TiendaFlow.Application` | 3371 | 3476 | **97,0 %** |
 | `TiendaFlow.Domain` | 896 | 946 | **94,7 %** |
 | Aplicación + dominio | 4267 | 4422 | **96,5 %** |
-| `TiendaFlow.Infrastructure` (con integración SQL) | 12154 | 12375 | **98,2 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 12157 | 12375 | **98,2 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura de
 `TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
@@ -301,6 +301,28 @@ solo en la pantalla:
   contra SQL Server real, un Jefe de tienda no crea conteos ni traslados de otra
   tienda y la base no recibe el documento, mientras su propia tienda sigue
   funcionando.
+
+## Sembrado idempotente por registro (PASS 2)
+
+El sembrado pasó de comprobar “la tabla está vacía” a decidir por registro con
+una clave natural estable. Las pruebas ejecutan el `DevDataSeeder` real contra
+SQL Server desechable, no un doble:
+
+- `SeedIdempotencyTests.RunningTheSeederTwiceDoesNotDuplicateAnyRecord` toma un
+  inventario de 19 tablas, ejecuta el seeder por segunda vez y exige el mismo
+  inventario exacto.
+- `SeedIdempotencyTests.TheSeederRepairsAnOldDatabaseWithoutDuplicatingTheRest`
+  borra una relación producto · proveedor, una orden de compra, la factura
+  anulada y un traslado para simular una base sembrada por una versión anterior;
+  vuelve a ejecutar el seeder y exige que el inventario regrese al original sin
+  duplicar el resto.
+
+La fábrica de pruebas web serializa la creación de hosts con un candado global.
+Sin él, dos clases de prueba en paralelo podían intercambiarse la cadena de
+conexión a través de las variables de entorno del proceso y sembrar la misma
+base dos veces; el fallo se reproducía de forma intermitente en la suite
+completa. Con el candado, la suite completa se ejecutó tres veces seguidas sin
+errores.
 
 ## Cómo reproducir la verificación
 
