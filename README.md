@@ -4,14 +4,34 @@ Semester project of CADI: Software Engineering II, University of Cundinamarca (I
 
 TiendaFlow is a modular web ERP for convenience-store chains built with Microsoft technologies (ASP.NET Core, Blazor and SQL Server 2022). It integrates six modules: Inventory, Sales and Billing, Supplier and Purchasing, Human Resources, Customer Management (CRM), and Security and Reporting.
 
+## Estado del proyecto
+
+El proyecto terminó con el Sprint 2 (16 de noviembre de 2026); no hay Sprint 3. La versión final está en `main`
+y en la etiqueta `sprint-2`.
+
+| Módulo | Funciones |
+|---|---|
+| Inventario | CRUD de productos, stock por tienda, recepción, conteos, traslados, alertas de stock crítico (HU-05) |
+| Ventas y facturación | Punto de venta con varios productos, facturas que mueven inventario, devoluciones (notas crédito), XML simulado de factura electrónica |
+| Proveedores y compras | CRUD de proveedores, órdenes de compra, ranking de proveedores, reposición automática ante stock crítico |
+| Talento humano | CRUD de empleados, nómina mensual (HU-04) con corridas guardadas, contratos, asistencia, turnos |
+| CRM | CRUD de clientes, segmentación A/B/C, puntos de fidelización, PQRS, campañas por segmento |
+| Seguridad y reportes | Usuarios y roles (HU-06), matriz de roles editable, tiendas, parámetros, auditoría, reportes de inventario, ventas, nómina y seguridad |
+
+La factura electrónica real ante la DIAN (firma certificada y envío) queda fuera del alcance: el sistema genera un
+XML simulado sin validez fiscal.
+
 ## Documentation
 
 1. Documentation page: https://samucr27.github.io/tiendaflow-erp/
-2. Complete project document: [TiendaFlow_Project_Definition_Sprint1.pdf](TiendaFlow_Project_Definition_Sprint1.pdf)
-3. Figma design file and interactive prototype: https://www.figma.com/design/3LW57RjiNETxaukic2S6JE
-4. Prototype generated with Figma Make: https://early-hope-36544320.figma.site/
-5. Google Colab notebook with the PlantUML diagrams: https://colab.research.google.com/drive/1VtObCkwC1xnCBrrpza1oSu0oOpki-RqI?usp=sharing
-6. PlantUML sources: [docs/uml](docs/uml)
+2. Complete project document (Sprints 0 and 1): [TiendaFlow_Project_Definition_Sprint1.pdf](TiendaFlow_Project_Definition_Sprint1.pdf)
+3. Final Sprint 2 document, organized by module: [TiendaFlow_Entrega_Final_Sprint2.pdf](TiendaFlow_Entrega_Final_Sprint2.pdf)
+4. Architecture tour video (arc42 in Notion, Sprint 2 task 2): https://drive.google.com/file/d/1zUALZRwRKVcWQhH2NglT0QQUR7mrlyVc/view?usp=sharing
+5. Application deployed on Azure App Service: https://app-tiendaflow-ba67bx.azurewebsites.net
+6. Figma design file and interactive prototype: https://www.figma.com/design/3LW57RjiNETxaukic2S6JE
+7. Prototype generated with Figma Make: https://early-hope-36544320.figma.site/
+8. Google Colab notebook with the PlantUML diagrams: https://colab.research.google.com/drive/1VtObCkwC1xnCBrrpza1oSu0oOpki-RqI?usp=sharing
+9. PlantUML sources: [docs/uml](docs/uml)
 
 ## Team
 
@@ -47,7 +67,7 @@ Verifica que el contenedor esté en ejecución:
 docker ps --filter "name=tiendaflow-sql"
 ```
 
-La primera ejecución de la aplicación en el entorno `Development` aplica las migraciones de EF Core y crea la base `TiendaFlow_OpenCode` con la tienda, los roles, los usuarios demo y los datos iniciales (4 productos con stock, 3 proveedores, 2 facturas y 3 clientes). Ese sembrado solo se ejecuta si cada tabla está vacía; no se repite al reiniciar.
+La primera ejecución de la aplicación en el entorno `Development` aplica las migraciones de EF Core y crea la base `TiendaFlow_OpenCode` con la tienda, los roles, los usuarios demo y datos de demostración de todos los módulos (productos con stock, proveedores, órdenes, facturas, clientes, empleados, contratos, asistencia, turnos, PQRS y campañas). Ese sembrado solo se ejecuta si cada tabla está vacía; no se repite al reiniciar.
 
 ### 2. Secretos de desarrollo
 
@@ -95,15 +115,19 @@ Todos usan el dominio `@tiendaflow.local`. Las contraseñas no se documentan aqu
 
 | Módulo | Rutas | Permiso de lectura | Permiso de escritura |
 |---|---|---|---|
-| Inventario | `/inventario`, `/inventario/productos`, `/inventario/alertas` | `inventory.stock.view`, `inventory.products.view` | `inventory.products.manage`, `inventory.stock.*` |
-| Reportes | `/reportes/inventario`, `/reportes/ventas`, `/reportes/nomina` | `inventory.reports.view`, `sales.reports.view`, `hr.payroll.manage` | — |
-| Nómina y empleados | `/rrhh/empleados`, `/rrhh/nomina` | `hr.employees.view`, `hr.payroll.manage` | `hr.employees.manage`, `hr.payroll.manage` |
+| Inventario | `/inventario`, `/inventario/productos`, `/inventario/stock`, `/inventario/recibir`, `/inventario/conteos`, `/inventario/traslados`, `/inventario/alertas` | `inventory.stock.view`, `inventory.products.view`, `inventory.alerts.view` | `inventory.products.manage`, `inventory.stock.*` |
+| Punto de venta | `/inventario/ventas` | `sales.pos.use` | `sales.pos.use` |
+| Facturación | `/facturacion`, `/facturacion/nueva`, `/facturacion/{id}` (con devoluciones), `/facturacion/{id}/xml` | `sales.invoices.view` | `sales.invoices.manage`, `sales.returns.authorize` |
 | Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/{id}`, `/proveedores/ranking` | `purchasing.suppliers.view`, `purchasing.reports.view` | `purchasing.suppliers.manage`, `purchasing.evaluations.manage` |
 | Compras | `/compras/ordenes`, `/compras/ordenes/nueva`, `/compras/ordenes/{id}`, `/compras/reposicion` | `purchasing.orders.view` | `purchasing.orders.*` |
-| Facturación | `/facturacion`, `/facturacion/nueva`, `/facturacion/{id}`, `/facturacion/{id}/xml` | `sales.invoices.view` | `sales.invoices.manage` |
-| CRM clientes | `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id}`, `/crm/segmentacion` | `crm.customers.view`, `crm.reports.view` | `crm.customers.manage` |
-| Seguridad | `/seguridad/usuarios`, `/seguridad/tiendas`, `/seguridad/parametros`, `/seguridad/roles`, `/seguridad/auditoria` | `security.*.view` | `security.*.manage` |
+| Talento humano | `/rrhh/empleados`, `/rrhh/nomina`, `/rrhh/contratos`, `/rrhh/asistencia`, `/rrhh/turnos` | `hr.employees.view` | `hr.employees.manage`, `hr.payroll.manage`, `hr.contracts.manage`, `hr.attendance.manage`, `hr.shifts.manage` |
+| CRM | `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id}`, `/crm/segmentacion`, `/crm/puntos`, `/crm/pqrs`, `/crm/campanas` | `crm.customers.view`, `crm.reports.view` | `crm.customers.manage`, `crm.points.manage`, `crm.pqrs.manage`, `crm.campaigns.manage` |
+| Seguridad | `/seguridad/usuarios`, `/seguridad/roles`, `/seguridad/tiendas`, `/seguridad/parametros`, `/seguridad/auditoria` | `security.*.view` | `security.*.manage` |
+| Reportes | `/reportes/inventario`, `/reportes/ventas`, `/reportes/nomina`, `/reportes/seguridad` | `inventory.reports.view`, `sales.reports.view`, `hr.payroll.manage`, `security.reports.view` | — |
+| API | `POST /api/nomina/calculate` | — | `hr.payroll.manage` (sin sesión responde 401 y sin permiso 403) |
 
+La matriz por defecto vive en `src/TiendaFlow.Application/Security/RolePermissions.cs`; el administrador puede
+cambiar los permisos de cada rol en `/seguridad/roles` y los cambios aplican en el siguiente inicio de sesión.
 El detalle de qué rol tiene cada permiso está en `docs/arc42/10-architecture-concepts-security.md` y en `src/TiendaFlow.Application/Security/RolePermissions.cs`.
 
 ## Migraciones de EF Core
@@ -125,13 +149,25 @@ dotnet ef database update `
   --startup-project src\TiendaFlow.Web
 ```
 
-Las migraciones de esta entrega son `20261109011701_Phase3Purchasing`
-(proveedores y órdenes), `20261111005733_Phase4Invoicing` (facturación),
-`20261111010125_Phase5Crm` (clientes), `20261113012709_Phase6Stores` (índices de
-tiendas), `20261113013940_Phase7Parameters` (parámetros versionados) y
-`20261113015239_Phase8PurchasingKpis` (fechas de la orden y relación producto ·
-proveedor). Las migraciones anteriores a `Phase6Stores` pertenecen a las
-entregas previas y no se editaron.
+Las migraciones van de `InitialCreate` a `Phase12CloseoutModules`:
+
+| Migración | Contenido |
+|---|---|
+| `20261107142012_InitialCreate` | Productos, stock y auditoría |
+| `20261109010416_Phase2Security` | Tiendas, roles, usuarios y empleados |
+| `20261109011701_Phase3Purchasing` | Proveedores y órdenes de compra |
+| `20261111005733_Phase4Invoicing` | Facturación |
+| `20261111010125_Phase5Crm` | Clientes |
+| `20261113012709_Phase6Stores` | Índices de tiendas |
+| `20261113013940_Phase7Parameters` | Parámetros versionados |
+| `20261113015239_Phase8PurchasingKpis` | Fechas de la orden y relación producto · proveedor |
+| `20261114035445_Phase9InventoryDocuments` | Conteos y traslados |
+| `20261116144218_Phase10StockConcurrency` | Columna `rowversion` en `stock` |
+| `20261116154129_Phase11PosSalesAndInvoiceStock` | Ventas del punto de venta y tienda de la factura |
+| `20261117024530_Phase12CloseoutModules` | Devoluciones, roles editables, contratos, asistencia, turnos, corridas de nómina, puntos, PQRS y campañas |
+
+Antes de publicar una versión nueva en Azure hay que aplicar las migraciones pendientes en Azure SQL
+(ver [docs/final/deploy-azure.md](docs/final/deploy-azure.md)).
 
 ## Pruebas y cobertura
 
@@ -139,6 +175,10 @@ entregas previas y no se editaron.
 dotnet build TiendaFlow.slnx
 dotnet test TiendaFlow.slnx
 ```
+
+Resultado de la versión final: 694 pruebas en verde (635 unitarias, 6 de aceptación con Reqnroll y 53 de
+integración contra SQL Server 2022) y 95,5 % de cobertura de líneas en `Application` + `Domain`. El detalle está en
+[docs/final/testing.md](docs/final/testing.md).
 
 La cobertura se recoge con coverlet y se resume con ReportGenerator:
 
@@ -186,8 +226,10 @@ infra/                        Infraestructura como código (Terraform)
 - [Final](docs/final): módulos implementados, permisos, pendientes, pruebas, base de datos y guía de Azure.
 - [Notion](docs/notion): versión para Notion de los mismos documentos.
 - [Sprint 2](docs/sprint2): planeación, guion de demo, guion del tour de arquitectura, flujo de Terraform, revisión de código, validación de parámetros de nómina, revisión de la UI de RR. HH., prueba de humo de autorización, retrospectiva y preguntas abiertas.
-- [Diagramas UML](docs/uml): secuencias de la corrida de nómina.
+- [Diagramas UML](docs/uml): casos de uso, árboles funcionales, clases, entidad-relación, C4 y secuencias de la nómina ([imagen del cálculo de HU-04](docs/img/payroll_sequence.png)).
 - [Documento del proyecto](TiendaFlow_Project_Definition_Sprint1.pdf): definición del Sprint 1.
+- [Entrega final del Sprint 2](TiendaFlow_Entrega_Final_Sprint2.pdf): revisión, correcciones y verificación por módulo.
+- [Video del tour de arquitectura](https://drive.google.com/file/d/1zUALZRwRKVcWQhH2NglT0QQUR7mrlyVc/view?usp=sharing): coherencia entre las secciones 5 y 10 de arc42 en Notion.
 
 ## Flujo de ramas
 
