@@ -30,5 +30,6 @@ public class EfProductRepository : IProductRepository
         _context.SaveChanges();
     }
 
-    public Product? GetBySku(string sku) => _context.Products.Find(sku);
+    public Product? GetBySku(string sku) =>
+        _context.LoadFresh<Product>(product => product.Sku == sku, () => _context.Products.Find(sku));
 }

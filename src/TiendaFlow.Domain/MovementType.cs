@@ -7,5 +7,5 @@ public enum MovementType
     Adjustment,
     TransferIn,
     TransferOut,
-    ReturnIn
+    Return
 }

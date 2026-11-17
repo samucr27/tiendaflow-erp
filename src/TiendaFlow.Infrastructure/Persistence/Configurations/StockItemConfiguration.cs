@@ -32,6 +32,13 @@ public class StockItemConfiguration : IEntityTypeConfiguration<StockItem>
         builder.Property(item => item.MinStock)
             .HasColumnName("min_stock");
 
+        // Two cashiers can sell the same SKU at the same moment. The row
+        // version turns a lost update into a DbUpdateConcurrencyException,
+        // which the UI reports so the user retries with the current stock.
+        builder.Property<byte[]>("RowVersion")
+            .HasColumnName("row_version")
+            .IsRowVersion();
+
         // The domain only keeps the latest movement, so it is stored as an
         // owned snapshot in the stock row instead of a separate history table.
         builder.OwnsOne(item => item.LastMovement, movement =>

@@ -92,7 +92,7 @@ else
                             <td class="table-actions">
                                 <a class="button button-secondary button-small"
                                    href="@($"facturacion/{invoice.Id}")">
-                                    @(invoice.Status == InvoiceStatus.Issued ? "Editar" : "Ver")
+                                    Ver
                                 </a>
                                 @if (invoice.Status == InvoiceStatus.Issued)
                                 {

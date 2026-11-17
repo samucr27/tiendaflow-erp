@@ -122,7 +122,7 @@ public class SalesReturnsIntegrationTests : IClassFixture<SqlServerDatabaseFixtu
             var second = new EfStockRepository(context).Get(storeId, secondSku)!;
 
             Assert.Equal(22, first.QuantityAvailable);
-            Assert.Equal(MovementType.ReturnIn, first.LastMovement!.Type);
+            Assert.Equal(MovementType.Return, first.LastMovement!.Type);
             Assert.Equal(2, first.LastMovement.Quantity);
             Assert.Equal(16, second.QuantityAvailable);
 

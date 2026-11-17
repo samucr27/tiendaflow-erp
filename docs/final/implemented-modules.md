@@ -231,7 +231,7 @@ Reglas aplicadas en el dominio y en `SalesReturnService`:
    autorizar, porque otra devolución pudo aprobarse mientras esta esperaba.
 3. La devolución nace `Pending`. Al autorizar se asigna una sola vez el
    consecutivo `NC-000000`, las unidades vuelven al stock de la tienda con el
-   movimiento `ReturnIn` y el documento queda bloqueado; repetir la autorización
+   movimiento `Return` y el documento queda bloqueado; repetir la autorización
    falla sin mover inventario.
 4. El rechazo cierra la devolución sin tocar el stock. Ninguna de las dos salidas
    modifica la factura original.

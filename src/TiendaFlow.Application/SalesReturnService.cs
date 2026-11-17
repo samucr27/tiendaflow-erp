@@ -178,7 +178,7 @@ public sealed class SalesReturnService
 
             foreach (var (line, stock) in stockRows)
             {
-                stock.RegisterReturnIn(line.Quantity, now);
+                stock.RegisterReturn(line.Quantity, now);
                 _stock.Update(stock);
             }
 

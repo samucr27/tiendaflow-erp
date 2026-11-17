@@ -1,7 +1,7 @@
 # Compilación, pruebas y cobertura
 
 Última verificación: **16 de noviembre de 2026**, sobre `feature/erp-complete`,
-con .NET 9 en Windows.
+con .NET 9 en Windows y SQL Server 2022 en Docker.
 
 Esta página se actualiza al cerrar cada fase. La última fila de resultados
 corresponde a la fase de devoluciones y notas crédito.
@@ -28,15 +28,18 @@ Compilación correcta.
 | --- | ---: | ---: | ---: | ---: |
 | `TiendaFlow.UnitTests` | 615 | 0 | 0 | 615 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 46 | 0 | 0 | 46 |
+| `TiendaFlow.IntegrationTests` | 53 | 0 | 0 | 53 |
 
-Total ejecutado: **667 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **692 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
 `TIENDAFLOW_TEST_CONNECTION`. El fixture crea una base única, aplica todas las
-migraciones en orden y ejecuta las pruebas; no toca la base de desarrollo. Sin
-esa variable las pruebas se omiten, pero en esta verificación se ejecutaron.
+migraciones en orden y ejecuta las pruebas; no toca la base de desarrollo. Las
+pruebas de humo web usan su propia base desechable: la fábrica inyecta la cadena
+en el entorno durante la creación del host y falla de forma explícita si el
+contexto apunta a otra base. Sin esa variable las pruebas se omiten, pero en
+esta verificación se ejecutaron.
 
 ## Cobertura
 
@@ -51,10 +54,10 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 3190 | 3289 | **97,0 %** |
-| `TiendaFlow.Domain` | 860 | 907 | **94,8 %** |
-| Aplicación + dominio | 4050 | 4196 | **96,5 %** |
-| `TiendaFlow.Infrastructure` (con integración SQL) | 9705 | 9903 | **98,0 %** |
+| `TiendaFlow.Application` | 3337 | 3441 | **97,0 %** |
+| `TiendaFlow.Domain` | 896 | 946 | **94,7 %** |
+| Aplicación + dominio | 4233 | 4387 | **96,5 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 12151 | 12372 | **98,2 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura de
 `TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
@@ -197,7 +200,7 @@ movimiento de stock y nunca dejan cantidades negativas. Las pantallas
 - `SalesReturnServiceTests`: permiso antes de consultar, cantidad máxima contra
   lo facturado y contra lo ya autorizado, producto ajeno a la factura, factura
   anulada, tienda inactiva, revalidación al autorizar, reingreso con
-  `ReturnIn`, rechazo sin tocar stock y auditoría con usuario e IP.
+  `Return`, rechazo sin tocar stock y auditoría con usuario e IP.
 - `SalesReturnsIntegrationTests`: flujo real sobre SQL Server de la devolución
   pendiente, la autorización con nota crédito y stock, la revalidación de
   cantidades después de una devolución autorizada, el rechazo sin movimiento y
@@ -216,7 +219,7 @@ La fase 5 añade el documento de devolución con migración propia (`AddSalesRet
   un producto no puede repetirse.
 - **Autorización**: solo una devolución pendiente se autoriza una vez. La
   operación asigna el consecutivo `NC-000000`, reingresa las unidades al stock de
-  la tienda con el movimiento `ReturnIn` y deja el documento bloqueado. Las
+  la tienda con el movimiento `Return` y deja el documento bloqueado. Las
   cantidades se revalidan al autorizar, porque otra devolución de la misma
   factura pudo aprobarse mientras esta esperaba.
 - **Rechazo**: cierra el documento sin tocar el inventario.
@@ -256,6 +259,30 @@ Las capturas se generaron en el equipo de verificación y no se versionan. La
 revisión estética subjetiva queda a cargo del revisor; la comprobación cubre
 composición, desbordamiento, contraste y comportamiento del menú, no el juicio de
 diseño.
+
+## Revisión final del 16 de noviembre
+
+Revisión de backend y frontend antes de la entrega. Cada corrección tiene una
+prueba que fallaba antes del cambio o que cubre la regla nueva.
+
+| Hallazgo | Corrección | Prueba |
+| --- | --- | --- |
+| **Ventas perdidas entre sesiones.** Blazor Server mantiene un `DbContext` por pestaña; una consulta con seguimiento devolvía la copia en caché y no el valor actual. Dos cajeros vendiendo el mismo SKU dejaban el stock en 8 en lugar de 7. | `FreshTracking.LoadFresh` olvida la copia sin cambios antes de leer en los repositorios que cargan para modificar (stock, productos, proveedores, órdenes, facturas, clientes, empleados, usuarios, tiendas, parámetros, conteos y traslados). | `LongLivedContextStockTests.SalesFromTwoCircuits_DiscountEveryUnit` |
+| **Ventas simultáneas.** Sin control de concurrencia, dos escrituras al mismo tiempo se sobrescribían. | Columna `row_version` (`rowversion`) en `stock`, migración `Phase10StockConcurrency`; el conflicto se informa como "Otro usuario modificó estos datos…". | `SimultaneousSales_RejectTheSecondWriteInsteadOfLosingAUnit` |
+| **Cambios fallidos que quedaban vivos.** Tras un error o un rollback, el contexto de la pestaña conservaba entidades modificadas o con ids inexistentes. | `TiendaFlowDbContext.SaveChanges` y `EfUnitOfWork` limpian el seguimiento al fallar. | `ARejectedSale_DoesNotPoisonTheNextOperationOfTheCircuit` |
+| **Último administrador.** Un administrador podía quitarse el rol o desactivar al último administrador activo y dejar el sistema sin quien gestione usuarios. | `UserService.EnsureAnAdministratorRemains`. | 3 pruebas en `UserServiceTests` |
+| **Mensajes de usuario ocultos.** "No puedes desactivar tu propia cuenta" o la longitud de la contraseña se mostraban como un mensaje genérico. | `DomainErrorTranslator` muestra los mensajes en español de `UserService` y deja el genérico para las validaciones del dominio. | Cubierto por las pruebas anteriores y `WebSmokeTests` |
+| **Fuerza bruta en el acceso.** `POST /login` no limitaba intentos. | Límite por IP (`Security:LoginAttemptsPerMinute`, 10 por minuto) con mensaje en la pantalla de acceso. | `WebSmokeTests.LoginThrottlesRepeatedAttemptsFromTheSameClient` |
+| **HU-05 sin aviso en la venta.** El comprobante no indicaba que la venta dejaba el producto en stock crítico, y el panel decía "Faltan 0 unidades" para un producto justo en su mínimo. | Aviso de stock crítico en el comprobante del POS y texto "En el mínimo" en el panel. | Verificado en el navegador con el cajero |
+| **Reposición sin proveedores en la demo.** El sembrado no creaba relaciones producto · proveedor, así que la pantalla de reposición marcaba todo "Sin proveedor" y no generaba borradores. | `DevDataSeeder.SeedProductSuppliersAsync` asigna un proveedor predeterminado a cada producto demo. | Verificado: 3 borradores por $ 118.700 |
+| **Ventas del POS sin documento.** La venta descontaba stock y mostraba un comprobante, pero no guardaba nada: el panel, el reporte de ventas y el consumo de la reposición la ignoraban. | `PosSaleService` guarda la venta (`pos_sale`, `pos_sale_line`) en la misma transacción del descuento; el panel, el reporte, su CSV y `EfConsumptionQuery` la suman. Migración `Phase11PosSalesAndInvoiceStock`. | `PosSaleServiceTests`, `SalesDocumentsIntegrationTests.PosSale_IsSavedWithTheStockDiscountAndShowsInTheSalesReport` |
+| **Facturas sin efecto en inventario.** Emitir o anular una factura no movía stock. | La factura guarda la tienda del usuario, descuenta al emitir y devuelve (movimiento `Return`) al anular, en una transacción. Las facturas anteriores, sin tienda, no devuelven nada al anularse. | `SalesInvoiceServiceTests`, `Invoice_TakesStockWhenIssuedAndReturnsItWhenCancelled`, `Invoice_WithMoreUnitsThanTheStock_RollsBackEverything` |
+| **Facturas emitidas editables.** Una factura emitida se podía cambiar. | Se quitaron `UpdateDetails` y `ClearLines`; `/facturacion/{id}` es un detalle de solo lectura y la corrección es anular y emitir otra. El formulario elige productos del catálogo con su precio. | `SalesInvoiceTests.AnIssuedInvoiceOffersNoWayToEditItsData` |
+| **Detalles de interfaz.** La barra lateral decía "Tienda Tienda Centro" y el aviso de parámetros de nómina usaba el estilo de error. | Nombre de la tienda sin prefijo y aviso con estilo de advertencia. | Verificado en capturas |
+
+Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en esta
+verificación (unión de las tres suites, `coverlet.collector`): **96,9 %**
+(Application 97,3 %, Domain 95,6 %).
 
 ## Cómo reproducir la verificación
 

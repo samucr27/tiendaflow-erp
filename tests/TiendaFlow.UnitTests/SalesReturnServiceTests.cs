@@ -172,7 +172,7 @@ public class SalesReturnServiceTests
         Assert.Equal("NC-000021", salesReturn.CreditNoteNumber);
         Assert.Equal(Date, salesReturn.AuthorizedAt);
         Assert.Equal(12, stock.QuantityAvailable);
-        Assert.Equal(MovementType.ReturnIn, stock.LastMovement!.Type);
+        Assert.Equal(MovementType.Return, stock.LastMovement!.Type);
         Assert.Equal(2, stock.LastMovement.Quantity);
 
         _stock.Verify(repository => repository.Update(stock), Times.Once);

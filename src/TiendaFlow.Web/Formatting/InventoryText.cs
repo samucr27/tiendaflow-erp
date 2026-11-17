@@ -12,6 +12,7 @@ public static class InventoryText
     {
         MovementType.Receipt => "Recepción",
         MovementType.Sale => "Venta",
+        MovementType.Return => "Devolución",
         MovementType.Adjustment => "Ajuste",
         MovementType.TransferIn => "Entrada por traslado",
         MovementType.TransferOut => "Salida por traslado",

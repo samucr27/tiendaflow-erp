@@ -59,7 +59,7 @@ else
                     {
                         <KpiCard Label="Ventas de hoy"
                                  Value="@Formatters.Money(_business.SalesTodayTotal)"
-                                 Hint="@($"{Formatters.Number(_business.SalesTodayCount)} facturas emitidas")"
+                                 Hint="@($"{Formatters.Number(_business.InvoicesTodayCount)} facturas y {Formatters.Number(_business.PosSalesTodayCount)} ventas POS")"
                                  Tone="ok" />
                     }
                     @if (_business.CanViewPurchasing)
@@ -182,7 +182,7 @@ else
                                     <div class="alert-copy">
                                         <span class="alert-name">@row.ProductName</span>
                                         <span class="alert-meta">
-                                            @row.Sku · Faltan @Formatters.Quantity(Math.Max(row.MinStock - row.QuantityAvailable, 0)) unidades
+                                            @row.Sku · @ShortageText(row)
                                         </span>
                                     </div>
                                     <a class="button button-small button-secondary"
@@ -261,4 +261,15 @@ else
         row.QuantityAvailable == 0 ? "danger"
         : row.IsBelowMinimum ? "warning"
         : "ok";
+
+    // The alert fires at the minimum too (reorder point), so a product that
+    // sits exactly on its minimum says so instead of "Faltan 0 unidades".
+    private static string ShortageText(StockRow row)
+    {
+        var shortage = row.MinStock - row.QuantityAvailable;
+
+        return shortage > 0
+            ? $"Faltan {Formatters.Quantity(shortage)} unidades"
+            : $"En el mínimo ({Formatters.Quantity(row.MinStock)} unidades)";
+    }
 }

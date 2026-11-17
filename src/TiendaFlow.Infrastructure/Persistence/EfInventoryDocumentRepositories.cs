@@ -11,9 +11,11 @@ public sealed class EfInventoryCountRepository : IInventoryCountRepository
     public EfInventoryCountRepository(TiendaFlowDbContext context) => _context = context;
 
     public InventoryCount? GetById(int id) =>
-        _context.InventoryCounts
-            .Include(count => count.Lines)
-            .FirstOrDefault(count => count.Id == id);
+        _context.LoadFresh<InventoryCount>(
+            count => count.Id == id,
+            () => _context.InventoryCounts
+                .Include(count => count.Lines)
+                .FirstOrDefault(count => count.Id == id));
 
     public IReadOnlyList<InventoryCount> List(int? storeId = null)
     {
@@ -53,9 +55,11 @@ public sealed class EfInventoryTransferRepository : IInventoryTransferRepository
     public EfInventoryTransferRepository(TiendaFlowDbContext context) => _context = context;
 
     public InventoryTransfer? GetById(int id) =>
-        _context.InventoryTransfers
-            .Include(transfer => transfer.Lines)
-            .FirstOrDefault(transfer => transfer.Id == id);
+        _context.LoadFresh<InventoryTransfer>(
+            transfer => transfer.Id == id,
+            () => _context.InventoryTransfers
+                .Include(transfer => transfer.Lines)
+                .FirstOrDefault(transfer => transfer.Id == id));
 
     public IReadOnlyList<InventoryTransfer> List(int? storeId = null)
     {

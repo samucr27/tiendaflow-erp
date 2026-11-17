@@ -1,18 +1,20 @@
 @page "/facturacion/nueva"
-@page "/facturacion/{Id:int}"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Permissions.SalesInvoicesManage)]
 @using System.ComponentModel.DataAnnotations
 @using TiendaFlow.Application
 @using TiendaFlow.Domain
 @inject SalesInvoiceService InvoiceService
+@inject IProductCatalogQuery ProductQuery
+@inject IStockQuery StockQuery
+@inject ICurrentUser CurrentUser
 @inject NavigationManager Navigation
 
-<PageTitle>@(IsEditing ? $"Factura #{Id}" : "Nueva factura") · TiendaFlow</PageTitle>
+<PageTitle>Nueva factura · TiendaFlow</PageTitle>
 
 <PageHeader Eyebrow="Ventas / Facturación"
-            Title="@(IsEditing ? $"Factura #{Id}" : "Nueva factura")"
-            Subtitle="Cliente, fecha e ítems de la venta">
+            Title="Nueva factura"
+            Subtitle="Al emitirla se descuentan las unidades del stock de la tienda. Una factura emitida no se edita: se anula y se emite otra.">
     <Actions>
         <a class="button button-secondary" href="facturacion">Volver</a>
     </Actions>
@@ -26,51 +28,6 @@
 @if (_form is null)
 {
     <p class="muted">Cargando la factura…</p>
-}
-else if (_cancelled)
-{
-    <div class="alert alert-warning" role="status">
-        Esta factura está anulada y ya no se puede editar.
-    </div>
-
-    <section class="card">
-        <div class="card-header">
-            <div>
-                <h2>@_form.CustomerName</h2>
-                <p class="card-subtitle">Documento @_form.CustomerDocument · @Formatters.ShortDate(_form.IssueDate)</p>
-            </div>
-        </div>
-
-        <div class="table-wrap">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>SKU</th>
-                        <th>Descripción</th>
-                        <th class="num">Cantidad</th>
-                        <th class="num">Precio unitario</th>
-                        <th class="num">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var line in _form.Lines)
-                    {
-                        <tr>
-                            <td>@line.ProductSku</td>
-                            <td>@line.Description</td>
-                            <td class="num">@line.Quantity</td>
-                            <td class="num">@Formatters.Money(line.UnitPrice)</td>
-                            <td class="num">@Formatters.Money(line.Quantity * line.UnitPrice)</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-
-        <div class="form-actions">
-            <strong>Total: @Formatters.Money(Total)</strong>
-        </div>
-    </section>
 }
 else
 {
@@ -125,7 +82,14 @@ else
                         {
                             <tr>
                                 <td>
-                                    <InputText class="input" @bind-Value="line.ProductSku" />
+                                    <InputSelect class="input" @bind-Value="line.ProductSku"
+                                                 @bind-Value:after="() => FillFromCatalog(line)">
+                                        <option value="">Elige un producto</option>
+                                        @foreach (var product in _products)
+                                        {
+                                            <option value="@product.Sku">@product.Sku · @product.Name (@AvailableText(product.Sku))</option>
+                                        }
+                                    </InputSelect>
                                 </td>
                                 <td>
                                     <InputText class="input" @bind-Value="line.Description" />
@@ -161,71 +125,56 @@ else
         <div class="form-actions">
             <a class="button button-secondary" href="facturacion">Cancelar</a>
             <button type="submit" class="button button-primary">
-                @(IsEditing ? "Guardar cambios" : "Emitir factura")
+                Emitir factura
             </button>
         </div>
     </EditForm>
 }
 
 @code {
-    [Parameter]
-    public int Id { get; set; }
-
     private InvoiceForm? _form;
     private string? _error;
-    private bool _cancelled;
-
-    private bool IsEditing => Id > 0;
+    private IReadOnlyList<ProductListItem> _products = [];
+    private IReadOnlyDictionary<string, StockRow> _stock = new Dictionary<string, StockRow>();
 
     private decimal Total => _form is null
         ? 0m
         : _form.Lines.Sum(line => line.Quantity * line.UnitPrice);
 
-    protected override void OnParametersSet() => Load();
-
-    private void Load()
+    protected override void OnInitialized()
     {
+        _form = new InvoiceForm { IssueDate = LocalTime.ToLocal(DateTime.UtcNow).Date };
+        _form.Lines.Add(new InvoiceLineForm());
+
         try
         {
-            _form = new InvoiceForm { IssueDate = DateTime.Today };
-            _cancelled = false;
-
-            if (!IsEditing)
-            {
-                _form.Lines.Add(new InvoiceLineForm());
-                return;
-            }
-
-            var invoice = InvoiceService.GetForEdit(Id);
-            _cancelled = invoice.Status == InvoiceStatus.Cancelled;
-            _form = new InvoiceForm
-            {
-                CustomerName = invoice.CustomerName,
-                CustomerDocument = invoice.CustomerDocument,
-                IssueDate = invoice.IssueDate.Date,
-                Lines = invoice.Lines
-                    .Select(line => new InvoiceLineForm
-                    {
-                        ProductSku = line.ProductSku,
-                        Description = line.Description,
-                        Quantity = line.Quantity,
-                        UnitPrice = line.UnitPrice
-                    })
-                    .ToList()
-            };
-        }
-        catch (InvoiceNotFoundException)
-        {
-            _error = "No encontramos la factura solicitada.";
-        }
-        catch (AccessDeniedException)
-        {
-            Navigation.NavigateTo("/acceso-denegado");
+            _products = ProductQuery.Search(term: null);
+            _stock = StockQuery.ListByStore(CurrentUser.StoreId ?? 0)
+                .ToDictionary(row => row.Sku, StringComparer.OrdinalIgnoreCase);
         }
         catch (Exception exception)
         {
             _error = DomainErrorTranslator.ToSpanish(exception);
         }
+    }
+
+    private string AvailableText(string sku) =>
+        _stock.TryGetValue(sku, out var row)
+            ? $"{Formatters.Quantity(row.QuantityAvailable)} disponibles"
+            : "sin stock en la tienda";
+
+    // The catalog fills the description and the current sale price; the
+    // price stays editable for a negotiated discount.
+    private void FillFromCatalog(InvoiceLineForm line)
+    {
+        var product = _products.FirstOrDefault(item =>
+            string.Equals(item.Sku, line.ProductSku, StringComparison.OrdinalIgnoreCase));
+
+        if (product is null)
+            return;
+
+        line.Description = product.Name;
+        line.UnitPrice = product.SalePrice;
     }
 
     private void AddLine() => _form?.Lines.Add(new InvoiceLineForm());
@@ -269,22 +218,18 @@ else
 
         try
         {
-            if (IsEditing)
-            {
-                InvoiceService.Update(Id, new UpdateInvoiceRequest(
-                    _form.CustomerName,
-                    _form.CustomerDocument,
-                    _form.IssueDate,
-                    lines));
-            }
-            else
-            {
-                InvoiceService.Create(new CreateInvoiceRequest(
-                    _form.CustomerName,
-                    _form.CustomerDocument,
-                    _form.IssueDate,
-                    lines));
-            }
+            // An invoice dated today keeps the real time of issue; a past date
+            // is stored as the start of that day in the store time zone.
+            var today = LocalTime.ToLocal(DateTime.UtcNow).Date;
+            var issuedAt = _form.IssueDate.Date == today
+                ? DateTime.UtcNow
+                : LocalTime.ToUtc(DateOnly.FromDateTime(_form.IssueDate));
+
+            InvoiceService.Create(new CreateInvoiceRequest(
+                _form.CustomerName,
+                _form.CustomerDocument,
+                issuedAt,
+                lines));
 
             Navigation.NavigateTo("facturacion?guardado=1");
         }

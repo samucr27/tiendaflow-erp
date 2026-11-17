@@ -11,9 +11,11 @@ public sealed class EfInvoiceRepository : IInvoiceRepository
     public EfInvoiceRepository(TiendaFlowDbContext context) => _context = context;
 
     public SalesInvoice? GetById(int id) =>
-        _context.SalesInvoices
-            .Include(invoice => invoice.Lines)
-            .FirstOrDefault(invoice => invoice.Id == id);
+        _context.LoadFresh<SalesInvoice>(
+            invoice => invoice.Id == id,
+            () => _context.SalesInvoices
+                .Include(invoice => invoice.Lines)
+                .FirstOrDefault(invoice => invoice.Id == id));
 
     public void Add(SalesInvoice invoice)
     {

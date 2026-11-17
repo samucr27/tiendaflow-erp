@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Infrastructure.Persistence;
@@ -72,6 +73,16 @@ public sealed class ErpWebApplicationFactory : WebApplicationFactory<Program>
             var provider = scope.ServiceProvider;
             var context = provider.GetRequiredService<TiendaFlowDbContext>();
 
+            // Guard the suite against silently using the developer database
+            // when configuration is read before the factory overrides apply.
+            var databaseName = context.Database.GetDbConnection().Database;
+            if (!databaseName.StartsWith("TiendaFlow_OpenCode_Test_", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The web smoke tests must run on their disposable database, but the " +
+                    $"context points to '{databaseName}'.");
+            }
+
             await context.Database.MigrateAsync();
 
             if (!await context.AppUsers.AnyAsync())
@@ -129,6 +140,45 @@ public sealed class ErpWebApplicationFactory : WebApplicationFactory<Program>
                 ["Seed:DemoPassword"] = DemoPassword
             });
         });
+    }
+
+    /// <summary>
+    /// The minimal hosting model reads the connection string as soon as
+    /// <c>WebApplication.CreateBuilder</c> returns, before the test host applies
+    /// its configuration callbacks. Setting the values in the process
+    /// environment for the duration of <see cref="CreateHost"/> is what keeps
+    /// the smoke tests on their own disposable database instead of a
+    /// developer's local one. The variables are restored immediately so the
+    /// rest of the suite is not affected.
+    /// </summary>
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["ConnectionStrings__DefaultConnection"] = _connectionString,
+            ["Database__MigrateOnStartup"] = "true",
+            ["Seed__Enabled"] = "true",
+            ["Seed__AdminPassword"] = AdminPassword,
+            ["Seed__DemoPassword"] = DemoPassword
+        };
+
+        var previous = settings.Keys.ToDictionary(
+            key => key,
+            Environment.GetEnvironmentVariable,
+            StringComparer.Ordinal);
+
+        try
+        {
+            foreach (var setting in settings)
+                Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+
+            return base.CreateHost(builder);
+        }
+        finally
+        {
+            foreach (var setting in previous)
+                Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+        }
     }
 
     protected override void Dispose(bool disposing)

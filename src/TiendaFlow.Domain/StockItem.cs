@@ -43,9 +43,18 @@ public class StockItem
     }
 
     /// <summary>
-    /// Deducts units sent to another store. The origin is validated before the
-    /// transfer is sent, so a stock row can never go negative.
+    /// Units that come back to the shelf because the sale document that took
+    /// them out was cancelled or because an authorized customer return
+    /// re-entered them. A return only increases the stock.
     /// </summary>
+    public void RegisterReturn(int quantity, DateTime date)
+    {
+        RequirePositive(quantity);
+
+        QuantityAvailable += quantity;
+        LastMovement = new InventoryMovement(MovementType.Return, quantity, date);
+    }
+
     public void RegisterTransferOut(int quantity, DateTime date)
     {
         RequirePositive(quantity);
@@ -63,18 +72,6 @@ public class StockItem
 
         QuantityAvailable += quantity;
         LastMovement = new InventoryMovement(MovementType.TransferIn, quantity, date);
-    }
-
-    /// <summary>
-    /// Adds units that a customer returned. A return only increases the stock,
-    /// so it can never leave the row negative.
-    /// </summary>
-    public void RegisterReturnIn(int quantity, DateTime date)
-    {
-        RequirePositive(quantity);
-
-        QuantityAvailable += quantity;
-        LastMovement = new InventoryMovement(MovementType.ReturnIn, quantity, date);
     }
 
     /// <summary>

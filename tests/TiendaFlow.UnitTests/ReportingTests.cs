@@ -98,6 +98,29 @@ public class ReportingTests
     }
 
     [Fact]
+    public void SalesReport_IncludesThePointOfSaleSalesInTheTotalAndTheCsv()
+    {
+        var today = new DateTime(2026, 11, 11, 15, 0, 0, DateTimeKind.Utc);
+        var invoices = new Mock<IInvoiceQuery>();
+        invoices
+            .Setup(query => query.List())
+            .Returns(new[] { Invoice(1, today, InvoiceStatus.Issued, 100m) });
+        var posSales = new Mock<IPosSaleQuery>();
+        posSales
+            .Setup(query => query.List(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .Returns(new[] { new PosSaleRow(5, "VTA-20261111150000", 1, "Tienda Centro", "Ana Torres", today, 3, 10500m) });
+
+        var report = new SalesReportService(invoices.Object, AllowAll, posSales.Object)
+            .Get(new DateOnly(2026, 11, 11), new DateOnly(2026, 11, 11));
+
+        Assert.Equal(100m, report.IssuedTotal);
+        Assert.Equal(1, report.PosSalesCount);
+        Assert.Equal(10500m, report.PosSalesTotal);
+        Assert.Equal(10600m, report.GrandTotal);
+        Assert.Contains("Venta POS", report.ToCsv());
+    }
+
+    [Fact]
     public void SalesReport_WithAnInvertedRange_IsRejected()
     {
         var service = new SalesReportService(new Mock<IInvoiceQuery>().Object, AllowAll);
