@@ -46,6 +46,10 @@ jobs:
         run: dotnet tool install --global dotnet-ef --version "9.*"
 
       - name: Create EF migration bundle
+        env:
+          # Valor falso solo para crear el DbContext en tiempo de diseño; el
+          # bundle no se conecta a ninguna base al generarse.
+          ConnectionStrings__DefaultConnection: "Server=localhost;Database=TiendaFlow_Design;Integrated Security=False;User Id=sa;Password=not-used;Encrypt=False;TrustServerCertificate=True;"
         run: >
           dotnet ef migrations bundle
           --project src/TiendaFlow.Infrastructure/TiendaFlow.Infrastructure.csproj
