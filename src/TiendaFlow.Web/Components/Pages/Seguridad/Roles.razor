@@ -2,31 +2,85 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Permissions.SecurityRolesView)]
 @inject RoleCatalogService RoleCatalog
+@inject RoleEditorService RoleEditor
+@inject IAccessControl AccessControl
 @inject NavigationManager Navigation
 
 <PageTitle>Roles y permisos · TiendaFlow</PageTitle>
 
 <PageHeader Eyebrow="Seguridad"
             Title="Roles y permisos"
-            Subtitle="Matriz de solo lectura: cada rol puede usar únicamente las funciones marcadas" />
+            Subtitle="@(CanEdit ? "Marca los permisos de cada rol y guarda. Los cambios aplican en el siguiente inicio de sesión." : "Matriz de solo lectura: cada rol puede usar únicamente las funciones marcadas")" />
 
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
 @if (_error is not null)
 {
     <div class="alert alert-error" role="alert">@_error</div>
 }
-else if (_matrix is null)
+
+@if (_matrix is null)
 {
     <p class="muted">Cargando la matriz…</p>
 }
 else
 {
+    @if (CanEdit)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Editar un rol</h2>
+                    <p class="card-subtitle">
+                        El Administrador siempre conserva la gestión de usuarios y de roles. Un rol sin cambios guardados usa la matriz por defecto.
+                    </p>
+                </div>
+                <select class="input" aria-label="Rol a editar" @bind="_role" @bind:after="LoadRole">
+                    @foreach (var role in _matrix.Roles)
+                    {
+                        <option value="@role">@SystemRoles.Label(role)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="permission-grid">
+                @foreach (var group in _matrix.Rows.GroupBy(row => row.Permission.Split('.')[0]))
+                {
+                    <fieldset class="permission-group">
+                        <legend>@ModuleLabel(group.Key)</legend>
+                        @foreach (var row in group)
+                        {
+                            <label class="checkbox-label">
+                                <input type="checkbox"
+                                       checked="@_draft.Contains(row.Permission)"
+                                       disabled="@IsLocked(row.Permission)"
+                                       @onchange="args => Toggle(row.Permission, (bool)args.Value!)" />
+                                <code>@row.Permission</code>
+                            </label>
+                        }
+                    </fieldset>
+                }
+            </div>
+
+            <div class="form-actions">
+                <span class="table-meta">@(_customized ? "Este rol tiene cambios guardados." : "Este rol usa la matriz por defecto.")</span>
+                @if (_customized)
+                {
+                    <button type="button" class="button button-secondary" @onclick="Reset">Restablecer por defecto</button>
+                }
+                <button type="button" class="button button-primary" @onclick="Save">Guardar permisos de @SystemRoles.Label(_role)</button>
+            </div>
+        </section>
+    }
+
     <section class="card">
         <div class="card-header">
             <div>
                 <h2>Matriz de acceso</h2>
                 <p class="card-subtitle">
-                    @_matrix.Roles.Count roles y @_matrix.Rows.Count permisos.
-                    La matriz se define en el código y se aplica en páginas, botones y servicios.
+                    @_matrix.Roles.Count roles y @_matrix.Rows.Count permisos. La matriz se aplica en páginas, botones y servicios.
                 </p>
             </div>
         </div>
@@ -70,13 +124,22 @@ else
 
 @code {
     private RoleMatrix? _matrix;
+    private string _role = RoleNames.Cashier;
+    private HashSet<string> _draft = new(StringComparer.Ordinal);
+    private bool _customized;
     private string? _error;
+    private string? _message;
 
-    protected override void OnInitialized()
+    private bool CanEdit => AccessControl.Has(Permissions.SecurityRolesManage);
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
     {
         try
         {
             _matrix = RoleCatalog.GetMatrix();
+            LoadRole();
         }
         catch (AccessDeniedException)
         {
@@ -87,4 +150,70 @@ else
             _error = DomainErrorTranslator.ToSpanish(exception);
         }
     }
+
+    private void LoadRole()
+    {
+        if (_matrix is null)
+            return;
+
+        _draft = _matrix.Rows
+            .Where(row => row.AllowedByRole[_role])
+            .Select(row => row.Permission)
+            .ToHashSet(StringComparer.Ordinal);
+        _customized = RoleEditor.IsCustomized(_role);
+    }
+
+    private bool IsLocked(string permission) =>
+        _role == RoleNames.Administrator && RoleEditorService.LockoutGuard.Contains(permission);
+
+    private void Toggle(string permission, bool on)
+    {
+        if (on)
+            _draft.Add(permission);
+        else
+            _draft.Remove(permission);
+    }
+
+    private void Save()
+    {
+        _error = null;
+        _message = null;
+        try
+        {
+            RoleEditor.Update(new RolePermissionChange(_role, _draft.ToHashSet(StringComparer.Ordinal)));
+            _message = $"Permisos de {SystemRoles.Label(_role)} guardados. Aplican en el siguiente inicio de sesión.";
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Reset()
+    {
+        _error = null;
+        _message = null;
+        try
+        {
+            RoleEditor.Reset(_role);
+            _message = $"{SystemRoles.Label(_role)} vuelve a la matriz por defecto.";
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static string ModuleLabel(string module) => module switch
+    {
+        "security" => "Seguridad",
+        "inventory" => "Inventario",
+        "sales" => "Ventas",
+        "purchasing" => "Compras",
+        "hr" => "Talento humano",
+        "crm" => "CRM",
+        _ => module
+    };
 }

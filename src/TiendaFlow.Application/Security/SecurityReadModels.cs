@@ -50,6 +50,10 @@ public record AuditTrailRow(
 public interface IAuditTrailQuery
 {
     IReadOnlyList<AuditTrailRow> Recent(int take);
+
+    /// <summary>Entries in [fromUtc, toUtcExclusive), newest first.</summary>
+    IReadOnlyList<AuditTrailRow> Between(DateTime fromUtc, DateTime toUtcExclusive) =>
+        Recent(20_000).Where(row => row.Date >= fromUtc && row.Date < toUtcExclusive).ToList();
 }
 
 public record RoleMatrix(
