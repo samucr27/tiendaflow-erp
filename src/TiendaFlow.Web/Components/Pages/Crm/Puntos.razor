@@ -1,0 +1,168 @@
+@page "/crm/puntos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmPointsManage)]
+@using TiendaFlow.Application.Crm
+@inject LoyaltyService Loyalty
+@inject NavigationManager Navigation
+
+<PageTitle>Puntos de fidelización · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="Puntos de fidelización"
+            Subtitle="Cada factura a un cliente registrado suma un punto por cada $ 1.000; al anularla se descuentan." />
+
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<div class="kpi-grid">
+    <KpiCard Label="Clientes con puntos" Value="@Formatters.Number(_rows.Count(row => row.Balance > 0))" Hint="Saldo mayor que cero" Tone="primary" />
+    <KpiCard Label="Puntos acumulados" Value="@Formatters.Number(_rows.Sum(row => row.Earned))" Hint="Ganados con facturas" Tone="ok" />
+    <KpiCard Label="Puntos canjeados" Value="@Formatters.Number(_rows.Sum(row => row.Redeemed))" Hint="Incluye anulaciones" Tone="info" />
+</div>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Saldos por cliente</h2>
+            <p class="card-subtitle">Elige un cliente para ver sus movimientos o canjear puntos.</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Documento</th>
+                    <th class="num">Ganados</th>
+                    <th class="num">Canjeados</th>
+                    <th class="num">Saldo</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _rows)
+                {
+                    <tr>
+                        <td>@row.FullName</td>
+                        <td>@row.DocumentNumber</td>
+                        <td class="num">@Formatters.Number(row.Earned)</td>
+                        <td class="num">@Formatters.Number(row.Redeemed)</td>
+                        <td class="num"><strong>@Formatters.Number(row.Balance)</strong></td>
+                        <td class="table-actions">
+                            <button type="button" class="button button-secondary button-small" @onclick="() => Select(row)">Ver</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@if (_selected is not null)
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>@_selected.FullName</h2>
+                <p class="card-subtitle">Saldo actual: @Formatters.Number(_selected.Balance) puntos</p>
+            </div>
+        </div>
+        <div class="form-grid">
+            <div class="field">
+                <label for="redeem-points">Puntos a canjear</label>
+                <input id="redeem-points" type="number" min="1" class="input" @bind="_points" />
+            </div>
+            <div class="field">
+                <label for="redeem-reason">Motivo</label>
+                <input id="redeem-reason" class="input" @bind="_reason" />
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="button button-primary" @onclick="Redeem">Canjear</button>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Fecha</th><th>Motivo</th><th class="num">Puntos</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var movement in _movements)
+                    {
+                        <tr>
+                            <td>@Formatters.ShortDateTime(movement.CreatedAt)</td>
+                            <td>@movement.Reason</td>
+                            <td class="num">@(movement.Points > 0 ? "+" : "")@Formatters.Number(movement.Points)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<PointsBalanceRow> _rows = [];
+    private IReadOnlyList<PointsMovementRow> _movements = [];
+    private PointsBalanceRow? _selected;
+    private int _points = 100;
+    private string _reason = "Canje en tienda";
+    private string? _error;
+    private string? _message;
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _rows = Loyalty.Balances();
+            if (_selected is not null)
+            {
+                _selected = _rows.FirstOrDefault(row => row.CustomerId == _selected.CustomerId);
+                _movements = _selected is null ? [] : Loyalty.Movements(_selected.CustomerId);
+            }
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Select(PointsBalanceRow row)
+    {
+        _selected = row;
+        _message = null;
+        _error = null;
+        Load();
+    }
+
+    private void Redeem()
+    {
+        if (_selected is null)
+            return;
+
+        _error = null;
+        _message = null;
+        try
+        {
+            Loyalty.Redeem(_selected.CustomerId, _points, _reason);
+            _message = $"Se canjearon {_points} puntos.";
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+}
