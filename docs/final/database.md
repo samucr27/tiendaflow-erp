@@ -17,6 +17,9 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261113015239_Phase8PurchasingKpis` | Fechas prometida/recibida de la orden y tabla `product_supplier` |
 | `20261114035445_Phase9InventoryDocuments` | Conteos físicos, traslados entre tiendas y sus líneas |
 | `20261114042149_AddSalesReturns` | Devoluciones, líneas y nota crédito |
+| `20261116144218_Phase10StockConcurrency` | `row_version` en `stock` para el control de concurrencia |
+| `20261116154129_Phase11PosSalesAndInvoiceStock` | Ventas del POS y tienda de la factura |
+| `20261117044933_Phase12HrContracts` | Contratos laborales y adjuntos |
 
 La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
 existía. Añade tres índices que sostienen las consultas de la pantalla y del
@@ -96,6 +99,35 @@ propia migración; esta tabla se amplía a medida que se generan.
 - La migración se aplica con el mismo `efbundle.exe` descrito abajo; no requiere
   pasos adicionales ni datos iniciales.
 
+`Phase10StockConcurrency` añade `row_version` (`rowversion`) a `stock`. EF Core
+lo usa como token de concurrencia: dos despachos simultáneos de la misma fila no
+pueden descontar dos veces el mismo saldo; el segundo recibe
+`DbUpdateConcurrencyException` y se traduce a un mensaje de negocio.
+
+`Phase11PosSalesAndInvoiceStock` crea `pos_sale` y `pos_sale_line` (venta de
+mostrador con tienda, vendedor, fecha y líneas) y añade `store_id` a
+`sales_invoice` con su clave foránea e índice. Las facturas nuevas guardan la
+tienda que las emitió; las devoluciones usan esa tienda para reponer el stock.
+
+`Phase12HrContracts` crea el registro de contratos:
+
+- `employee_contract`: empleado, tipo (`Indefinite`, `FixedTerm`, `WorkOrService`,
+  `ServiceProvision`), fechas de inicio y fin, salario base, estado (`Active`,
+  `Extended`, `Terminated`), contrato anterior, fecha de creación y fecha de
+  terminación. Solo los contratos indefinidos pueden dejar `end_date` nula; la
+  regla se valida en el dominio antes de llegar a SQL.
+- `contract_attachment`: nombre, tipo de contenido, bytes (`varbinary(max)`),
+  usuario que cargó y fecha. El servicio limita el archivo a 2 MB y acepta solo
+  PDF, PNG y JPG; el binario se guarda en la misma base para no introducir un
+  servicio de almacenamiento externo en el alcance académico.
+- `IX_employee_contract_employee_status`, `IX_employee_contract_end_date` e
+  `IX_employee_contract_previous_contract_id` sostienen la búsqueda del contrato
+  vigente, el aviso de vencimiento y el historial de prórrogas. Los adjuntos se
+  borran en cascada con su contrato; las claves foráneas a empleado y usuario
+  quedan restringidas.
+- No crea datos iniciales. El sembrado de demostración añade contratos después
+  de los empleados y usa la clave natural empleado + fecha de inicio.
+
 ## Generar una migración
 
 Se genera sin aplicarla:
@@ -162,8 +194,9 @@ ejecutable `efbundle.exe` no se commitea.
 
 `DevDataSeeder` crea las tiendas, los siete roles, un usuario por rol, empleados,
 productos, existencias, proveedores, clientes, órdenes, facturas, devoluciones,
-conteos y traslados de demostración. Se registra siempre que `Seed:Enabled` sea
-`true`, **sin importar el entorno**; no está condicionado a `Development`.
+conteos, traslados y contratos de demostración. Se registra siempre que
+`Seed:Enabled` sea `true`, **sin importar el entorno**; no está condicionado a
+`Development`.
 
 El sembrado decide **por registro**, no por tabla, con una clave natural estable:
 
@@ -181,11 +214,12 @@ El sembrado decide **por registro**, no por tabla, con una clave natural estable
 | Devoluciones | Factura (una devolución demo por factura) |
 | Conteos | Tienda + ubicación |
 | Traslados | Tienda origen + tienda destino + conjunto de SKU |
+| Contratos | Empleado + fecha de inicio |
 
 Así, ejecutar la aplicación dos veces no duplica nada y una base sembrada por una
 versión anterior que perdió algunos registros recupera solo los que faltan. Las
 pruebas `SeedIdempotencyTests` ejecutan el seeder real dos veces y también borran
-filas de cuatro secciones para comprobar la reparación sin duplicados.
+filas de cinco secciones para comprobar la reparación sin duplicados.
 
 - Si `Seed:Enabled` es `false` o no existe, el servicio no se registra y ninguna
   ruta crea datos de ejemplo.

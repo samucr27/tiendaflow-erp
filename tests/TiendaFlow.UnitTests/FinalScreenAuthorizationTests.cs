@@ -185,6 +185,30 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("AccessControl.Has(Permissions.SalesReturnsAuthorize)", menu);
     }
 
+    [Theory]
+    [InlineData("Rrhh/Contratos.razor", "/rrhh/contratos")]
+    [InlineData("Rrhh/ContratoNuevo.razor", "/rrhh/contratos/nuevo")]
+    [InlineData("Rrhh/ContratoDetalle.razor", "/rrhh/contratos/{Id:int}")]
+    public void ContractRoutesDeclareTheManagePolicy(string file, string route)
+    {
+        var source = ReadPage(file);
+
+        Assert.Contains($"@page \"{route}\"", source);
+        Assert.Contains(
+            "@attribute [Authorize(Policy = Permissions.HrContractsManage)]",
+            source);
+    }
+
+    [Fact]
+    public void MenuShowsContractsOnlyWithTheManagePermission()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"rrhh/contratos\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.HrContractsManage)", menu);
+    }
+
     private static string ReadPage(string file) =>
         File.ReadAllText(Path.Combine(
             RepoRoot, "src", "TiendaFlow.Web", "Components", "Pages", file));

@@ -124,6 +124,54 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("app_user", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.ContractAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<int>("ContractId")
+                        .HasColumnType("int")
+                        .HasColumnName("contract_id");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)")
+                        .HasColumnName("file_name");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("uploaded_at");
+
+                    b.Property<int?>("UploadedByUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("uploaded_by_user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContractId")
+                        .HasDatabaseName("IX_contract_attachment_contract");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.ToTable("contract_attachment", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.Customer", b =>
                 {
                     b.Property<int>("Id")
@@ -227,6 +275,65 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("IX_employee_store_active");
 
                     b.ToTable("employee", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.EmploymentContract", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("BaseSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("base_salary");
+
+                    b.Property<int>("ContractType")
+                        .HasColumnType("int")
+                        .HasColumnName("contract_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<int?>("PreviousContractId")
+                        .HasColumnType("int")
+                        .HasColumnName("previous_contract_id");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("TerminatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("terminated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndDate")
+                        .HasDatabaseName("IX_employee_contract_end_date");
+
+                    b.HasIndex("PreviousContractId");
+
+                    b.HasIndex("EmployeeId", "Status")
+                        .HasDatabaseName("IX_employee_contract_employee_status");
+
+                    b.ToTable("employee_contract", (string)null);
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.InventoryCount", b =>
@@ -1069,6 +1176,20 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.ContractAttachment", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.EmploymentContract", null)
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.Employee", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.Store", null)
@@ -1076,6 +1197,20 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasForeignKey("StoreId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.EmploymentContract", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.EmploymentContract", null)
+                        .WithMany()
+                        .HasForeignKey("PreviousContractId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.InventoryCount", b =>
@@ -1204,6 +1339,14 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.SalesInvoice", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.SalesReturn", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.SalesInvoice", null)
@@ -1232,14 +1375,6 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ReturnId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("TiendaFlow.Domain.SalesInvoice", b =>
-                {
-                    b.HasOne("TiendaFlow.Domain.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.StockItem", b =>

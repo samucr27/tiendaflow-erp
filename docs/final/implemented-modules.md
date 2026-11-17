@@ -263,6 +263,47 @@ de la fase de ventas. La devolución usa esa tienda para el reingreso de stock y
 rechaza una tienda distinta; una factura antigua sin tienda conserva el
 comportamiento anterior y permite elegirla en el formulario.
 
+## Contratos laborales
+
+| Ruta | Permiso de página | Función |
+| --- | --- | --- |
+| `/rrhh/contratos` | `hr.contracts.manage` | Historial, aviso de vencimiento y búsqueda |
+| `/rrhh/contratos/nuevo` | `hr.contracts.manage` | Registrar la vinculación inicial |
+| `/rrhh/contratos/{Id:int}` | `hr.contracts.manage` | Detalle, prórroga, terminación, adjuntos e historial |
+
+Reglas aplicadas en `EmploymentContract` y `EmploymentContractService`:
+
+1. Un contrato guarda tipo (`Indefinido`, `Término fijo`, `Obra o labor`,
+   `Prestación de servicios`), fechas, salario base y estado (`Vigente`,
+   `Prorrogado`, `Terminado`). Solo el indefinido puede omitir la fecha de fin;
+   la fecha de fin nunca puede ser anterior a la de inicio.
+2. Un empleado no puede tener dos contratos vigentes a la vez. La pantalla de
+   creación deshabilita a quienes ya tienen uno y el servicio vuelve a validarlo
+   antes de guardar.
+3. La prórroga no sobrescribe el contrato anterior: lo marca `Prorrogado`,
+   crea uno nuevo `Vigente` con las fechas y el salario indicados y lo enlaza con
+   `PreviousContractId`. Las dos escrituras ocurren en la misma transacción.
+4. La terminación exige confirmación en pantalla, marca `Terminado` y guarda la
+   fecha UTC. Un contrato terminado o prorrogado ya no se puede renovar ni
+   volver a terminar.
+5. Los adjuntos aceptan PDF, PNG o JPG de máximo 2 MB. El nombre se reduce al
+   archivo, el tipo de contenido se valida contra la extensión y los bytes se
+   guardan en SQL Server. La descarga exige `hr.contracts.manage` y deja una
+   entrada de auditoría con módulo `hr`, usuario, IP y detalle.
+6. `hr.contracts.expiry_alert_days` define la ventana del aviso de contratos por
+   vencer; el valor se lee con `IParameterValues`, por lo que puede cambiarse
+   desde Parámetros sin recompilar. El listado muestra el aviso y enlaza directo
+   a la prórroga.
+7. Crear, prorrogar, terminar y descargar se auditan; la auditoría no copia el
+   salario, el nombre del empleado ni el contenido del archivo. Las fechas se
+   guardan en UTC y se muestran en hora local de Colombia; la lista pagina de 20
+   en 20.
+
+El sembrado de demostración crea un contrato por empleado, un contrato a término
+fijo que vence dentro de la ventana de aviso, un contrato terminado y un
+historial de prórroga. La clave natural empleado + fecha de inicio mantiene el
+sembrado idempotente.
+
 ## Facturación simulada
 
 La lista de facturas ofrece **XML simulado** para facturas emitidas. La ruta

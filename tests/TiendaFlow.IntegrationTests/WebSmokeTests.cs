@@ -217,6 +217,7 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         var countId = await context.InventoryCounts.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var transferId = await context.InventoryTransfers.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var salesReturnId = await context.SalesReturns.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
+        var contractId = await context.EmployeeContracts.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var parameterKey = SystemParameterCatalog.All.First().Key;
 
         return new[]
@@ -253,6 +254,9 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute($"/rrhh/empleados/{employeeId}", Permissions.HrEmployeesManage),
             new SmokeRoute("/rrhh/empleados/nuevo", Permissions.HrEmployeesManage),
             new SmokeRoute("/rrhh/nomina", Permissions.HrPayrollManage),
+            new SmokeRoute("/rrhh/contratos", Permissions.HrContractsManage),
+            new SmokeRoute($"/rrhh/contratos/{contractId}", Permissions.HrContractsManage),
+            new SmokeRoute("/rrhh/contratos/nuevo", Permissions.HrContractsManage),
             new SmokeRoute("/proveedores", Permissions.PurchasingSuppliersView),
             new SmokeRoute($"/proveedores/{supplierId}", Permissions.PurchasingSuppliersManage),
             new SmokeRoute("/proveedores/nuevo", Permissions.PurchasingSuppliersManage),

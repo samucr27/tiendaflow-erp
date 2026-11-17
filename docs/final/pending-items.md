@@ -24,12 +24,28 @@ continuación se documentan con el permiso que las reserva.
 | Seguridad | `security.roles.manage` | Editar roles desde la interfaz | La matriz es código para que la autorización sea determinista; la pantalla es de solo lectura | Persistir roles solo si el negocio lo exige, con auditoría y pruebas de autorización |
 | Seguridad | `security.reports.view` | Reportes de seguridad | La auditoría ya es consultable en `/seguridad/auditoria`; no hay reportes agregados | Agregar conteos de accesos, cambios de usuario y exportación CSV |
 | Ventas | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
-| RR. HH. | `hr.contracts.manage` | Contratos y documentos laborales | El empleado guarda tipo de contrato, pero no el contrato como documento | Contratos con vigencia, prórrogas y adjuntos |
 | RR. HH. | `hr.attendance.manage` | Asistencia | No hay registro de entrada/salida ni novedades | Marcaciones, ausencias y cálculo de días trabajados |
 | RR. HH. | `hr.shifts.manage` | Turnos | No hay calendario de turnos | Turnos por tienda, asignación y cruce con asistencia |
 | CRM | `crm.points.manage` | Puntos de fidelización | El cliente no tiene saldo ni movimientos de puntos | Libro de puntos con acumulación y canje |
 | CRM | `crm.pqrs.manage` | PQRS | No hay entidad de peticiones, quejas o reclamos | Radicado, responsable, estados y tiempos |
 | CRM | `crm.campaigns.manage` | Campañas | La segmentación es de solo consulta | Campaña sobre un segmento, vigencia y resultado |
+
+## Decisión de diseño: contratos solo para el Gestor de recursos humanos
+
+`hr.contracts.manage` existe en el catálogo y lo usa la pantalla, el menú y el
+servicio de contratos. Solo el rol **Gestor de recursos humanos** lo tiene. El
+**Administrador** conserva `hr.employees.view` (y el resto de la administración
+técnica) pero no administra contratos ni descarga sus adjuntos. Es una decisión
+deliberada, no un permiso olvidado:
+
+- El contrato y sus anexos contienen salario y documentos de identidad; mezclar
+  esa operación con el rol técnico amplía el acceso a datos personales sin
+  necesidad funcional.
+- La matriz es código y está cubierta por `RolePermissionsTests`, así que la
+  separación es determinista entre despliegues.
+- Si la organización necesita que el Administrador también opere contratos, el
+  cambio es una línea en `RolePermissions.cs` más las pruebas de la matriz; no
+  requiere tocar pantallas ni servicios.
 
 ## Resuelto en la revisión final (16 de noviembre)
 
@@ -81,9 +97,9 @@ exige la Definition of Done.
 - **Datos de demostración:** el sembrado se registra siempre que
   `Seed:Enabled` sea verdadero, sin importar el entorno; no está atado a
   `Development`. Decide por registro con claves naturales (NIT, documento, SKU,
-  correo, número de identificación, proveedor + tienda + SKU en órdenes y
-  traslados), así que ejecutarlo dos veces no duplica y una base vieja recupera
-  solo lo que falta. Si la clave es falsa o no existe, ninguna ruta crea
+  correo, número de identificación, proveedor + tienda + SKU en órdenes,
+  traslados y empleado + fecha de inicio en contratos), así que ejecutarlo dos
+  veces no duplica y una base vieja recupera solo lo que falta. Si la clave es falsa o no existe, ninguna ruta crea
   usuarios, productos ni facturas de ejemplo. En la configuración de producción
   se deja desactivada.
 - **Roles:** la matriz es código y no se edita desde la interfaz. Es una decisión
@@ -96,6 +112,6 @@ Compras (órdenes, puntualidad y cumplimiento con datos de recepción,
 exportación del ranking y borradores de reposición con relación producto ·
 proveedor), panel, reportes, segmentación CRM, exportación XML simulada,
 administración de tiendas, parámetros configurables, inventario con conteos
-físicos y traslados entre tiendas, y devoluciones con nota crédito están
-implementados, con permisos, pruebas y documentación. El detalle está en
-[implemented-modules.md](implemented-modules.md).
+físicos y traslados entre tiendas, devoluciones con nota crédito y contratos
+laborales con prórrogas y adjuntos están implementados, con permisos, pruebas y
+documentación. El detalle está en [implemented-modules.md](implemented-modules.md).

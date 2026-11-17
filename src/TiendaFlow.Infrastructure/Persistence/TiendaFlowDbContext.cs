@@ -55,6 +55,10 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<InventoryTransferLine> InventoryTransferLines => Set<InventoryTransferLine>();
 
+    public DbSet<EmploymentContract> EmployeeContracts => Set<EmploymentContract>();
+
+    public DbSet<ContractAttachment> ContractAttachments => Set<ContractAttachment>();
+
     /// <summary>
     /// A failed save leaves its entities as Modified or Added in a context
     /// that lives as long as the browser tab. Outside an explicit transaction

@@ -1,0 +1,413 @@
+@page "/rrhh/contratos/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrContractsManage)]
+@using TiendaFlow.Application
+@using TiendaFlow.Application.Payroll
+@using TiendaFlow.Domain
+@inject EmploymentContractService ContractService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Contrato · TiendaFlow</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_detail is null)
+{
+    <p class="muted">Cargando el contrato…</p>
+}
+else
+{
+    var contract = _detail.Contract;
+
+    <PageHeader Eyebrow="Talento humano"
+                Title="@($"Contrato {contract.Id:D5} · {contract.EmployeeName}")"
+                Subtitle="@($"{contract.ContractTypeLabel} · {contract.Position}")">
+        <Actions>
+            <a class="button button-secondary" href="rrhh/contratos">Volver</a>
+        </Actions>
+    </PageHeader>
+
+    @if (_success is not null)
+    {
+        <div class="alert alert-success" role="status">@_success</div>
+    }
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Condiciones del contrato</h2>
+                <p class="card-subtitle">El salario base solo se muestra a quien administra contratos.</p>
+            </div>
+            <StatusBadge Text="@EmploymentText.ContractStatus(contract.Status)"
+                         Tone="@EmploymentText.ContractTone(contract.Status)" />
+        </div>
+
+        <dl class="detail-grid">
+            <div><dt>Empleado</dt><dd>@contract.EmployeeName</dd></div>
+            <div><dt>Documento</dt><dd>@contract.IdNumber</dd></div>
+            <div><dt>Cargo</dt><dd>@contract.Position</dd></div>
+            <div><dt>Tipo</dt><dd>@contract.ContractTypeLabel</dd></div>
+            <div><dt>Inicio</dt><dd>@contract.StartDate.ToString("dd/MM/yyyy")</dd></div>
+            <div><dt>Fin</dt><dd>@(contract.EndDate?.ToString("dd/MM/yyyy") ?? "Sin fecha")</dd></div>
+            <div><dt>Salario base</dt><dd>@Formatters.Money(contract.BaseSalary)</dd></div>
+            <div>
+                <dt>Contrato anterior</dt>
+                <dd>@(contract.PreviousContractId is int previous ? $"CT-{previous:D5}" : "—")</dd>
+            </div>
+            <div><dt>Creado</dt><dd>@Formatters.ShortDateTime(contract.CreatedAt)</dd></div>
+            <div>
+                <dt>Terminado</dt>
+                <dd>@(contract.TerminatedAt is DateTime terminated ? Formatters.ShortDateTime(terminated) : "—")</dd>
+            </div>
+        </dl>
+
+        @if (contract.Status == EmploymentContractStatus.Active)
+        {
+            <div class="form-actions">
+                <button type="button" class="button button-primary" @onclick="StartRenew">
+                    Renovar contrato
+                </button>
+
+                @if (!_confirmTerminate)
+                {
+                    <button type="button" class="button button-secondary" @onclick="AskTerminate">
+                        Terminar contrato
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="button button-danger" disabled="@_saving" @onclick="Terminate">
+                        Confirmar terminación
+                    </button>
+                    <button type="button" class="button button-secondary" @onclick="CancelTerminate">
+                        Cancelar
+                    </button>
+                }
+            </div>
+        }
+    </section>
+
+    @if (_renovating)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Prórroga</h2>
+                    <p class="card-subtitle">
+                        El contrato actual queda prorrogado y se crea uno nuevo con las fechas indicadas.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="renew-start">Nueva fecha de inicio</label>
+                    <input id="renew-start" class="input" type="date" @bind="_renewStart" />
+                </div>
+                <div class="field">
+                    <label for="renew-end">Nueva fecha de fin</label>
+                    <input id="renew-end" class="input" type="date" @bind="_renewEnd" />
+                </div>
+                <div class="field">
+                    <label for="renew-salary">Nuevo salario base (COP)</label>
+                    <input id="renew-salary" class="input" type="number" min="1" step="100" @bind="_renewSalary" />
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button-primary" disabled="@_saving" @onclick="Renew">
+                    Registrar prórroga
+                </button>
+                <button type="button" class="button button-secondary" @onclick="CancelRenew">
+                    Cancelar
+                </button>
+            </div>
+        </section>
+    }
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Documentos adjuntos</h2>
+                <p class="card-subtitle">PDF, PNG o JPG de máximo 2 MB.</p>
+            </div>
+        </div>
+
+        @if (_detail.Attachments.Count == 0)
+        {
+            <p class="muted">Este contrato no tiene documentos adjuntos.</p>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Archivo</th>
+                            <th>Tipo</th>
+                            <th class="num">Tamaño</th>
+                            <th>Cargado por</th>
+                            <th>Fecha</th>
+                            <th class="actions"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var attachment in _detail.Attachments)
+                        {
+                            <tr>
+                                <td>@attachment.FileName</td>
+                                <td>@attachment.ContentType</td>
+                                <td class="num">@Formatters.Number(attachment.SizeBytes) B</td>
+                                <td>@attachment.UploadedBy</td>
+                                <td>@Formatters.ShortDateTime(attachment.UploadedAt)</td>
+                                <td class="actions">
+                                    <a class="table-action"
+                                       href="@($"rrhh/contratos/{contract.Id}/adjunto/{attachment.Id}")">
+                                        Descargar
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="contract-file">Nuevo adjunto</label>
+                <InputFile id="contract-file" OnChange="SelectFile" accept=".pdf,.png,.jpg,.jpeg" />
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="button button-primary"
+                    disabled="@(_file is null || _saving)"
+                    @onclick="Upload">
+                Subir adjunto
+            </button>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Historial del empleado</h2>
+                <p class="card-subtitle">@_detail.History.Count contratos, del más reciente al más antiguo.</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Contrato</th>
+                        <th>Tipo</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th class="num">Salario base</th>
+                        <th>Estado</th>
+                        <th class="actions"><span class="sr-only">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _detail.History)
+                    {
+                        <tr>
+                            <td>CT-@item.Id.ToString("D5")</td>
+                            <td>@item.ContractTypeLabel</td>
+                            <td>@item.StartDate.ToString("dd/MM/yyyy")</td>
+                            <td>@(item.EndDate?.ToString("dd/MM/yyyy") ?? "Sin fecha")</td>
+                            <td class="num">@Formatters.Money(item.BaseSalary)</td>
+                            <td>
+                                <StatusBadge Text="@EmploymentText.ContractStatus(item.Status)"
+                                             Tone="@EmploymentText.ContractTone(item.Status)" />
+                            </td>
+                            <td class="actions">
+                                @if (item.Id != contract.Id)
+                                {
+                                    <a class="table-action" href="@($"rrhh/contratos/{item.Id}")">Ver</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "creado")]
+    public bool Created { get; set; }
+
+    private ContractDetail? _detail;
+    private bool _renovating;
+    private bool _confirmTerminate;
+    private bool _saving;
+    private string? _error;
+    private string? _success;
+    private DateOnly _renewStart = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly? _renewEnd;
+    private decimal _renewSalary;
+    private IBrowserFile? _file;
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _detail = ContractService.Get(Id);
+
+            if (Created)
+                _success = "El contrato se registró correctamente.";
+
+            var contract = _detail.Contract;
+            var nextStart = contract.EndDate?.AddDays(1) ?? contract.StartDate.AddYears(1);
+            _renewStart = nextStart;
+            _renewEnd = contract.ContractType == ContractType.Indefinite ? null : nextStart.AddMonths(6);
+            _renewSalary = contract.BaseSalary;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void StartRenew()
+    {
+        _renovating = true;
+        _confirmTerminate = false;
+        _error = null;
+        _success = null;
+    }
+
+    private void CancelRenew() => _renovating = false;
+
+    private void AskTerminate()
+    {
+        _confirmTerminate = true;
+        _error = null;
+        _success = null;
+    }
+
+    private void CancelTerminate() => _confirmTerminate = false;
+
+    private void Renew()
+    {
+        _error = null;
+        _success = null;
+        _saving = true;
+
+        try
+        {
+            var id = ContractService.Renew(Id, new RenewContractRequest(
+                _renewStart,
+                _renewEnd,
+                _renewSalary));
+
+            Navigation.NavigateTo($"rrhh/contratos/{id}?creado=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Terminate()
+    {
+        _error = null;
+        _success = null;
+        _saving = true;
+
+        try
+        {
+            ContractService.Terminate(Id);
+            _confirmTerminate = false;
+            Load();
+            _success = "El contrato quedó terminado.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void SelectFile(InputFileChangeEventArgs args) => _file = args.File;
+
+    private async Task Upload()
+    {
+        if (_file is null)
+            return;
+
+        _error = null;
+        _success = null;
+        _saving = true;
+
+        try
+        {
+            if (_file.Size > ContractAttachment.MaxSizeBytes)
+                throw new InvalidContractAttachmentException("El archivo supera el límite de 2 MB.");
+
+            await using var input = _file.OpenReadStream(ContractAttachment.MaxSizeBytes);
+            using var buffer = new MemoryStream();
+            await input.CopyToAsync(buffer);
+
+            var extension = Path.GetExtension(_file.Name).ToLowerInvariant();
+            var contentType = extension switch
+            {
+                ".pdf" => "application/pdf",
+                ".png" => "image/png",
+                _ => "image/jpeg"
+            };
+
+            ContractService.Attach(Id, new ContractAttachmentUpload(
+                _file.Name,
+                contentType,
+                buffer.ToArray()));
+
+            _file = null;
+            Load();
+            _success = "El adjunto se cargó correctamente.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

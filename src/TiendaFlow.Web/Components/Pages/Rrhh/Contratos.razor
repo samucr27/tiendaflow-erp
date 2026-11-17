@@ -1,0 +1,211 @@
+@page "/rrhh/contratos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrContractsManage)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject EmploymentContractService ContractService
+@inject NavigationManager Navigation
+
+<PageTitle>Contratos · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Contratos"
+            Subtitle="Vigencia, prórrogas y documentos firmados del equipo">
+    <Actions>
+        <a class="button button-primary" href="rrhh/contratos/nuevo">+ Nuevo contrato</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_contracts is null)
+{
+    <p class="muted">Cargando los contratos…</p>
+}
+else
+{
+    @if (_alerts.Count > 0)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Contratos por vencer</h2>
+                    <p class="card-subtitle">
+                        Vencen dentro de la ventana configurada en
+                        <code>hr.contracts.expiry_alert_days</code>.
+                    </p>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Tipo</th>
+                            <th>Vence</th>
+                            <th>Salario base</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var alert in _alerts)
+                        {
+                            <tr>
+                                <td>@alert.EmployeeName</td>
+                                <td>@alert.ContractTypeLabel</td>
+                                <td>@alert.EndDate?.ToString("dd/MM/yyyy")</td>
+                                <td class="num">@Formatters.Money(alert.BaseSalary)</td>
+                                <td class="actions">
+                                    <a class="table-action" href="@($"rrhh/contratos/{alert.Id}")">Renovar</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+
+    @if (_contracts.Count == 0)
+    {
+        <EmptyState Title="Todavía no hay contratos"
+                    Message="Registra el primer contrato para controlar su vigencia y sus prórrogas." />
+    }
+    else
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Historial de contratos</h2>
+                    <p class="card-subtitle">@_contracts.Count contratos registrados</p>
+                </div>
+                <input class="search-input"
+                       type="search"
+                       aria-label="Buscar contratos"
+                       placeholder="Buscar por empleado, documento o estado"
+                       @bind="_search"
+                       @bind:event="oninput" />
+            </div>
+
+            @if (!Filtered.Any())
+            {
+                <EmptyState Title="Sin resultados"
+                            Message="No encontramos contratos con ese criterio." />
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Empleado</th>
+                                <th>Documento</th>
+                                <th>Tipo</th>
+                                <th>Inicio</th>
+                                <th>Fin</th>
+                                <th class="num">Salario base</th>
+                                <th>Estado</th>
+                                <th>Adjuntos</th>
+                                <th class="actions"><span class="sr-only">Acciones</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var contract in PageItems)
+                            {
+                                <tr>
+                                    <td>@contract.EmployeeName</td>
+                                    <td>@contract.IdNumber</td>
+                                    <td>@contract.ContractTypeLabel</td>
+                                    <td>@contract.StartDate.ToString("dd/MM/yyyy")</td>
+                                    <td>@(contract.EndDate?.ToString("dd/MM/yyyy") ?? "Sin fecha")</td>
+                                    <td class="num">@Formatters.Money(contract.BaseSalary)</td>
+                                    <td>
+                                        <StatusBadge Text="@EmploymentText.ContractStatus(contract.Status)"
+                                                     Tone="@EmploymentText.ContractTone(contract.Status)" />
+                                    </td>
+                                    <td class="num">@contract.AttachmentCount</td>
+                                    <td class="actions">
+                                        <a class="table-action" href="@($"rrhh/contratos/{contract.Id}")">Ver</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Filtered.Count > PageSize)
+                {
+                    <div class="pager">
+                        <button type="button" class="button button-secondary button-small"
+                                disabled="@(_page == 1)" @onclick="PreviousPage">
+                            Anterior
+                        </button>
+                        <span class="muted">Página @_page de @TotalPages</span>
+                        <button type="button" class="button button-secondary button-small"
+                                disabled="@(_page == TotalPages)" @onclick="NextPage">
+                            Siguiente
+                        </button>
+                    </div>
+                }
+            }
+        </section>
+    }
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private IReadOnlyList<ContractRow>? _contracts;
+    private IReadOnlyList<ContractRow> _alerts = Array.Empty<ContractRow>();
+    private string _search = string.Empty;
+    private int _page = 1;
+    private string? _error;
+
+    private IReadOnlyList<ContractRow> Filtered =>
+        (_contracts ?? Array.Empty<ContractRow>())
+            .Where(contract =>
+                string.IsNullOrWhiteSpace(_search)
+                || contract.EmployeeName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || contract.IdNumber.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || contract.StatusLabel.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(Filtered.Count / (double)PageSize));
+
+    private IEnumerable<ContractRow> PageItems =>
+        Filtered.Skip((_page - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _contracts = ContractService.List();
+            _alerts = ContractService.ExpiringAlerts();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (_page > 1)
+            _page--;
+    }
+
+    private void NextPage()
+    {
+        if (_page < TotalPages)
+            _page++;
+    }
+}

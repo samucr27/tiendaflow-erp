@@ -69,6 +69,10 @@ public class SeedIdempotencyTests : IClassFixture<ErpWebApplicationFactory>, IAs
                 .FirstAsync();
             context.InventoryTransfers.Remove(transfer);
 
+            var terminatedContract = await context.EmployeeContracts
+                .FirstAsync(item => item.Status == EmploymentContractStatus.Terminated);
+            context.EmployeeContracts.Remove(terminatedContract);
+
             await context.SaveChangesAsync();
         }
 
@@ -118,7 +122,9 @@ public class SeedIdempotencyTests : IClassFixture<ErpWebApplicationFactory>, IAs
             ("counts", await context.InventoryCounts.CountAsync()),
             ("count lines", await context.InventoryCountLines.CountAsync()),
             ("transfers", await context.InventoryTransfers.CountAsync()),
-            ("transfer lines", await context.InventoryTransferLines.CountAsync())
+            ("transfer lines", await context.InventoryTransferLines.CountAsync()),
+            ("contracts", await context.EmployeeContracts.CountAsync()),
+            ("contract attachments", await context.ContractAttachments.CountAsync())
         };
     }
 }

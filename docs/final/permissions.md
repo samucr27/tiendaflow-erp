@@ -34,7 +34,8 @@ las tres capas y no depende de que el enlace esté oculto.
 | Compras: evaluación y reportes | `purchasing.reports.view` | `purchasing.evaluations.manage` |
 | RR. HH.: empleados | `hr.employees.view` | `hr.employees.manage` |
 | RR. HH.: nómina | `hr.payroll.manage` | `hr.payroll.manage` |
-| RR. HH.: contratos, asistencia y turnos | — | `hr.contracts.manage`*, `hr.attendance.manage`*, `hr.shifts.manage`* |
+| RR. HH.: contratos | — | `hr.contracts.manage` |
+| RR. HH.: asistencia y turnos | — | `hr.attendance.manage`*, `hr.shifts.manage`* |
 | CRM: clientes | `crm.customers.view` | `crm.customers.manage` |
 | CRM: segmentación | `crm.reports.view` | — |
 | CRM: puntos, PQRS y campañas | — | `crm.points.manage`*, `crm.pqrs.manage`*, `crm.campaigns.manage`* |
@@ -128,6 +129,32 @@ el ingreso y repone inventario, así que la decisión queda en el responsable de
 tienda o en un rol corporativo. La pantalla declara la política, el menú oculta el
 enlace y `SalesReturnService` vuelve a exigir el permiso antes de leer o
 escribir.
+
+## Cambios en la matriz por los contratos
+
+Los contratos laborales usan `hr.contracts.manage` y no crearon permisos
+nuevos. La lectura también exige ese permiso porque la pantalla muestra salario
+base y documentos firmados, que son datos personales y salariales:
+
+| Ruta o acción | Permiso | Roles |
+| --- | --- | --- |
+| `/rrhh/contratos`, `/rrhh/contratos/nuevo`, `/rrhh/contratos/{id}` | `hr.contracts.manage` | Gestor de recursos humanos |
+| Descargar un adjunto (`/rrhh/contratos/{id}/adjunto/{attachmentId}`) | `hr.contracts.manage` | Gestor de recursos humanos |
+
+El permiso queda concentrado en el Gestor de recursos humanos. El Administrador
+conserva la vista de empleados (`hr.employees.view`) pero no administra
+contratos: la decisión es intencional para separar la operación de RR. HH. del
+rol técnico y se documenta como decisión de diseño en
+[pending-items.md](pending-items.md). El Jefe de tienda tampoco lo tiene: su
+alcance de asistencia y turnos llegará en la siguiente fase y no incluye
+salarios ni contratos.
+
+Las tres capas se cumplen: las páginas declaran
+`[Authorize(Policy = Permissions.HrContractsManage)]`, el menú oculta el enlace
+sin el permiso y `EmploymentContractService` llama
+`IAccessControl.Demand(Permissions.HrContractsManage)` antes de cualquier
+repositorio. La descarga del adjunto es un endpoint mínimo con la misma
+política y cada descarga deja una entrada de auditoría.
 
 ## Alcance por tienda
 

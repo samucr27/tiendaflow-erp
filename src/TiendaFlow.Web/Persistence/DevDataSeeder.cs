@@ -118,6 +118,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedStoresAsync(context, cancellationToken);
         await SeedRolesAsync(context, cancellationToken);
         await SeedEmployeesAsync(context, cancellationToken);
+        await SeedContractsAsync(context, cancellationToken);
         await SeedUsersAsync(context, cancellationToken);
         await SeedCatalogAsync(context, cancellationToken);
         await SeedSuppliersAsync(context, cancellationToken);
@@ -189,6 +190,157 @@ public sealed class DevDataSeeder : IHostedService
 
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// One contract per employee, with two demo histories: one expiring
+    /// fixed-term contract for the alert panel and one renewed employee whose
+    /// previous contract stays as extended. The natural key is employee plus
+    /// start date, so a second run never duplicates a contract.
+    /// </summary>
+    private static async Task SeedContractsAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var employees = (await context.Employees.ToListAsync(cancellationToken))
+            .ToDictionary(employee => employee.IdNumber, StringComparer.Ordinal);
+
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
+
+        // The employees with a special history are skipped in the default pass.
+        var withHistory = new[] { "1000000004", "1000000005", "1000000009" };
+        var defaultStart = new DateOnly(2023, 1, 15);
+
+        foreach (var seed in DemoEmployees)
+        {
+            if (withHistory.Contains(seed.IdNumber, StringComparer.Ordinal))
+                continue;
+            if (!employees.TryGetValue(seed.IdNumber, out var employee))
+                continue;
+
+            if (await ContractExistsAsync(context, employee.Id, defaultStart, cancellationToken))
+                continue;
+
+            context.EmployeeContracts.Add(new EmploymentContract(
+                id: 0,
+                employee.Id,
+                ContractType.Indefinite,
+                defaultStart,
+                endDate: null,
+                employee.Salary,
+                now));
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        if (employees.TryGetValue("1000000004", out var cashier))
+        {
+            // Ends inside the alert window (hr.contracts.expiry_alert_days).
+            var start = new DateOnly(2026, 1, 1);
+
+            if (!await ContractExistsAsync(context, cashier.Id, start, cancellationToken))
+            {
+                context.EmployeeContracts.Add(new EmploymentContract(
+                    id: 0,
+                    cashier.Id,
+                    ContractType.FixedTerm,
+                    start,
+                    today.AddDays(20),
+                    cashier.Salary,
+                    now));
+            }
+        }
+
+        if (employees.TryGetValue("1000000009", out var former))
+        {
+            var start = new DateOnly(2022, 3, 1);
+
+            if (!await ContractExistsAsync(context, former.Id, start, cancellationToken))
+            {
+                var terminated = new EmploymentContract(
+                    id: 0,
+                    former.Id,
+                    ContractType.FixedTerm,
+                    start,
+                    new DateOnly(2023, 12, 31),
+                    former.Salary,
+                    now);
+
+                terminated.Terminate(new DateTime(2024, 1, 15, 0, 0, 0, DateTimeKind.Utc));
+                context.EmployeeContracts.Add(terminated);
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        if (employees.TryGetValue("1000000005", out var renewedEmployee))
+        {
+            var previousStart = new DateOnly(2024, 1, 1);
+            var renewedStart = new DateOnly(2025, 1, 1);
+
+            var previous = await context.EmployeeContracts.FirstOrDefaultAsync(
+                contract => contract.EmployeeId == renewedEmployee.Id
+                    && contract.StartDate == previousStart,
+                cancellationToken);
+
+            if (previous is null)
+            {
+                previous = new EmploymentContract(
+                    id: 0,
+                    renewedEmployee.Id,
+                    ContractType.FixedTerm,
+                    previousStart,
+                    new DateOnly(2024, 12, 31),
+                    renewedEmployee.Salary,
+                    now);
+
+                context.EmployeeContracts.Add(previous);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+
+            if (!await ContractExistsAsync(
+                    context,
+                    renewedEmployee.Id,
+                    renewedStart,
+                    cancellationToken))
+            {
+                if (previous.Status == EmploymentContractStatus.Active)
+                {
+                    var renewed = previous.Renew(
+                        renewedStart,
+                        new DateOnly(2026, 12, 31),
+                        renewedEmployee.Salary,
+                        now);
+
+                    previous.MarkExtended();
+                    context.EmployeeContracts.Add(renewed);
+                }
+                else
+                {
+                    context.EmployeeContracts.Add(new EmploymentContract(
+                        id: 0,
+                        renewedEmployee.Id,
+                        ContractType.FixedTerm,
+                        renewedStart,
+                        new DateOnly(2026, 12, 31),
+                        renewedEmployee.Salary,
+                        now));
+                }
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static Task<bool> ContractExistsAsync(
+        TiendaFlowDbContext context,
+        int employeeId,
+        DateOnly startDate,
+        CancellationToken cancellationToken) =>
+        context.EmployeeContracts.AnyAsync(
+            contract => contract.EmployeeId == employeeId
+                && contract.StartDate == startDate,
+            cancellationToken);
 
     private async Task SeedUsersAsync(
         TiendaFlowDbContext context,

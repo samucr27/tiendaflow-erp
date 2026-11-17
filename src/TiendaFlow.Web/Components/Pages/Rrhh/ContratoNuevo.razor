@@ -1,0 +1,145 @@
+@page "/rrhh/contratos/nuevo"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrContractsManage)]
+@using TiendaFlow.Application
+@using TiendaFlow.Application.Payroll
+@using TiendaFlow.Domain
+@inject EmploymentContractService ContractService
+@inject NavigationManager Navigation
+
+<PageTitle>Nuevo contrato · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Nuevo contrato"
+            Subtitle="Registra la vinculación inicial; las renovaciones se hacen desde el detalle" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Datos del contrato</h2>
+            <p class="card-subtitle">
+                El empleado debe estar activo y no puede tener otro contrato vigente.
+            </p>
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="contract-employee">Empleado</label>
+            <select id="contract-employee" class="input" @bind="_employeeId">
+                <option value="0">Selecciona un empleado</option>
+                @foreach (var employee in _employees)
+                {
+                    <option value="@employee.Id" disabled="@employee.HasActiveContract">
+                        @employee.Name · @employee.IdNumber@(employee.HasActiveContract ? " (con contrato vigente)" : string.Empty)
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="contract-type">Tipo de contrato</label>
+            <select id="contract-type" class="input" @bind="_contractType">
+                @foreach (var type in ContractTypeLabels.All)
+                {
+                    <option value="@((int)type)">@ContractTypeLabels.ToLabel(type)</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="contract-start">Fecha de inicio</label>
+            <input id="contract-start" class="input" type="date" @bind="_startDate" />
+        </div>
+
+        <div class="field">
+            <label for="contract-end">Fecha de fin (opcional para indefinido)</label>
+            <input id="contract-end" class="input" type="date" @bind="_endDate" />
+        </div>
+
+        <div class="field">
+            <label for="contract-salary">Salario base (COP)</label>
+            <input id="contract-salary" class="input" type="number" min="1" step="100" @bind="_salary" />
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="button button-primary" disabled="@_saving" @onclick="Save">
+            Registrar contrato
+        </button>
+        <a class="button button-secondary" href="rrhh/contratos">Cancelar</a>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<EmployeeContractOption> _employees = Array.Empty<EmployeeContractOption>();
+    private int _employeeId;
+    private int _contractType = (int)ContractType.FixedTerm;
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly? _endDate = DateOnly.FromDateTime(DateTime.Today).AddMonths(6);
+    private decimal _salary;
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _employees = ContractService.Employees();
+
+            var first = _employees.FirstOrDefault(employee => !employee.HasActiveContract);
+            if (first is not null)
+                _employeeId = first.Id;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Save()
+    {
+        _error = null;
+
+        if (_employeeId <= 0)
+        {
+            _error = "Selecciona un empleado activo sin contrato vigente.";
+            return;
+        }
+
+        _saving = true;
+
+        try
+        {
+            var id = ContractService.Create(new CreateContractRequest(
+                _employeeId,
+                (ContractType)_contractType,
+                _startDate,
+                _endDate,
+                _salary));
+
+            Navigation.NavigateTo($"rrhh/contratos/{id}?creado=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

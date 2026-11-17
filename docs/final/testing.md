@@ -4,7 +4,7 @@
 con .NET 9 en Windows y SQL Server 2022 en Docker.
 
 Esta página se actualiza al cerrar cada fase. La última fila de resultados
-corresponde a la fase de devoluciones y notas crédito.
+corresponde a la fase de contratos laborales.
 
 ## Comandos
 
@@ -26,11 +26,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 649 | 0 | 0 | 649 |
+| `TiendaFlow.UnitTests` | 692 | 0 | 0 | 692 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 56 | 0 | 0 | 56 |
+| `TiendaFlow.IntegrationTests` | 58 | 0 | 0 | 58 |
 
-Total ejecutado: **711 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **756 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -54,10 +54,10 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 3371 | 3476 | **97,0 %** |
-| `TiendaFlow.Domain` | 896 | 946 | **94,7 %** |
-| Aplicación + dominio | 4267 | 4422 | **96,5 %** |
-| `TiendaFlow.Infrastructure` (con integración SQL) | 12157 | 12375 | **98,2 %** |
+| `TiendaFlow.Application` | 3545 | 3659 | **96,8 %** |
+| `TiendaFlow.Domain` | 1021 | 1074 | **95,0 %** |
+| Aplicación + dominio | 4566 | 4733 | **96,4 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 13981 | 14210 | **98,3 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura de
 `TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
@@ -323,6 +323,33 @@ conexión a través de las variables de entorno del proceso y sembrar la misma
 base dos veces; el fallo se reproducía de forma intermitente en la suite
 completa. Con el candado, la suite completa se ejecutó tres veces seguidas sin
 errores.
+
+## Contratos laborales (fase 6)
+
+La fase 6 añade el registro de contratos con migración propia
+(`Phase12HrContracts`) y 66 pruebas nuevas (43 unitarias y 2 de integración
+dentro de la suite, más ampliaciones de las pruebas de autorización y de humo):
+
+- `EmploymentContractTests`: tipo de contrato y fecha de fin obligatoria para
+  término fijo, obra o labor y prestación de servicios; fecha de fin anterior al
+  inicio; empleado y salario inválidos; tipo desconocido; prórroga que enlaza el
+  contrato anterior y no admite fechas solapadas; terminación única; ventana de
+  vencimiento; nombre de archivo reducido al nombre; extensión y tipo de
+  contenido permitidos; archivo vacío, mayor de 2 MB o con contrato inexistente.
+- `EmploymentContractServiceTests`: listado con etiquetas en español, detalle
+  inexistente, empleados con contrato vigente marcados, alta para empleado
+  activo con auditoría que no copia el salario, rechazo de empleado con contrato
+  vigente o inactivo, prórroga atómica con una sola transacción, terminación,
+  ventana configurable del aviso, carga y descarga de adjunto con auditoría,
+  adjunto de otro contrato rechazado y negación de los nueve métodos sin el
+  permiso antes de consultar repositorios.
+- `HrContractsIntegrationTests`: flujo real sobre SQL Server del alta, prórroga
+  (historial de dos filas y estado `Prorrogado` del anterior), terminación, bytes
+  del adjunto y auditoría persistida, filtrando por identificador de entidad
+  porque la base de integración es compartida.
+- `FinalScreenAuthorizationTests` y `WebSmokeTests`: las tres rutas declaran
+  `hr.contracts.manage`, el menú oculta el enlace sin el permiso y los roles
+  autorizados recorren las pantallas contra la base desechable.
 
 ## Cómo reproducir la verificación
 

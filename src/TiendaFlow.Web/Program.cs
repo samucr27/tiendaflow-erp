@@ -249,6 +249,7 @@ app.MapPost("/api/nomina/calculate", (PayrollInput input, IPayrollEngine engine)
 app.MapGet("/healthz", HealthCheckAsync).AllowAnonymous();
 
 app.MapReportEndpoints();
+app.MapContractEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
