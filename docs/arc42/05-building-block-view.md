@@ -55,13 +55,13 @@ TiendaFlow es una única aplicación Blazor Web App organizada en cuatro capas c
 
 | Componente | Responsabilidad | Principio |
 |---|---|---|
-| `SalesInvoice` / `InvoiceLine` (Domain) | Factura con nombre y documento del cliente guardados como **copia histórica**, fecha de emisión, estado (`Issued`/`Cancelled`) y líneas. Cada línea copia SKU, descripción, cantidad y precio unitario; el total se deriva. Una factura anulada no se puede editar ni volver a anular. | El agregado protege sus líneas; un documento emitido no depende del catálogo actual. |
-| `SalesInvoiceService` (Application) | Lista y lee facturas (`sales.invoices.view`), las crea, edita y anula (`sales.invoices.manage`). La anulación reemplaza el borrado físico para conservar numeración e historial. Cada escritura se audita con módulo `sales`. | SRP; auditoría; DIP. |
+| `SalesInvoice` / `InvoiceLine` (Domain) | Factura con nombre y documento del cliente guardados como **copia histórica**, tienda que la emite, fecha de emisión, estado (`Issued`/`Cancelled`) y líneas. Cada línea copia SKU, descripción, cantidad y precio unitario; el total se deriva. Una factura emitida **no se edita**: el dominio no ofrece métodos de edición y la corrección es anularla y emitir otra. | El agregado protege sus líneas; un documento emitido no depende del catálogo actual. |
+| `SalesInvoiceService` (Application) | Lista y lee facturas (`sales.invoices.view`), las emite y anula (`sales.invoices.manage`). Emitir descuenta las unidades del stock de la tienda del usuario y anular las devuelve con un movimiento `Return`, en la misma transacción que el documento. Cada escritura se audita con módulo `sales`. | SRP; auditoría; DIP; unidad de trabajo. |
 | `IInvoiceRepository` / `IInvoiceQuery`, `InvoiceRow` / `InvoiceDetail` (Application) | La escritura carga el agregado con sus líneas; la lectura proyecta filas y detalle sin tracking. | Separación de lecturas y escrituras. |
 | `EfInvoiceRepository`, `EfInvoiceQuery`, `SalesInvoiceConfiguration`, `InvoiceLineConfiguration` (Infrastructure) | Mapeo EF Core de `sales_invoice` y `sales_invoice_line`, migración `20261111005733_Phase4Invoicing`. La identidad de línea y un índice no único `(invoice_id, product_sku)` permiten reemplazar líneas al editar. | El detalle de persistencia queda fuera del dominio. |
-| Páginas `/facturacion`, `/facturacion/nueva`, `/facturacion/{id:int}` (Web) | Lista con búsqueda y acción de anulación, formulario de alta/edición con líneas dinámicas y vista de solo lectura para facturas anuladas. | Política de página + visibilidad en la interfaz + `Demand` en el servicio. |
+| Páginas `/facturacion`, `/facturacion/nueva`, `/facturacion/{id:int}` (Web) | Lista con búsqueda y anulación, formulario de emisión que elige productos del catálogo y detalle de solo lectura. | Política de página + visibilidad en la interfaz + `Demand` en el servicio. |
 
-**Limitación explícita:** la facturación electrónica (DIAN), los pagos y el cálculo de impuestos quedan **fuera de alcance** en este sprint. El documento guarda los datos necesarios para mostrar y auditar una venta, no un documento fiscal.
+**Limitación explícita:** la factura electrónica real ante la DIAN, los pagos y el cálculo de impuestos quedan **fuera de alcance**. `ElectronicInvoiceService` genera un XML **simulado** con un resumen SHA-256, sin CUFE ni firma certificada.
 
 ## 5.6 Vista de nivel 2: registro de clientes para CRM (Sprint 2)
 
@@ -73,7 +73,28 @@ TiendaFlow es una única aplicación Blazor Web App organizada en cuatro capas c
 | `EfCustomerRepository`, `EfCustomerQuery`, `CustomerConfiguration` (Infrastructure) | Mapeo EF Core de `customer` con índice único en `document_number`; migración `20261111010125_Phase5Crm`. | Ignorancia de la persistencia. |
 | Páginas `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id:int}` (Web) | Lista con búsqueda y acción de desactivación, formulario de alta/edición con datos de contacto y estado activo. | Política de página + visibilidad en la interfaz + `Demand` en el servicio. |
 
-**Limitación explícita:** segmentación, campañas, puntos y PQRS quedan **fuera de alcance** en este sprint. El módulo cubre el registro de clientes que necesitan las demás pantallas.
+**Segmentación A/B/C:** `CustomerSegmentationService` ordena a los clientes por valor facturado y asigna A al 20 % superior, B al 30 % siguiente y C al resto (pantalla `/crm/segmentacion`, permiso `crm.reports.view`). Campañas, puntos y PQRS quedan fuera de alcance.
+
+## 5.6.1 Vista de nivel 2: punto de venta (HU-05)
+
+| Componente | Responsabilidad | Principio |
+|---|---|---|
+| `PosSale` / `PosSaleLine` (Domain) | Venta de mostrador con código, tienda, cajero, fecha y copia del nombre y precio de cada producto. | Documento inmutable; no depende del catálogo actual. |
+| `StockItem` (Domain) | Cantidad disponible, mínimo y último movimiento (`Sale`, `Receipt`, `Return`, `Adjustment`, traslados). `IsBelowMinimum` define la alerta de HU-05. Columna `row_version` para control de concurrencia. | Las reglas de stock viven en la entidad. |
+| `PosSaleService` (Application) | Descuenta el stock y guarda la venta en una sola transacción; devuelve el comprobante con el stock restante y el mínimo, que la pantalla usa para mostrar la alerta de stock crítico. Exige `sales.pos.use`. | SRP; unidad de trabajo. |
+| `EfPosSaleRepository`, `EfPosSaleQuery` (Infrastructure) | Tablas `pos_sale` y `pos_sale_line` (migración `Phase11PosSalesAndInvoiceStock`); la consulta alimenta el panel, el reporte de ventas y el consumo de la reposición. | DIP; modelos de lectura. |
+| `FreshTracking` (Infrastructure) | Antes de modificar una entidad, los repositorios descartan la copia en caché del `DbContext` de la pestaña de Blazor y leen el valor actual. | Evita escrituras con datos viejos entre sesiones. |
+
+## 5.6.2 Vista de nivel 2: compras, reposición y documentos de inventario
+
+| Componente | Responsabilidad |
+|---|---|
+| `ReplenishmentService` | Toma los productos en stock crítico, calcula la cantidad sugerida con el mínimo y el consumo promedio, y crea borradores de orden agrupados por proveedor predeterminado (`/compras/reposicion`). |
+| `ProductSupplierService` | Relación producto · proveedor con último costo y proveedor predeterminado. |
+| Ranking de proveedores | Calificación, puntualidad y cumplimiento calculados con las recepciones reales (`/proveedores/ranking`). |
+| `InventoryCountService` / `InventoryTransferService` | Conteos físicos que ajustan el stock al cerrarse y traslados entre tiendas con salida y entrada. |
+| `StoreService` / `ParameterService` | Administración de tiendas con desactivación protegida y parámetros versionados con fecha de vigencia. |
+| Servicios de `Reporting` | Reportes de inventario, ventas (facturas y ventas POS) y nómina con exportación CSV. |
 
 ## 5.7 Coherencia con la Sección 10
 
@@ -93,5 +114,7 @@ Los módulos del Sprint 2 siguen la misma regla:
 | HU-05 | `StockService`, `InventoryDashboardService`, páginas `/inventario/*` | `InventoryDashboardServiceTests`, escenario de aceptación de stock | `docs/sprint2/demo-script.md` |
 | HU-06 | `UserService`, `RoleCatalogService`, `AuditTrailService`, páginas `/seguridad/*` | `UserServiceTests`, `AuthenticationServiceTests` | `docs/sprint2/code-review.md` |
 | Proveedores | `SupplierService`, `PurchaseOrderService`, páginas `/proveedores` | `SupplierServiceTests`, `PurchaseOrderServiceTests` | `docs/sprint2/demo-script.md` |
-| Facturación | `SalesInvoiceService`, páginas `/facturacion` | `SalesInvoiceTests`, `SalesInvoiceServiceTests` | `docs/sprint2/demo-script.md` |
+| Facturación | `SalesInvoiceService`, páginas `/facturacion` | `SalesInvoiceTests`, `SalesInvoiceServiceTests`, `SalesDocumentsIntegrationTests` | `docs/final/testing.md` |
+| Punto de venta | `PosSaleService`, página `/inventario/ventas` | `PosSaleServiceTests`, `LongLivedContextStockTests` | `docs/final/testing.md` |
+| Reposición y compras | `ReplenishmentService`, `PurchaseOrderService`, páginas `/compras/*` | `ReplenishmentServiceTests`, `PurchaseOrderServiceTests` | `docs/final/implemented-modules.md` |
 | CRM clientes | `CustomerService`, páginas `/crm/clientes` | `CustomerTests`, `CustomerServiceTests` | `docs/sprint2/demo-script.md` |
