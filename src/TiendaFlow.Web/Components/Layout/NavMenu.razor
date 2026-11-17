@@ -188,13 +188,23 @@
         }
     }
 
-    @if (AccessControl.Has(Permissions.SalesInvoicesView))
+    @if (AccessControl.Has(Permissions.SalesInvoicesView)
+         || AccessControl.Has(Permissions.SalesReturnsAuthorize))
     {
         <p class="nav-section">Facturación</p>
 
-        <NavLink class="nav-item" href="facturacion" Match="NavLinkMatch.Prefix">
-            Facturas
-        </NavLink>
+        @if (AccessControl.Has(Permissions.SalesInvoicesView))
+        {
+            <NavLink class="nav-item" href="facturacion" Match="NavLinkMatch.Prefix">
+                Facturas
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.SalesReturnsAuthorize))
+        {
+            <NavLink class="nav-item" href="ventas/devoluciones" Match="NavLinkMatch.Prefix">
+                Devoluciones
+            </NavLink>
+        }
     }
 
     @if (AccessControl.Has(Permissions.CrmCustomersView)

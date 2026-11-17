@@ -1,0 +1,256 @@
+@page "/ventas/devoluciones/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SalesReturnsAuthorize)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject SalesReturnService ReturnService
+@inject NavigationManager Navigation
+
+<PageTitle>Devolución · TiendaFlow</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_detail is null)
+{
+    <PageHeader Eyebrow="Ventas / Devoluciones"
+                Title="Devolución"
+                Subtitle="No encontramos la devolución solicitada">
+        <Actions>
+            <a class="button button-secondary" href="ventas/devoluciones">Volver</a>
+        </Actions>
+    </PageHeader>
+}
+else
+{
+    var header = _detail.Return;
+
+    <PageHeader Eyebrow="Ventas / Devoluciones"
+                Title="@($"DV-{header.Id:D5}")"
+                Subtitle="@($"{header.CustomerName} · Factura #{header.InvoiceId} · {header.StoreName}")">
+        <Actions>
+            <a class="button button-secondary" href="ventas/devoluciones">Volver</a>
+            <a class="button button-secondary" href="@($"facturacion/{header.InvoiceId}")">
+                Ver factura
+            </a>
+        </Actions>
+    </PageHeader>
+
+    <div class="kpi-grid">
+        <KpiCard Label="Estado"
+                 Value="@header.StatusLabel"
+                 Hint="Flujo de la devolución"
+                 Tone="@Tone(header.Status)" />
+        <KpiCard Label="Nota crédito"
+                 Value="@(header.CreditNoteNumber ?? "Pendiente")"
+                 Hint="Se asigna al autorizar"
+                 Tone="@(header.CreditNoteNumber is null ? "neutral" : "ok")" />
+        <KpiCard Label="Unidades"
+                 Value="@Formatters.Quantity(TotalUnits)"
+                 Hint="@($"{_detail.Lines.Count} productos")"
+                 Tone="info" />
+        <KpiCard Label="Total"
+                 Value="@Formatters.Money(_detail.Total)"
+                 Hint="Valor devuelto al cliente"
+                 Tone="neutral" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Detalle de la devolución</h2>
+                <p class="card-subtitle">
+                    Registrada el @Formatters.ShortDateTime(header.CreatedAt).
+                    Motivo: @header.Reason
+                </p>
+            </div>
+            <StatusBadge Text="@header.StatusLabel" Tone="@Tone(header.Status)" />
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="num">Cantidad</th>
+                        <th class="num">Precio unitario</th>
+                        <th class="num">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _detail.Lines)
+                    {
+                        <tr>
+                            <td>
+                                <span>@line.Description</span>
+                                <span class="table-meta">@line.ProductSku</span>
+                            </td>
+                            <td class="num">@Formatters.Quantity(line.Quantity)</td>
+                            <td class="num">@Formatters.Money(line.UnitPrice)</td>
+                            <td class="num">@Formatters.Money(line.LineTotal)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="3">Total devuelto</th>
+                        <th class="num">@Formatters.Money(_detail.Total)</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+    @if (header.Status == SalesReturnStatus.Pending)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Autorizar o rechazar</h2>
+                    <p class="card-subtitle">
+                        Al autorizar se emite la nota crédito y las unidades regresan al stock
+                        de @header.StoreName. La operación es definitiva. Al rechazar, la
+                        devolución queda cerrada sin mover inventario.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button"
+                        class="button button-secondary"
+                        disabled="@_saving"
+                        @onclick="Reject">
+                    Rechazar
+                </button>
+                <button type="button"
+                        class="button button-primary"
+                        disabled="@_saving"
+                        @onclick="Authorize">
+                    Autorizar y emitir nota crédito
+                </button>
+            </div>
+        </section>
+    }
+    else if (header.Status == SalesReturnStatus.Authorized)
+    {
+        <div class="alert alert-success" role="status">
+            Devolución autorizada con la nota crédito @header.CreditNoteNumber.
+            Las unidades ya están disponibles en el inventario de @header.StoreName.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning" role="status">
+            La devolución fue rechazada y no modificó el inventario.
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "creada")]
+    public string? Creada { get; set; }
+
+    private SalesReturnDetail? _detail;
+    private bool _saving;
+    private bool _initialized;
+    private string? _error;
+    private string? _success;
+
+    private int TotalUnits => _detail?.Lines.Sum(line => line.Quantity) ?? 0;
+
+    protected override void OnParametersSet()
+    {
+        var firstLoad = !_initialized;
+
+        Load();
+        _initialized = true;
+
+        if (firstLoad && Creada == "1")
+            _success = "La devolución se registró y quedó pendiente de autorización.";
+    }
+
+    private void Load()
+    {
+        try
+        {
+            _detail = ReturnService.Get(Id);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Authorize()
+    {
+        _error = null;
+        _success = null;
+        _saving = true;
+
+        try
+        {
+            ReturnService.Authorize(Id);
+            Load();
+            _success = "La devolución quedó autorizada y las unidades regresaron al inventario.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Reject()
+    {
+        _error = null;
+        _success = null;
+        _saving = true;
+
+        try
+        {
+            ReturnService.Reject(Id);
+            Load();
+            _success = "La devolución quedó rechazada sin mover el inventario.";
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static string Tone(SalesReturnStatus status) => status switch
+    {
+        SalesReturnStatus.Authorized => "ok",
+        SalesReturnStatus.Pending => "warning",
+        _ => "neutral"
+    };
+}

@@ -122,6 +122,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedCustomersAsync(context, cancellationToken);
         await SeedPurchaseOrdersAsync(context, cancellationToken);
         await SeedInvoicesAsync(context, cancellationToken);
+        await SeedSalesReturnsAsync(context, cancellationToken);
         await SeedInventoryCountsAsync(context, cancellationToken);
         await SeedInventoryTransfersAsync(context, cancellationToken);
     }
@@ -602,6 +603,94 @@ public sealed class DevDataSeeder : IHostedService
         }
 
         return invoice;
+    }
+
+    private static async Task SeedSalesReturnsAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.SalesReturns.AnyAsync(cancellationToken))
+            return;
+
+        var invoices = await context.SalesInvoices
+            .AsNoTracking()
+            .Include(invoice => invoice.Lines)
+            .Where(invoice => invoice.Status == InvoiceStatus.Issued)
+            .OrderBy(invoice => invoice.Id)
+            .Take(2)
+            .ToListAsync(cancellationToken);
+
+        if (invoices.Count == 0)
+            return;
+
+        var first = invoices[0];
+        var firstLine = first.Lines.OrderBy(line => line.Id).FirstOrDefault();
+
+        if (firstLine is null)
+            return;
+
+        var pending = new SalesReturn(
+            0,
+            first.Id,
+            DefaultStoreId,
+            first.CustomerName,
+            first.CustomerDocument,
+            "Producto vencido",
+            DateTime.UtcNow.AddDays(-3));
+
+        pending.AddLine(
+            firstLine.ProductSku,
+            firstLine.Description,
+            Math.Min(1, firstLine.Quantity),
+            firstLine.UnitPrice);
+
+        context.SalesReturns.Add(pending);
+
+        SalesReturn? authorized = null;
+
+        if (invoices.Count > 1)
+        {
+            var second = invoices[1];
+            var secondLine = second.Lines.OrderBy(line => line.Id).FirstOrDefault();
+
+            if (secondLine is not null)
+            {
+                authorized = new SalesReturn(
+                    0,
+                    second.Id,
+                    DefaultStoreId,
+                    second.CustomerName,
+                    second.CustomerDocument,
+                    "Empaque equivocado",
+                    DateTime.UtcNow.AddDays(-2));
+
+                authorized.AddLine(
+                    secondLine.ProductSku,
+                    secondLine.Description,
+                    Math.Min(1, secondLine.Quantity),
+                    secondLine.UnitPrice);
+
+                context.SalesReturns.Add(authorized);
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        if (authorized is null)
+            return;
+
+        var authorizedAt = DateTime.UtcNow.AddDays(-1);
+        var line = authorized.Lines[0];
+
+        authorized.Authorize(authorizedAt, $"NC-{authorized.Id:D6}");
+
+        var stock = await context.Stocks.FirstOrDefaultAsync(
+            item => item.StoreId == DefaultStoreId && item.Sku == line.ProductSku,
+            cancellationToken);
+
+        stock?.RegisterReturnIn(line.Quantity, authorizedAt);
+
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     private static async Task SeedInventoryCountsAsync(

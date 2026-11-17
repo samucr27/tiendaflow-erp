@@ -180,6 +180,7 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         var storeId = await context.Stores.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var countId = await context.InventoryCounts.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var transferId = await context.InventoryTransfers.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
+        var salesReturnId = await context.SalesReturns.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var parameterKey = SystemParameterCatalog.All.First().Key;
 
         return new[]
@@ -227,6 +228,8 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute("/facturacion", Permissions.SalesInvoicesView),
             new SmokeRoute($"/facturacion/{invoiceId}", Permissions.SalesInvoicesManage),
             new SmokeRoute("/facturacion/nueva", Permissions.SalesInvoicesManage),
+            new SmokeRoute("/ventas/devoluciones", Permissions.SalesReturnsAuthorize),
+            new SmokeRoute($"/ventas/devoluciones/{salesReturnId}", Permissions.SalesReturnsAuthorize),
             new SmokeRoute("/crm/clientes", Permissions.CrmCustomersView),
             new SmokeRoute($"/crm/clientes/{customerId}", Permissions.CrmCustomersManage),
             new SmokeRoute("/crm/clientes/nuevo", Permissions.CrmCustomersManage),

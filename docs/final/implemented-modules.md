@@ -1,9 +1,9 @@
 # Módulos y pantallas implementados
 
 Esta entrega completa las pantallas que faltaban para los módulos de compras,
-panel, reportes, CRM, facturación simulada, administración de tiendas,
-parámetros configurables e inventario (conteos físicos y traslados). Todas las
-rutas declaran su `Authorize(Policy = ...)`
+panel, reportes, CRM, facturación simulada, devoluciones y notas crédito,
+administración de tiendas, parámetros configurables e inventario (conteos
+físicos y traslados). Todas las rutas declaran su `Authorize(Policy = ...)`
 y los servicios vuelven a exigir el permiso, de modo que ocultar un enlace del
 menú no protege una función por sí solo.
 
@@ -212,6 +212,40 @@ anuladas aparecen en el detalle pero no suman al total vendido.
 
 La regla es explícita, está cubierta por pruebas y se presenta en pantalla como
 referencia académica, no como política comercial validada.
+
+## Devoluciones y notas crédito
+
+| Ruta | Permiso de página | Función |
+| --- | --- | --- |
+| `/ventas/devoluciones` | `sales.returns.authorize` | Registrar una devolución sobre una factura emitida y listar el historial |
+| `/ventas/devoluciones/{Id:int}` | `sales.returns.authorize` | Detalle, autorización con nota crédito y rechazo |
+
+Reglas aplicadas en el dominio y en `SalesReturnService`:
+
+1. La devolución se registra contra una factura **emitida**; una factura anulada
+   no admite devoluciones. La descripción y el precio unitario se copian de la
+   factura y quedan congelados en el documento.
+2. La cantidad por producto no puede superar lo facturado menos lo ya
+   **autorizado** en otras devoluciones de la misma factura, y un producto no
+   puede aparecer dos veces. El límite se valida al crear y otra vez al
+   autorizar, porque otra devolución pudo aprobarse mientras esta esperaba.
+3. La devolución nace `Pending`. Al autorizar se asigna una sola vez el
+   consecutivo `NC-000000`, las unidades vuelven al stock de la tienda con el
+   movimiento `ReturnIn` y el documento queda bloqueado; repetir la autorización
+   falla sin mover inventario.
+4. El rechazo cierra la devolución sin tocar el stock. Ninguna de las dos salidas
+   modifica la factura original.
+5. Autorizar y rechazar se ejecutan dentro de `IUnitOfWork` y escriben auditoría
+   con módulo `sales`, usuario, IP y detalle. Las filas de stock se resuelven
+   antes de mutar, de modo que una fila faltante no deja una devolución a medias.
+6. Las pantallas paginan de 20 en 20 y muestran fechas e importes en español
+   (es-CO), con la fecha almacenada en UTC.
+
+**Limitación conocida:** `SalesInvoice` no guarda la tienda de emisión, así que el
+formulario pide elegir la tienda que recibe la devolución. El servicio exige que
+sea una tienda activa y usa esa tienda para el reingreso de stock. Documentar la
+tienda en la factura queda fuera del alcance de esta fase porque cambiaría el
+modelo de facturación y sus migraciones anteriores.
 
 ## Facturación simulada
 

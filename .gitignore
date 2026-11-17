@@ -481,8 +481,7 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-coveragereport/
-
+coveragereport*/
 # Reqnroll generates these next to the .feature files during build.
 tests/TiendaFlow.AcceptanceTests/Features/*.feature.cs
 
@@ -492,4 +491,4 @@ tests/TiendaFlow.AcceptanceTests/Features/*.feature.cs
 *.tfstate.*
 *.tfvars
 
-coveragereport/
+coveragereport*/

@@ -16,6 +16,7 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261113013940_Phase7Parameters` | Tabla `system_parameter`, versionado por fecha y alcance |
 | `20261113015239_Phase8PurchasingKpis` | Fechas prometida/recibida de la orden y tabla `product_supplier` |
 | `20261114035445_Phase9InventoryDocuments` | Conteos físicos, traslados entre tiendas y sus líneas |
+| `20261114042149_AddSalesReturns` | Devoluciones, líneas y nota crédito |
 
 La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
 existía. Añade tres índices que sostienen las consultas de la pantalla y del
@@ -77,9 +78,23 @@ cabecera y los índices `IX_inventory_count_store_status`,
 y `IX_inventory_transfer_line_transfer_sku` sostienen las pantallas, el filtro
 por tienda y las líneas de cada documento.
 
-Las fases posteriores a la entrega final (devoluciones, CRM restante y
-RR. HH.) añadirán su propia migración; esta tabla se amplía a medida que se
-generan.
+Las fases posteriores a la entrega final (CRM restante y RR. HH.) añadirán su
+propia migración; esta tabla se amplía a medida que se generan.
+
+`AddSalesReturns` crea `sales_return` y `sales_return_line`:
+
+- La cabecera guarda la factura de origen, la tienda que recibe, cliente y
+  documento copiados de la factura, motivo, estado (`Pending`, `Authorized`,
+  `Rejected`), número de nota crédito, fechas de creación, autorización y
+  rechazo, y el total.
+- Cada línea congela SKU, descripción, cantidad y precio unitario de la factura;
+  no se puede repetir el SKU dentro de la devolución.
+- Claves foráneas a `sales_invoice` y `store` con borrado restringido, líneas en
+  cascada desde su cabecera e índices por tienda/estado, factura/estado y un
+  índice único filtrado sobre `credit_note_number` para que una nota crédito no
+  se repita.
+- La migración se aplica con el mismo `efbundle.exe` descrito abajo; no requiere
+  pasos adicionales ni datos iniciales.
 
 ## Generar una migración
 

@@ -1,0 +1,422 @@
+@page "/ventas/devoluciones"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SalesReturnsAuthorize)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject SalesReturnService ReturnService
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Devoluciones y notas crédito · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Ventas"
+            Title="Devoluciones y notas crédito"
+            Subtitle="Registro de unidades devueltas, autorización con nota crédito y reingreso al inventario">
+    <Actions>
+        <a class="button button-secondary" href="facturacion">Facturas</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Registrar una devolución</h2>
+            <p class="card-subtitle">
+                La devolución se crea pendiente. Solo al autorizarla se emite la nota crédito
+                y las unidades vuelven al stock de la tienda. No se puede devolver más de lo
+                facturado ni repetir unidades ya autorizadas.
+            </p>
+        </div>
+    </div>
+
+    @if (_stores.Count == 0)
+    {
+        <p class="muted">No hay tiendas activas para registrar devoluciones.</p>
+    }
+    else if (_invoices.Count == 0)
+    {
+        <p class="muted">No hay facturas emitidas disponibles para devolver.</p>
+    }
+    else
+    {
+        <div class="form-grid">
+            <div class="field field-span">
+                <label for="return-invoice">Factura emitida</label>
+                <select id="return-invoice"
+                        class="input"
+                        @bind="_invoiceId"
+                        @bind:after="LoadInvoiceLines">
+                    <option value="0">Selecciona una factura</option>
+                    @foreach (var invoice in _invoices)
+                    {
+                        <option value="@invoice.Id">
+                            @($"#{invoice.Id} · {invoice.CustomerName} · {Formatters.Money(invoice.Total)}")
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="return-store">Tienda que recibe</label>
+                <select id="return-store" class="input" @bind="_storeId">
+                    @foreach (var store in _stores)
+                    {
+                        <option value="@store.Id">@store.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="return-reason">Motivo</label>
+                <input id="return-reason"
+                       class="input"
+                       maxlength="300"
+                       placeholder="Producto vencido, empaque dañado…"
+                       @bind="_reason" />
+            </div>
+        </div>
+
+        @if (_invoiceId > 0 && _invoiceLines.Count == 0)
+        {
+            <p class="muted">Cargando las líneas de la factura…</p>
+        }
+        else if (_invoiceLines.Count > 0)
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="num">Facturado</th>
+                            <th class="num">Ya devuelto</th>
+                            <th class="num">Disponible</th>
+                            <th class="num">Devolver</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _invoiceLines)
+                        {
+                            <tr>
+                                <td>
+                                    <span>@line.Description</span>
+                                    <span class="table-meta">@line.ProductSku</span>
+                                </td>
+                                <td class="num">@Formatters.Quantity(line.InvoicedQuantity)</td>
+                                <td class="num">@Formatters.Quantity(line.ReturnedQuantity)</td>
+                                <td class="num">@Formatters.Quantity(line.ReturnableQuantity)</td>
+                                <td class="num">
+                                    <input class="input"
+                                           type="number"
+                                           min="0"
+                                           max="@line.ReturnableQuantity"
+                                           aria-label="@($"Unidades a devolver de {line.Description}")"
+                                           value="@QuantityFor(line.ProductSku)"
+                                           @onchange="args => SetQuantity(line.ProductSku, args)" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-actions">
+                <strong>@Formatters.Quantity(SelectedUnits) unidades seleccionadas</strong>
+                <button type="button"
+                        class="button button-primary"
+                        disabled="@(!CanSubmit || _saving)"
+                        @onclick="Create">
+                    Registrar devolución
+                </button>
+            </div>
+        }
+    }
+</section>
+
+@if (_returns is null)
+{
+    <p class="muted">Cargando las devoluciones…</p>
+}
+else if (_returns.Count == 0)
+{
+    <EmptyState Title="Todavía no hay devoluciones"
+                Message="Registra la primera devolución sobre una factura emitida." />
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Historial de devoluciones</h2>
+                <p class="card-subtitle">@Filtered.Count de @_returns.Count devoluciones</p>
+            </div>
+            <input class="search-input"
+                   type="search"
+                   aria-label="Buscar devoluciones"
+                   placeholder="Buscar por cliente, factura o nota crédito"
+                   @bind="_search"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (!Filtered.Any())
+        {
+            <EmptyState Title="Sin resultados"
+                        Message="No encontramos devoluciones con ese criterio." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Devolución</th>
+                            <th>Factura</th>
+                            <th>Cliente</th>
+                            <th>Tienda</th>
+                            <th>Fecha</th>
+                            <th class="num">Ítems</th>
+                            <th class="num">Total</th>
+                            <th>Nota crédito</th>
+                            <th>Estado</th>
+                            <th class="actions"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in PageItems)
+                        {
+                            <tr>
+                                <td>
+                                    <a class="table-link" href="@($"ventas/devoluciones/{item.Id}")">
+                                        DV-@item.Id.ToString("D5")
+                                    </a>
+                                </td>
+                                <td>#@item.InvoiceId</td>
+                                <td>@item.CustomerName</td>
+                                <td>@item.StoreName</td>
+                                <td>@Formatters.ShortDate(item.CreatedAt)</td>
+                                <td class="num">@Formatters.Number(item.LineCount)</td>
+                                <td class="num">@Formatters.Money(item.Total)</td>
+                                <td>@(item.CreditNoteNumber ?? "—")</td>
+                                <td>
+                                    <StatusBadge Text="@item.StatusLabel"
+                                                 Tone="@Tone(item.Status)" />
+                                </td>
+                                <td class="actions">
+                                    <a class="table-action" href="@($"ventas/devoluciones/{item.Id}")">Ver</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Filtered.Count > PageSize)
+            {
+                <div class="pager">
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == 1)" @onclick="PreviousPage">
+                        Anterior
+                    </button>
+                    <span class="muted">Página @_page de @TotalPages</span>
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == TotalPages)" @onclick="NextPage">
+                        Siguiente
+                    </button>
+                </div>
+            }
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private IReadOnlyList<SalesReturnStoreOption> _stores = [];
+    private IReadOnlyList<SalesReturnInvoiceOption> _invoices = [];
+    private IReadOnlyList<SalesReturnInvoiceLineOption> _invoiceLines = [];
+    private IReadOnlyList<SalesReturnRow>? _returns;
+    private readonly Dictionary<string, int> _quantities = new(StringComparer.Ordinal);
+    private string _search = string.Empty;
+    private string _reason = string.Empty;
+    private int _invoiceId;
+    private int _storeId;
+    private int _page = 1;
+    private bool _saving;
+    private string? _error;
+    private string? _success;
+
+    private int SelectedUnits => _quantities.Values.Sum();
+
+    private bool CanSubmit =>
+        _invoiceId > 0
+        && _storeId > 0
+        && !string.IsNullOrWhiteSpace(_reason)
+        && SelectedUnits > 0;
+
+    private IReadOnlyList<SalesReturnRow> Filtered =>
+        (_returns ?? Array.Empty<SalesReturnRow>())
+            .Where(item =>
+                string.IsNullOrWhiteSpace(_search)
+                || item.CustomerName.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || item.CustomerDocument.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || item.Id.ToString().Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || item.InvoiceId.ToString().Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || (item.CreditNoteNumber ?? string.Empty)
+                    .Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(Filtered.Count / (double)PageSize));
+
+    private IEnumerable<SalesReturnRow> PageItems =>
+        Filtered.Skip((_page - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        try
+        {
+            _stores = ReturnService.Stores();
+            _storeId = _stores.FirstOrDefault(store => store.Id == CurrentUser.StoreId)?.Id
+                ?? _stores.FirstOrDefault()?.Id
+                ?? 0;
+
+            _invoices = ReturnService.Invoices();
+            _returns = ReturnService.List();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void LoadInvoiceLines()
+    {
+        _error = null;
+        _quantities.Clear();
+        _invoiceLines = [];
+
+        if (_invoiceId <= 0)
+            return;
+
+        try
+        {
+            _invoiceLines = ReturnService.InvoiceLines(_invoiceId);
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private int QuantityFor(string sku) =>
+        _quantities.TryGetValue(sku, out var quantity) ? quantity : 0;
+
+    private void SetQuantity(string sku, ChangeEventArgs args)
+    {
+        var line = _invoiceLines.FirstOrDefault(item => item.ProductSku == sku);
+
+        if (line is null)
+            return;
+
+        var quantity = int.TryParse(args.Value?.ToString(), out var parsed) ? parsed : 0;
+
+        _quantities[sku] = Math.Clamp(quantity, 0, line.ReturnableQuantity);
+    }
+
+    private void Create()
+    {
+        _error = null;
+        _success = null;
+
+        if (_invoiceId <= 0)
+        {
+            _error = "Selecciona la factura que se va a devolver.";
+            return;
+        }
+
+        if (_storeId <= 0)
+        {
+            _error = "Selecciona la tienda que recibe la devolución.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_reason))
+        {
+            _error = "Escribe el motivo de la devolución.";
+            return;
+        }
+
+        var lines = _invoiceLines
+            .Where(line => QuantityFor(line.ProductSku) > 0)
+            .Select(line => new SalesReturnLineRequest(line.ProductSku, QuantityFor(line.ProductSku)))
+            .ToList();
+
+        if (lines.Count == 0)
+        {
+            _error = "Indica al menos una unidad para devolver.";
+            return;
+        }
+
+        _saving = true;
+
+        try
+        {
+            var id = ReturnService.Create(new CreateSalesReturnRequest(
+                _invoiceId,
+                _storeId,
+                _reason,
+                lines));
+
+            Navigation.NavigateTo($"ventas/devoluciones/{id}?creada=1");
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (_page > 1)
+            _page--;
+    }
+
+    private void NextPage()
+    {
+        if (_page < TotalPages)
+            _page++;
+    }
+
+    private static string Tone(SalesReturnStatus status) => status switch
+    {
+        SalesReturnStatus.Authorized => "ok",
+        SalesReturnStatus.Pending => "warning",
+        _ => "neutral"
+    };
+}

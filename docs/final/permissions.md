@@ -27,7 +27,8 @@ las tres capas y no depende de que el enlace esté oculto.
 | Inventario: alertas y reportes | `inventory.alerts.view`, `inventory.reports.view` | — |
 | Ventas: POS | `sales.pos.use` | — |
 | Ventas: facturas | `sales.invoices.view` | `sales.invoices.manage` |
-| Ventas: reportes y devoluciones | `sales.reports.view` | `sales.returns.authorize`* |
+| Ventas: reportes | `sales.reports.view` | — |
+| Ventas: devoluciones | — | `sales.returns.authorize` |
 | Compras: proveedores | `purchasing.suppliers.view` | `purchasing.suppliers.manage` |
 | Compras: órdenes | `purchasing.orders.view` | `.create`, `.approve`, `.send`, `.receive`, `.cancel` |
 | Compras: evaluación y reportes | `purchasing.reports.view` | `purchasing.evaluations.manage` |
@@ -41,7 +42,6 @@ las tres capas y no depende de que el enlace esté oculto.
 `*` El permiso existe en la matriz y se asigna a algún rol, pero todavía no
 tiene pantalla ni caso de uso. El detalle está en
 [pending-items.md](pending-items.md).
-
 ## Roles de la matriz
 
 La matriz define siete roles: Administrador, Gerente corporativo, Jefe de
@@ -112,6 +112,22 @@ abastecer, no ajustar el inventario físico de una tienda. El Cajero solo consul
 el stock y no puede abrir ninguno de los dos documentos. Cada pantalla declara su
 política, el menú oculta el enlace y `InventoryCountService` /
 `InventoryTransferService` vuelven a exigir el permiso antes de leer o escribir.
+
+## Cambios en la matriz por las devoluciones
+
+Las devoluciones y notas crédito no cambiaron la matriz: usan el permiso que ya
+existía y solo lo conserva el Jefe de tienda.
+
+| Ruta o acción | Permiso | Roles |
+| --- | --- | --- |
+| `/ventas/devoluciones`, `/ventas/devoluciones/{id}`, autorizar y rechazar | `sales.returns.authorize` | Jefe de tienda |
+
+El Cajero registra ventas, pero no autoriza devoluciones: la nota crédito afecta
+el ingreso y repone inventario, así que la decisión queda en el responsable de la
+tienda. El Administrador conserva la administración del sistema y la matriz, no
+las operaciones de mostrador. La pantalla declara la política, el menú oculta el
+enlace y `SalesReturnService` vuelve a exigir el permiso antes de leer o
+escribir.
 
 ## Comprobaciones automáticas
 

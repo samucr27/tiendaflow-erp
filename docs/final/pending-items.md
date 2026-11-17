@@ -1,5 +1,7 @@
 # Auditoría de pendientes
 
+Actualizado el 16 de noviembre de 2026.
+
 La auditoría se hizo sobre el código de `feature/erp-final` y se actualiza en
 `feature/erp-complete` a medida que cada fase cierra un pendiente:
 
@@ -21,14 +23,13 @@ continuación se documentan con el permiso que las reserva.
 | --- | --- | --- | --- | --- |
 | Seguridad | `security.roles.manage` | Editar roles desde la interfaz | La matriz es código para que la autorización sea determinista; la pantalla es de solo lectura | Persistir roles solo si el negocio lo exige, con auditoría y pruebas de autorización |
 | Seguridad | `security.reports.view` | Reportes de seguridad | La auditoría ya es consultable en `/seguridad/auditoria`; no hay reportes agregados | Agregar conteos de accesos, cambios de usuario y exportación CSV |
-| Ventas | `sales.returns.authorize` | Devoluciones y notas crédito | El módulo de facturación solo emite y anula | Documento de devolución, autorización y efecto en inventario |
+| Ventas | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
 | RR. HH. | `hr.contracts.manage` | Contratos y documentos laborales | El empleado guarda tipo de contrato, pero no el contrato como documento | Contratos con vigencia, prórrogas y adjuntos |
 | RR. HH. | `hr.attendance.manage` | Asistencia | No hay registro de entrada/salida ni novedades | Marcaciones, ausencias y cálculo de días trabajados |
 | RR. HH. | `hr.shifts.manage` | Turnos | No hay calendario de turnos | Turnos por tienda, asignación y cruce con asistencia |
 | CRM | `crm.points.manage` | Puntos de fidelización | El cliente no tiene saldo ni movimientos de puntos | Libro de puntos con acumulación y canje |
 | CRM | `crm.pqrs.manage` | PQRS | No hay entidad de peticiones, quejas o reclamos | Radicado, responsable, estados y tiempos |
 | CRM | `crm.campaigns.manage` | Campañas | La segmentación es de solo consulta | Campaña sobre un segmento, vigencia y resultado |
-| Facturación | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
 
 ## Aclaraciones importantes
 
@@ -45,6 +46,10 @@ continuación se documentan con el permiso que las reserva.
   en `ParameterCatalog`. Si no existe una versión en base, el sistema usa el
   valor de código; los cambios se guardan como versiones inmutables con fecha de
   vigencia y quedan auditados.
+- **Devoluciones:** la devolución se registra contra una factura emitida y se
+  autoriza una sola vez. Como `SalesInvoice` no guarda `StoreId`, el formulario
+  pide elegir la tienda que recibe y reintegra el stock en esa tienda. Cambiar el
+  modelo de facturación para guardar la tienda queda fuera de esta entrega.
 - **Pruebas de integración:** requieren una cadena de conexión a SQL Server en
   `TIENDAFLOW_TEST_CONNECTION`. En la verificación de esta rama se ejecutaron
   contra un contenedor desechable que aplica las migraciones desde cero; no se
@@ -54,13 +59,16 @@ continuación se documentan con el permiso que las reserva.
   `Development`. Si la clave es falsa o no existe, ninguna ruta crea usuarios,
   productos ni facturas de ejemplo. En la configuración de producción se deja
   desactivada.
+- **Roles:** la matriz es código y no se edita desde la interfaz. Es una decisión
+  de diseño para que la autorización sea determinista entre despliegues, no un
+  pendiente funcional.
 
 ## Lo que sí quedó completo
 
 Compras (órdenes, puntualidad y cumplimiento con datos de recepción,
 exportación del ranking y borradores de reposición con relación producto ·
 proveedor), panel, reportes, segmentación CRM, exportación XML simulada,
-administración de tiendas, parámetros configurables e inventario con conteos
-físicos y traslados entre tiendas están implementados, con permisos, pruebas y
-documentación. El detalle está en
+administración de tiendas, parámetros configurables, inventario con conteos
+físicos y traslados entre tiendas, y devoluciones con nota crédito están
+implementados, con permisos, pruebas y documentación. El detalle está en
 [implemented-modules.md](implemented-modules.md).

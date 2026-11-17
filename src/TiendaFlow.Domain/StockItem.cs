@@ -66,6 +66,18 @@ public class StockItem
     }
 
     /// <summary>
+    /// Adds units that a customer returned. A return only increases the stock,
+    /// so it can never leave the row negative.
+    /// </summary>
+    public void RegisterReturnIn(int quantity, DateTime date)
+    {
+        RequirePositive(quantity);
+
+        QuantityAvailable += quantity;
+        LastMovement = new InventoryMovement(MovementType.ReturnIn, quantity, date);
+    }
+
+    /// <summary>
     /// Sets the stock to the physically counted quantity and records an
     /// adjustment movement with the absolute difference. A count of the same
     /// quantity does not create a movement.

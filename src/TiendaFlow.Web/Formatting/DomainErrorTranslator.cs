@@ -76,6 +76,10 @@ public static class DomainErrorTranslator
             "Revisa los datos de la factura. El cliente, el documento y al menos un ítem con cantidad y precio mayores que cero son obligatorios.",
         InvoiceNotFoundException =>
             "No encontramos la factura solicitada.",
+        InvalidSalesReturnException =>
+            "Revisa la devolución. La factura debe estar emitida, las cantidades no pueden superar lo vendido y solo una devolución pendiente se puede autorizar o rechazar.",
+        SalesReturnNotFoundException =>
+            "No encontramos la devolución solicitada.",
         InvalidCustomerException =>
             "Revisa los datos del cliente. El documento y el nombre completo son obligatorios.",
         DuplicateCustomerDocumentException =>

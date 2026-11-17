@@ -647,6 +647,130 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("sales_invoice", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.SalesReturn", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("AuthorizedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("authorized_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreditNoteNumber")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("credit_note_number");
+
+                    b.Property<string>("CustomerDocument")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("customer_document");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("customer_name");
+
+                    b.Property<int>("InvoiceId")
+                        .HasColumnType("int")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("rejected_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreditNoteNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_sales_return_credit_note")
+                        .HasFilter("[credit_note_number] IS NOT NULL");
+
+                    b.HasIndex("InvoiceId", "Status")
+                        .HasDatabaseName("IX_sales_return_invoice_status");
+
+                    b.HasIndex("StoreId", "Status")
+                        .HasDatabaseName("IX_sales_return_store_status");
+
+                    b.ToTable("sales_return", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.SalesReturnLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("ProductSku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("product_sku");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<int>("ReturnId")
+                        .HasColumnType("int")
+                        .HasColumnName("return_id");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("unit_price");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductSku");
+
+                    b.HasIndex("ReturnId", "ProductSku")
+                        .IsUnique()
+                        .HasDatabaseName("IX_sales_return_line_return_sku");
+
+                    b.ToTable("sales_return_line", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.StockItem", b =>
                 {
                     b.Property<string>("Sku")
@@ -965,6 +1089,36 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.SalesReturn", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.SalesInvoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.SalesReturnLine", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductSku")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.SalesReturn", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("ReturnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.StockItem", b =>
                 {
                     b.OwnsOne("TiendaFlow.Domain.InventoryMovement", "LastMovement", b1 =>
@@ -1029,6 +1183,11 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.SalesInvoice", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.SalesReturn", b =>
                 {
                     b.Navigation("Lines");
                 });

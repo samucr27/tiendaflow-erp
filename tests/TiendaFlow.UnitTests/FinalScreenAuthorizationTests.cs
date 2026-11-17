@@ -161,6 +161,30 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("AccessControl.Has(Permissions.InventoryStockTransfer)", menu);
     }
 
+    [Theory]
+    [InlineData("Facturacion/Devoluciones.razor", "/ventas/devoluciones", "SalesReturnsAuthorize")]
+    [InlineData("Facturacion/DevolucionDetalle.razor", "/ventas/devoluciones/{Id:int}", "SalesReturnsAuthorize")]
+    public void ReturnRoutesDeclareThePolicyOfTheMatrix(
+        string file,
+        string route,
+        string permission)
+    {
+        var source = ReadPage(file);
+
+        Assert.Contains($"@page \"{route}\"", source);
+        Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
+    }
+
+    [Fact]
+    public void MenuShowsReturnsOnlyWithTheAuthorizePermission()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"ventas/devoluciones\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.SalesReturnsAuthorize)", menu);
+    }
+
     private static string ReadPage(string file) =>
         File.ReadAllText(Path.Combine(
             RepoRoot, "src", "TiendaFlow.Web", "Components", "Pages", file));

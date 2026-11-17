@@ -1,7 +1,10 @@
 # Compilación, pruebas y cobertura
 
-Última verificación: **13 de noviembre de 2026**, sobre `feature/erp-complete`,
+Última verificación: **16 de noviembre de 2026**, sobre `feature/erp-complete`,
 con .NET 9 en Windows.
+
+Esta página se actualiza al cerrar cada fase. La última fila de resultados
+corresponde a la fase de devoluciones y notas crédito.
 
 ## Comandos
 
@@ -23,11 +26,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 589 | 0 | 0 | 589 |
+| `TiendaFlow.UnitTests` | 615 | 0 | 0 | 615 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 42 | 0 | 0 | 42 |
+| `TiendaFlow.IntegrationTests` | 46 | 0 | 0 | 46 |
 
-Total ejecutado: **637 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **667 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -48,15 +51,17 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 2985 | 3070 | **97,2 %** |
-| `TiendaFlow.Domain` | 773 | 809 | **95,5 %** |
-| Aplicación + dominio | 3758 | 3879 | **96,8 %** |
+| `TiendaFlow.Application` | 3190 | 3289 | **97,0 %** |
+| `TiendaFlow.Domain` | 860 | 907 | **94,8 %** |
+| Aplicación + dominio | 4050 | 4196 | **96,5 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 9705 | 9903 | **98,0 %** |
 
-La lógica de negocio supera el objetivo de 85 %. La cobertura global del
-reporte incluye `TiendaFlow.Infrastructure`: repositorios EF Core y migraciones
-que solo se ejercitan con SQL Server. No se ocultó esa cifra ni se excluyó el
-código generado para inflar el resultado; el filtro de Application + Domain es
-el que usa la documentación del proyecto.
+La lógica de negocio supera el objetivo de 85 %. La cobertura de
+`TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
+integración contra SQL Server real; incluye repositorios EF Core, configuraciones
+y migraciones. No se ocultó la cifra global ni se excluyó el código generado para
+inflar el resultado; el filtro de Application + Domain es el que usa la
+documentación del proyecto.
 
 ## Corrección de consultas y errores inesperados (Bloque 1)
 
@@ -187,6 +192,42 @@ movimiento de stock y nunca dejan cantidades negativas. Las pantallas
 - `WebSmokeTests`: las cuatro rutas de conteos y traslados se recorren con los
   roles que tienen el permiso; el seeder siembra un conteo abierto y uno cerrado
   y dos traslados sin mover el stock de las demás pantallas.
+- `SalesReturnTests`: estados y transiciones, autorización única, líneas
+  duplicadas, cantidades y precios inválidos.
+- `SalesReturnServiceTests`: permiso antes de consultar, cantidad máxima contra
+  lo facturado y contra lo ya autorizado, producto ajeno a la factura, factura
+  anulada, tienda inactiva, revalidación al autorizar, reingreso con
+  `ReturnIn`, rechazo sin tocar stock y auditoría con usuario e IP.
+- `SalesReturnsIntegrationTests`: flujo real sobre SQL Server de la devolución
+  pendiente, la autorización con nota crédito y stock, la revalidación de
+  cantidades después de una devolución autorizada, el rechazo sin movimiento y
+  los modelos de lista, detalle y unidades disponibles.
+- `FinalScreenAuthorizationTests` y `WebSmokeTests`: política de las dos rutas de
+  devoluciones, enlace del menú y recorrido con los roles autorizados.
+
+## Devoluciones y notas crédito (fase 5)
+
+La fase 5 añade el documento de devolución con migración propia (`AddSalesReturns`):
+
+- **Registro** (`sales.returns.authorize`): se elige una factura emitida, la tienda
+  que recibe y el motivo. Las líneas se copian de la factura con su descripción y
+  precio unitario, de modo que un cambio posterior del catálogo no reescribe el
+  documento. La cantidad no puede superar lo facturado menos lo ya autorizado y
+  un producto no puede repetirse.
+- **Autorización**: solo una devolución pendiente se autoriza una vez. La
+  operación asigna el consecutivo `NC-000000`, reingresa las unidades al stock de
+  la tienda con el movimiento `ReturnIn` y deja el documento bloqueado. Las
+  cantidades se revalidan al autorizar, porque otra devolución de la misma
+  factura pudo aprobarse mientras esta esperaba.
+- **Rechazo**: cierra el documento sin tocar el inventario.
+- Todas las acciones exigen el permiso antes de consultar repositorios y escriben
+  auditoría con módulo `sales`, usuario, IP y detalle dentro de la misma
+  transacción que el movimiento de stock.
+
+Las pantallas `/ventas/devoluciones` y `/ventas/devoluciones/{id}` paginan de 20
+en 20 y declaran su política. La tienda se elige explícitamente porque
+`SalesInvoice` no guarda `StoreId`; es una limitación conocida y documentada en
+[implemented-modules.md](implemented-modules.md).
 
 ## Rediseño de acceso, panel y menú (Bloque 3)
 

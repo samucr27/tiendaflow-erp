@@ -35,6 +35,10 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
 
+    public DbSet<SalesReturn> SalesReturns => Set<SalesReturn>();
+
+    public DbSet<SalesReturnLine> SalesReturnLines => Set<SalesReturnLine>();
+
     public DbSet<Customer> Customers => Set<Customer>();
 
     public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();

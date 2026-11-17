@@ -6,5 +6,6 @@ public enum MovementType
     Sale,
     Adjustment,
     TransferIn,
-    TransferOut
+    TransferOut,
+    ReturnIn
 }
