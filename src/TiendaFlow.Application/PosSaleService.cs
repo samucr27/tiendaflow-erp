@@ -80,52 +80,109 @@ public sealed class PosSaleService
         _clock = clock;
     }
 
+    /// <summary>Single-product sale; kept for the API and the tests.</summary>
     public PosSaleReceipt Register(int storeId, string sku, int quantity)
+    {
+        var cart = RegisterCart(storeId, new[] { new PosCartLine(sku, quantity) });
+        var line = cart.Lines[0];
+
+        return new PosSaleReceipt(
+            cart.SaleId,
+            cart.Code,
+            line.ProductSku,
+            line.ProductName,
+            line.Quantity,
+            line.UnitPrice,
+            cart.Total,
+            cart.SoldAt,
+            line.RemainingStock,
+            line.MinStock);
+    }
+
+    /// <summary>
+    /// Sells several products in one document. Every line takes its units out
+    /// of the store stock in the same transaction; if one line fails, nothing
+    /// is saved.
+    /// </summary>
+    public PosCartReceipt RegisterCart(int storeId, IReadOnlyList<PosCartLine> lines)
     {
         _accessControl.Demand(Permissions.SalesPosUse);
 
         if (storeId <= 0)
             throw new InvalidPosSaleException("The cashier has no store assigned.");
 
-        var product = _products.GetBySku((sku ?? string.Empty).Trim())
-            ?? throw new ProductNotFoundException(sku ?? string.Empty);
+        var requested = lines
+            .Where(line => line.Quantity != 0 || !string.IsNullOrWhiteSpace(line.Sku))
+            .GroupBy(line => (line.Sku ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(group => new PosCartLine(group.Key, group.Sum(line => line.Quantity)))
+            .ToList();
+
+        if (requested.Count == 0)
+            throw new InvalidPosSaleException("Add at least one product to the sale.");
+
+        var products = requested
+            .Select(line => _products.GetBySku(line.Sku) ?? throw new ProductNotFoundException(line.Sku))
+            .ToList();
 
         var soldAt = _clock.UtcNow;
-        PosSale? sale = null;
-        StockItem? item = null;
+        var sale = new PosSale(SaleCode.Create(soldAt), storeId, _currentUser.UserId, soldAt);
+        var receiptLines = new List<PosReceiptLine>();
 
         _unitOfWork.ExecuteInTransaction(() =>
         {
-            item = _stock.Get(storeId, product.Sku)
-                ?? throw new StockNotFoundException(storeId, product.Sku);
+            for (var index = 0; index < requested.Count; index++)
+            {
+                var product = products[index];
+                var quantity = requested[index].Quantity;
 
-            item.RegisterSale(quantity, soldAt);
-            _stock.Update(item);
+                var item = _stock.Get(storeId, product.Sku)
+                    ?? throw new StockNotFoundException(storeId, product.Sku);
 
-            sale = new PosSale(SaleCode.Create(soldAt), storeId, _currentUser.UserId, soldAt);
-            sale.AddLine(product.Sku, product.Name, quantity, product.SalePrice);
+                item.RegisterSale(quantity, soldAt);
+                _stock.Update(item);
+
+                sale.AddLine(product.Sku, product.Name, quantity, product.SalePrice);
+                receiptLines.Add(new PosReceiptLine(
+                    product.Sku, product.Name, quantity, product.SalePrice, item.QuantityAvailable, item.MinStock));
+            }
+
             _sales.Add(sale);
 
             _auditLog.Record(new AuditEntry(
                 "PosSaleRegistered",
                 sale.Id.ToString(),
-                $"Venta {sale.Code}: {quantity} x {product.Sku}; quedan {item.QuantityAvailable} (mínimo {item.MinStock}).",
+                $"Venta {sale.Code}: {receiptLines.Count} productos, {receiptLines.Sum(line => line.Quantity)} unidades, total {sale.Total:C0}.",
                 _currentUser.UserId,
                 soldAt,
                 module: "sales",
                 ip: _currentUser.Ip));
         });
 
-        return new PosSaleReceipt(
-            sale!.Id,
-            sale.Code,
-            product.Sku,
-            product.Name,
-            quantity,
-            product.SalePrice,
-            sale.Total,
-            soldAt,
-            item!.QuantityAvailable,
-            item.MinStock);
+        return new PosCartReceipt(sale.Id, sale.Code, soldAt, sale.Total, receiptLines);
     }
+}
+
+public record PosCartLine(string Sku, int Quantity);
+
+public record PosReceiptLine(
+    string ProductSku,
+    string ProductName,
+    int Quantity,
+    decimal UnitPrice,
+    int RemainingStock,
+    int MinStock)
+{
+    public decimal LineTotal => Quantity * UnitPrice;
+
+    public bool LeftStockCritical => RemainingStock <= MinStock;
+}
+
+public record PosCartReceipt(
+    int SaleId,
+    string Code,
+    DateTime SoldAt,
+    decimal Total,
+    IReadOnlyList<PosReceiptLine> Lines)
+{
+    public IReadOnlyList<PosReceiptLine> CriticalLines => Lines.Where(line => line.LeftStockCritical).ToList();
 }

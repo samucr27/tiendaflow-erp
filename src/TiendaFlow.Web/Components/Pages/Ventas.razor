@@ -1,7 +1,6 @@
 @page "/inventario/ventas"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Permissions.SalesPosUse)]
-@using System.ComponentModel.DataAnnotations
 @inject IProductCatalogQuery ProductQuery
 @inject IStockQuery StockQuery
 @inject PosSaleService SaleService
@@ -12,7 +11,7 @@
 <PageHeader
     Eyebrow="Inventario"
     Title="Registrar venta"
-    Subtitle="Descuenta unidades del stock y genera un comprobante de la operación" />
+    Subtitle="Agrega uno o varios productos, confirma la venta y se descuentan del stock en una sola operación" />
 
 <div class="two-column">
     <section class="card">
@@ -23,52 +22,72 @@
             <div class="alert alert-error" role="alert">@_error</div>
         }
 
-        <EditForm Model="_form" OnValidSubmit="RegisterSale" FormName="registrar-venta">
-            <DataAnnotationsValidator />
+        <div class="field">
+            <label for="sale-sku">Producto</label>
+            <select id="sale-sku" class="input" @bind="_sku">
+                @foreach (var product in _products)
+                {
+                    <option value="@product.Sku">@product.Sku · @product.Name</option>
+                }
+            </select>
+        </div>
 
-            <div class="field">
-                <label for="sale-sku">Producto</label>
-                <InputSelect id="sale-sku" class="input" @bind-Value="_form.Sku" @bind-Value:after="OnProductChanged">
-                    @foreach (var product in _products)
-                    {
-                        <option value="@product.Sku">@product.Sku · @product.Name</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="() => _form.Sku" />
+        <div class="field">
+            <label for="sale-quantity">Cantidad</label>
+            <input id="sale-quantity" type="number" min="1" class="input" @bind="_quantity" />
+        </div>
+
+        <dl class="summary-list">
+            <div>
+                <dt>Precio unitario</dt>
+                <dd>@Formatters.Money(PriceOf(_sku))</dd>
             </div>
-
-            <div class="field">
-                <label for="sale-quantity">Cantidad</label>
-                <InputNumber id="sale-quantity" class="input" @bind-Value="_form.Quantity" />
-                <ValidationMessage For="() => _form.Quantity" />
+            <div>
+                <dt>Disponible en @CurrentUser.StoreName</dt>
+                <dd>@Formatters.Quantity(AvailableOf(_sku)) unidades</dd>
             </div>
+        </dl>
 
-            <dl class="summary-list">
-                <div>
-                    <dt>Precio unitario</dt>
-                    <dd>@Formatters.Money(UnitPrice)</dd>
-                </div>
-                <div>
-                    <dt>Disponible en @CurrentUser.StoreName</dt>
-                    <dd>@Formatters.Quantity(Available) unidades</dd>
-                </div>
-                <div class="summary-total">
-                    <dt>Total</dt>
-                    <dd>@Formatters.Money(Total)</dd>
-                </div>
-            </dl>
-
-            @if (Available <= 0)
-            {
-                <div class="alert alert-warning" role="status">
-                    Este producto no tiene stock disponible en la tienda.
-                </div>
-            }
-
-            <button type="submit" class="button button-primary" disabled="@(Available <= 0)">
-                Confirmar venta
+        <div class="form-actions">
+            <button id="sale-add" type="button" class="button button-secondary" disabled="@(AvailableOf(_sku) <= 0)" @onclick="AddToCart">
+                + Agregar al carrito
             </button>
-        </EditForm>
+        </div>
+
+        @if (_cart.Count > 0)
+        {
+            <div class="table-wrap">
+                <table class="data-table cart-table">
+                    <thead>
+                        <tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Subtotal</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _cart)
+                        {
+                            <tr>
+                                <td>@NameOf(line.Sku) <span class="table-meta">@line.Sku</span></td>
+                                <td class="num">@Formatters.Quantity(line.Quantity)</td>
+                                <td class="num">@Formatters.Money(PriceOf(line.Sku) * line.Quantity)</td>
+                                <td class="table-actions">
+                                    <button type="button" class="button button-secondary button-small" @onclick="() => _cart.Remove(line)">Quitar</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <dl class="summary-list">
+            <div class="summary-total">
+                <dt>Total</dt>
+                <dd>@Formatters.Money(CartTotal)</dd>
+            </div>
+        </dl>
+
+        <button type="button" class="button button-primary" disabled="@(_cart.Count == 0)" @onclick="RegisterSale">
+            Confirmar venta
+        </button>
     </section>
 
     <section class="card">
@@ -82,7 +101,7 @@
         @if (_receipt is null)
         {
             <EmptyState Title="Aún no hay ventas"
-                        Message="Confirma una venta para ver aquí su comprobante y el stock restante." />
+                        Message="Agrega productos al carrito y confirma la venta para ver aquí su comprobante." />
         }
         else
         {
@@ -90,21 +109,20 @@
                 <div class="receipt-head">
                     <div>
                         <span class="receipt-code">@_receipt.Code · N.º @_receipt.SaleId</span>
-                        <h3>@_receipt.ProductName</h3>
-                        <span class="table-meta">@_receipt.ProductSku · @Formatters.ShortDateTime(_receipt.SoldAt)</span>
+                        <h3>@_receipt.Lines.Count producto(s)</h3>
+                        <span class="table-meta">@Formatters.ShortDateTime(_receipt.SoldAt)</span>
                     </div>
                     <StatusBadge Text="Venta registrada" Tone="ok" />
                 </div>
 
                 <dl class="receipt-lines">
-                    <div>
-                        <dt>Cantidad</dt>
-                        <dd>@Formatters.Quantity(_receipt.Quantity)</dd>
-                    </div>
-                    <div>
-                        <dt>Precio unitario</dt>
-                        <dd>@Formatters.Money(_receipt.UnitPrice)</dd>
-                    </div>
+                    @foreach (var line in _receipt.Lines)
+                    {
+                        <div>
+                            <dt>@line.ProductName × @Formatters.Quantity(line.Quantity)</dt>
+                            <dd>@Formatters.Money(line.LineTotal)</dd>
+                        </div>
+                    }
                 </dl>
 
                 <div class="receipt-total">
@@ -112,18 +130,19 @@
                     <strong>@Formatters.Money(_receipt.Total)</strong>
                 </div>
 
-                @if (_receipt.LeftStockCritical)
+                @foreach (var line in _receipt.CriticalLines)
                 {
                     @* HU-05: the sale itself raises the critical stock alert. *@
                     <div class="alert alert-warning" role="alert">
-                        Stock crítico: quedan @Formatters.Quantity(_receipt.RemainingStock) unidades y el
-                        mínimo es @Formatters.Quantity(_receipt.MinStock). El producto ya aparece en las
-                        alertas de stock para reponerlo.
+                        Stock crítico: @line.ProductName quedó con @Formatters.Quantity(line.RemainingStock) unidades y
+                        el mínimo es @Formatters.Quantity(line.MinStock). El producto ya aparece en las alertas de stock
+                        para reponerlo.
                     </div>
                 }
 
                 <p class="receipt-footer">
-                    Stock restante: <strong>@Formatters.Quantity(_receipt.RemainingStock) unidades</strong>
+                    Stock restante:
+                    @string.Join(" · ", _receipt.Lines.Select(line => $"{line.ProductSku}: {line.RemainingStock}"))
                 </p>
             </div>
         }
@@ -133,25 +152,31 @@
 @code {
     private IReadOnlyList<ProductListItem> _products = [];
     private IReadOnlyDictionary<string, StockRow> _stock = new Dictionary<string, StockRow>();
-    private SaleForm _form = new();
-    private PosSaleReceipt? _receipt;
+    private readonly List<PosCartLine> _cart = new();
+    private PosCartReceipt? _receipt;
+    private string _sku = string.Empty;
+    private int _quantity = 1;
     private string? _error;
 
-    private ProductListItem? CurrentProduct => _products.FirstOrDefault(product => product.Sku == _form.Sku);
+    private decimal CartTotal => _cart.Sum(line => PriceOf(line.Sku) * line.Quantity);
 
-    private decimal UnitPrice => CurrentProduct?.SalePrice ?? 0m;
+    private ProductListItem? ProductOf(string sku) =>
+        _products.FirstOrDefault(product => string.Equals(product.Sku, sku, StringComparison.OrdinalIgnoreCase));
 
-    private int Available => _stock.GetValueOrDefault(_form.Sku)?.QuantityAvailable ?? 0;
+    private decimal PriceOf(string sku) => ProductOf(sku)?.SalePrice ?? 0m;
 
-    private decimal Total => UnitPrice * _form.Quantity;
+    private string NameOf(string sku) => ProductOf(sku)?.Name ?? sku;
+
+    private int AvailableOf(string sku) =>
+        (_stock.GetValueOrDefault(sku)?.QuantityAvailable ?? 0)
+        - _cart.Where(line => string.Equals(line.Sku, sku, StringComparison.OrdinalIgnoreCase)).Sum(line => line.Quantity);
 
     protected override void OnInitialized()
     {
         try
         {
             _products = ProductQuery.Search(term: null);
-            _form.Sku = _products.FirstOrDefault()?.Sku ?? string.Empty;
-            _form.Quantity = 1;
+            _sku = _products.FirstOrDefault()?.Sku ?? string.Empty;
             LoadStock();
         }
         catch (Exception exception)
@@ -160,14 +185,29 @@
         }
     }
 
-    private void OnProductChanged()
+    private void AddToCart()
     {
         _error = null;
 
-        if (_form.Quantity <= 0)
+        if (_quantity <= 0)
         {
-            _form.Quantity = 1;
+            _error = "La cantidad debe ser mayor que cero.";
+            return;
         }
+
+        if (_quantity > AvailableOf(_sku))
+        {
+            _error = "No hay unidades suficientes para completar la operación.";
+            return;
+        }
+
+        var existing = _cart.FindIndex(line => string.Equals(line.Sku, _sku, StringComparison.OrdinalIgnoreCase));
+        if (existing >= 0)
+            _cart[existing] = _cart[existing] with { Quantity = _cart[existing].Quantity + _quantity };
+        else
+            _cart.Add(new PosCartLine(_sku, _quantity));
+
+        _quantity = 1;
     }
 
     private void RegisterSale()
@@ -176,13 +216,9 @@
 
         try
         {
-            _receipt = SaleService.Register(
-                CurrentUser.StoreId ?? 0,
-                _form.Sku,
-                _form.Quantity);
-
+            _receipt = SaleService.RegisterCart(CurrentUser.StoreId ?? 0, _cart.ToList());
+            _cart.Clear();
             LoadStock();
-            _form.Quantity = 1;
         }
         catch (Exception exception)
         {
@@ -193,13 +229,4 @@
     private void LoadStock() =>
         _stock = StockQuery.ListByStore(CurrentUser.StoreId ?? 0)
             .ToDictionary(row => row.Sku, StringComparer.OrdinalIgnoreCase);
-
-    private sealed class SaleForm
-    {
-        [Required(ErrorMessage = "Elige un producto.")]
-        public string Sku { get; set; } = string.Empty;
-
-        [Range(1, 1_000_000, ErrorMessage = "La cantidad debe ser mayor que cero.")]
-        public int Quantity { get; set; } = 1;
-    }
 }
