@@ -117,6 +117,41 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
     }
 
     [SqlServerFact]
+    public async Task ApiRoutesAnswer401And403InsteadOfRedirecting()
+    {
+        await _factory.PrepareAsync();
+        using var anonymous = _factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        var body = new StringContent(
+            "{\"employeeId\":1,\"contractType\":1,\"baseSalary\":2000000,\"daysWorked\":30,\"otherSalaryEarnings\":0,\"riskClass\":1}",
+            System.Text.Encoding.UTF8,
+            "application/json");
+
+        using var unauthenticated = await anonymous.PostAsync("/api/nomina/calculate", body);
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthenticated.StatusCode);
+
+        var cashier = Accounts().Single(account => account.RoleName == RoleNames.Cashier);
+        using var client = _factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = true,
+            HandleCookies = true
+        });
+        await SignInAsync(client, cashier);
+
+        using var forbidden = await client.PostAsync("/api/nomina/calculate", body);
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+
+        using var page = await client.GetAsync("/rrhh/nomina");
+        Assert.Contains("/acceso-denegado", page.RequestMessage!.RequestUri!.AbsolutePath);
+    }
+
+    [SqlServerFact]
     public async Task LoginThrottlesRepeatedAttemptsFromTheSameClient()
     {
         await _factory.PrepareAsync();
@@ -266,7 +301,14 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute("/crm/clientes", Permissions.CrmCustomersView),
             new SmokeRoute($"/crm/clientes/{customerId}", Permissions.CrmCustomersManage),
             new SmokeRoute("/crm/clientes/nuevo", Permissions.CrmCustomersManage),
-            new SmokeRoute("/crm/segmentacion", Permissions.CrmReportsView)
+            new SmokeRoute("/crm/segmentacion", Permissions.CrmReportsView),
+            new SmokeRoute("/crm/puntos", Permissions.CrmPointsManage),
+            new SmokeRoute("/crm/pqrs", Permissions.CrmPqrsManage),
+            new SmokeRoute("/crm/campanas", Permissions.CrmCampaignsManage),
+            new SmokeRoute("/rrhh/contratos", Permissions.HrContractsManage),
+            new SmokeRoute("/rrhh/asistencia", Permissions.HrAttendanceManage),
+            new SmokeRoute("/rrhh/turnos", Permissions.HrShiftsManage),
+            new SmokeRoute("/reportes/seguridad", Permissions.SecurityReportsView)
         };
     }
 

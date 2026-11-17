@@ -53,6 +53,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInvoiceQuery, EfInvoiceQuery>();
         services.AddScoped<IPosSaleRepository, EfPosSaleRepository>();
         services.AddScoped<IPosSaleQuery, EfPosSaleQuery>();
+        services.AddScoped(typeof(IEntityStore<>), typeof(EfEntityStore<>));
+        services.AddScoped<IRolePermissionStore, EfRolePermissionStore>();
 
         services.AddScoped<IInventoryCountRepository, EfInventoryCountRepository>();
         services.AddScoped<IInventoryTransferRepository, EfInventoryTransferRepository>();
@@ -75,6 +77,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<InventoryService>();
         services.AddScoped<StockService>();
         services.AddScoped<PosSaleService>();
+        services.AddScoped<SalesReturnService>();
+        services.AddScoped<RoleEditorService>();
+        services.AddScoped<HumanResourcesRecordsService>();
+        services.AddScoped<LoyaltyService>();
+        services.AddScoped<ILoyaltyProgram>(provider => provider.GetRequiredService<LoyaltyService>());
+        services.AddScoped<PqrsService>();
+        services.AddScoped<CampaignService>();
+        services.AddScoped<SecurityReportService>();
         services.AddScoped<InventoryCountService>();
         services.AddScoped<InventoryTransferService>();
         services.AddScoped<ProductPriceService>();

@@ -39,6 +39,22 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<PosSaleLine> PosSaleLines => Set<PosSaleLine>();
 
+    public DbSet<SalesReturn> SalesReturns => Set<SalesReturn>();
+
+    public DbSet<EmploymentContract> EmploymentContracts => Set<EmploymentContract>();
+
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+
+    public DbSet<WorkShift> WorkShifts => Set<WorkShift>();
+
+    public DbSet<LoyaltyPointsEntry> LoyaltyPointsEntries => Set<LoyaltyPointsEntry>();
+
+    public DbSet<PqrsCase> PqrsCases => Set<PqrsCase>();
+
+    public DbSet<MarketingCampaign> MarketingCampaigns => Set<MarketingCampaign>();
+
+    public DbSet<RolePermissionGrant> RolePermissionGrants => Set<RolePermissionGrant>();
+
     public DbSet<Customer> Customers => Set<Customer>();
 
     public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
