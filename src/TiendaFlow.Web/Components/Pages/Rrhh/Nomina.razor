@@ -3,6 +3,8 @@
 @attribute [Authorize(Policy = Permissions.HrPayrollManage)]
 @using TiendaFlow.Application.Payroll
 @inject PayrollRunService PayrollRunService
+@inject HumanResourcesRecordsService Records
+@inject IAccessControl AccessControl
 @inject NavigationManager Navigation
 
 <PageTitle>Nómina · TiendaFlow</PageTitle>
@@ -34,6 +36,21 @@
             <label for="run-risk">Clase de riesgo ARL</label>
             <input id="run-risk" class="input" type="number" min="1" max="5" @bind="_riskClass" />
         </div>
+
+        @if (AccessControl.Has(Permissions.HrAttendanceManage))
+        {
+            <div class="field">
+                <label for="run-month">Mes de la corrida</label>
+                <input id="run-month" class="input" type="month" @bind="_month" />
+            </div>
+
+            <div class="field">
+                <label class="checkbox-label">
+                    <input type="checkbox" @bind="_discountAbsences" />
+                    Descontar las ausencias registradas en asistencia
+                </label>
+            </div>
+        }
     </div>
 
     <div class="form-actions">
@@ -88,7 +105,13 @@ else if (_run is not null)
                             if (line.Result is PayrollResult result)
                             {
                                 <tr @onclick="() => Select(line)">
-                                    <td>@line.Name</td>
+                                    <td>
+                                        @line.Name
+                                        @if (line.DaysApplied is int days && days < _daysWorked)
+                                        {
+                                            <span class="table-meta">@days días (descuenta ausencias)</span>
+                                        }
+                                    </td>
                                     <td>@line.Position</td>
                                     <td>@line.ContractLabel</td>
                                     <td>@Formatters.Money(result.GrossEarnings)</td>
@@ -250,13 +273,19 @@ else if (_run is not null)
     private PayrollRunLine? _selected;
     private string? _error;
 
+    private DateTime _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private bool _discountAbsences = true;
+
     private void Calculate()
     {
         _error = null;
 
         try
         {
-            _run = PayrollRunService.Calculate(_daysWorked, _riskClass);
+            var absences = _discountAbsences && AccessControl.Has(Permissions.HrAttendanceManage)
+                ? Records.UnpaidAbsences(_month.Year, _month.Month)
+                : null;
+            _run = PayrollRunService.Calculate(_daysWorked, _riskClass, absences);
             _selected = null;
         }
         catch (AccessDeniedException)
