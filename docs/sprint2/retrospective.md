@@ -1,6 +1,7 @@
 # Sprint 2 - Retrospectiva - TiendaFlow ERP
 
-**Fecha de cierre:** 10 de noviembre de 2026.
+**Fecha de cierre:** 10 de noviembre de 2026. **Actualizada:** 16 de noviembre de
+2026 con la versión final publicada en `main` (sección 12).
 
 ## 1. Qué salió bien
 
@@ -98,10 +99,12 @@ El repositorio permite verificar estos hechos:
 5. **El riesgo legal no se reduce con pruebas.** Una prueba en verde demuestra
    que el código hace lo que se programó, no que la norma esté bien aplicada.
 
-**Lo que no se puede afirmar solo con el repositorio:** las horas reales
-invertidas en HU-04 no están registradas en ningún archivo del proyecto. Por eso
-no se afirma un porcentaje de desviación ni una comparación horas-estimado.
-**[CONFIRMAR POR EL EQUIPO]** si existe un registro de tiempo en otra herramienta.
+**Lo que no se puede afirmar solo con el repositorio:** el repositorio no tiene
+un registro de horas por HU del Sprint 2. Por eso no se afirma un porcentaje de desviación ni una comparación
+horas-estimado; la evidencia de la subestimación son las tareas que se agregaron
+durante el sprint (estrategias por contrato, retención, parámetros externos y
+pruebas con cálculos manuales). Registrar las horas por HU es la acción 5 de la
+sección 11.
 
 ### 4.3 Re-estimación con la regla del Sprint 3
 
@@ -158,30 +161,36 @@ electrónica DIAN, datos personales):
 
 `infra/terraform/main.tf` declara un backend `cloud` de HCP Terraform
 (organización `Tienda-Flow`, workspace `tiendaflow-infra`), de modo que el state
-no vive en un archivo local. El workflow `.github/workflows/terraform-plan.yml`
-se dispara en pull requests hacia `develop` que modifican `**/*.tf`, ejecuta
-`terraform init -input=false`, `validate` y `plan -input=false` en
-`infra/terraform`, y toma el token de HCP Terraform desde el secreto
-`TF_API_TOKEN`.
+no vive en un archivo local y todo el equipo comparte uno solo.
 
-**Limitación vigente:** el backend remoto está operativo y el job `plan` del pull
-request hacia `develop` quedó en verde, por lo que sí hay evidencia de una corrida
-real de `init`, `validate` y `plan` contra HCP Terraform. Lo que **no** se ejecutó
-es `terraform apply` y, por tanto, no se creó infraestructura real: el plan solo
-cubre el recurso de ejemplo `random_pet`. `terraform apply` no forma parte del
-workflow.
+El workflow `.github/workflows/terraform-plan.yml` se dispara en pull requests
+hacia `develop` que modifican `**/*.tf` y pasó por dos etapas (detalle en
+`docs/sprint2/terraform-plan-workflow.md`):
+
+1. **Con el recurso de ejemplo `random_pet`** ejecutaba `init`, `validate` y
+   `plan` contra HCP Terraform con el secreto `TF_API_TOKEN`. El job `plan`
+   quedó en verde el 11 de noviembre (corrida 42942551547).
+2. **Con la infraestructura real de Azure** (App Service y Azure SQL) el `plan`
+   necesita credenciales de Azure, y Azure for Students no permite crear el
+   service principal que las daría a GitHub Actions. El workspace pasó a modo
+   *Local* y el CI quedó en `fmt`, `init -backend=false` y `validate`; el `plan`
+   y el `apply` se ejecutan en la máquina del operador con `az login`.
+
+**Limitación vigente:** el `plan` automático en el pull request solo existió en la
+etapa 1. Volver a tenerlo requiere credenciales dinámicas de HCP Terraform o un
+service principal, fuera del alcance de la suscripción de estudiante.
 
 ## 8. Definition of Done
 
 | Criterio | Estado | Evidencia |
 |---|---|---|
-| Cobertura de lógica de negocio mayor al 80 % | Cumplido | 88,4 % de líneas en Application + Domain |
-| arc42 actualizado por cada HU terminada | Cumplido | Secciones 05 y 10 actualizadas en el mismo PR que los módulos |
+| Cobertura de lógica de negocio mayor al 80 % | Cumplido | 96,9 % de líneas en Application + Domain (versión final, 16 de noviembre) |
+| arc42 actualizado por cada HU terminada | Cumplido | Secciones 05, 07 y 10 actualizadas en el mismo PR que los módulos |
 | Build sin advertencias ni errores | Cumplido | `dotnet build` con 0 advertencias y 0 errores |
-| `dotnet test` en verde antes de cada commit | Cumplido | 304 unitarias + 6 de aceptación en verde (CI de `c62c49b`) |
-| Una migración de EF Core por fase | Cumplido | `Phase3Purchasing`, `Phase4Invoicing`, `Phase5Crm` |
-| Nada de datos personales en logs | Cumplido | La auditoría de RR. HH. guarda ids, estados y conteos; CRM y facturación guardan ids y totales |
-| Pull request revisado por un compañero | **Pendiente** | Los PR #2 y #3 se fusionaron en `develop` sin una revisión registrada en GitHub |
+| `dotnet test` en verde antes de cada commit | Cumplido | 662 pruebas en verde: 607 unitarias, 6 de aceptación y 49 de integración contra SQL Server |
+| Una migración de EF Core por fase | Cumplido | De `Phase3Purchasing` a `Phase11PosSalesAndInvoiceStock` |
+| Nada de datos personales en logs | Cumplido | La auditoría guarda ids, estados, conteos y totales |
+| Pull request revisado por un compañero | **Pendiente** | Los PR #2 a #8 se fusionaron sin una revisión aprobada en GitHub; GitHub no permite que el autor apruebe su propio PR |
 
 ## 9. Qué se puede mejorar
 
@@ -205,11 +214,37 @@ workflow.
 
 1. **Spike antes de estimar** toda HU con complejidad legal o regulatoria
    (nómina, impuestos, facturación electrónica), con la regla de la sección 6.
-2. **IaC:** mantener el pipeline de GitHub Actions que ejecuta `terraform plan`
-   en cada PR a `develop` que modifique archivos `.tf`, y definir la
-   infraestructura real antes de incorporar un `apply` con aprobación manual.
+2. **IaC:** mantener el workflow que valida Terraform en cada PR a `develop`
+   con cambios `.tf` y recuperar el `terraform plan` automático cuando el equipo
+   tenga una suscripción que permita credenciales dinámicas de HCP Terraform o
+   un service principal; mientras tanto, adjuntar al PR la salida del `plan`
+   ejecutado a mano.
 3. **Reparto de trabajo:** asignar desde el Sprint Planning al menos una HU o
    tarea por integrante y exigir la revisión de cada PR por un compañero.
 4. **Cerrar la brecha de cobertura de integración:** definir una base SQL Server
-   efímera en CI o un contenedor de servicio para ejecutar las 17 pruebas
-   omitidas.
+   efímera en CI o un contenedor de servicio para ejecutar en GitHub Actions las
+   49 pruebas de integración, que hoy solo corren en local.
+5. **Registrar horas por HU** en el tablero para poder comparar estimado y real
+   en la próxima retrospectiva.
+
+## 12. Cierre de la entrega (16 de noviembre de 2026)
+
+Antes de la entrega se revisó el backend y el frontend de `feature/erp-complete`.
+La revisión y sus correcciones llegaron a `main` con los PR #6, #7 y #8
+(commit `43997af`, etiqueta `sprint-2`):
+
+- **Stock:** dos sesiones de Blazor podían perder ventas porque el `DbContext`
+  de cada pestaña devolvía datos en caché. Se corrigió con lectura actualizada y
+  una columna `rowversion` en `stock`.
+- **Seguridad:** siempre queda al menos un administrador activo y el inicio de
+  sesión limita los intentos por IP.
+- **Ventas:** la venta del punto de venta se guarda como documento y la cuentan
+  el panel, el reporte de ventas y la reposición.
+- **Facturas:** descuentan stock al emitirse, lo devuelven al anularse y ya no se
+  editan después de emitidas.
+- **HU-05:** el comprobante de la venta avisa cuando el producto queda en stock
+  crítico.
+
+Detalle y pruebas en `docs/final/testing.md`. Quedan pendientes la revisión
+cruzada de los PR, el video del tour de arquitectura (Tarea 2) y la publicación
+de `main` en Azure con las migraciones hasta `Phase11PosSalesAndInvoiceStock`.
