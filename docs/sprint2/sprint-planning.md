@@ -30,12 +30,12 @@ descontando clases y entregas de otras asignaturas.
 |---|---|---|---|
 | Pasar `docs/arc42/` (secciones 5, 7 y 10) a Notion | Samuel | 1 h | Por hacer |
 | Grabar el video de 1 minuto con `video-guide.md` | Sergio | 1 h | Por hacer |
-| Revisar el PR #3 (ya fusionado sin revisión registrada) | Sergio | 0,5 h | Por hacer |
-| Ejecutar la demo de HU-04, HU-05 y HU-06 | Samuel | 1 h | Por hacer |
+| Revisar los PR del sprint (fusionados sin revisión registrada) | Sergio | 0,5 h | Por hacer |
+| Ejecutar la demo de HU-04, HU-05 y HU-06 | Samuel | 1 h | Hecho (16 nov, revisión final con capturas) |
 | Validar los parámetros de nómina contra la normativa (borrador del asistente en `docs/sprint2/payroll-parameters-validation.md`) | Samuel | 1 h | Por hacer |
 | Revisión humana de la retrospectiva | Samuel | 0,5 h | Por hacer |
 | CRUD de RR. HH. (código y pruebas) | Samuel | 4 h | Hecho |
-| Capturas de evidencia y entrega en el aula virtual | Samuel | 1 h | Por hacer |
+| Capturas de evidencia y entrega en el aula virtual | Samuel | 1 h | Capturas hechas; entrega por hacer |
 
 **Definition of Done (vigente).**
 - Pruebas unitarias con cobertura de la lógica de negocio mayor al 80 %.
