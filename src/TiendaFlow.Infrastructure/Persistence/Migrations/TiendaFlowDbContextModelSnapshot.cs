@@ -180,6 +180,65 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("attendance_record", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.Campaign", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Channel")
+                        .HasColumnType("int")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Segment")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("segment");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_campaign_name");
+
+                    b.HasIndex("StartDate", "EndDate")
+                        .HasDatabaseName("IX_campaign_dates");
+
+                    b.ToTable("campaign", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.ContractAttachment", b =>
                 {
                     b.Property<int>("Id")
@@ -602,6 +661,62 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("sales_invoice_line", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.LoyaltyMovement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AmountCop")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount_cop");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int")
+                        .HasColumnName("customer_id");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("int")
+                        .HasColumnName("points");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)")
+                        .HasColumnName("reference");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("CreatedAt", "StoreId")
+                        .HasDatabaseName("IX_loyalty_movement_date_store");
+
+                    b.HasIndex("CustomerId", "CreatedAt")
+                        .HasDatabaseName("IX_loyalty_movement_customer_date");
+
+                    b.HasIndex("Type", "Reference")
+                        .IsUnique()
+                        .HasDatabaseName("IX_loyalty_movement_type_reference");
+
+                    b.ToTable("loyalty_movement", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
                 {
                     b.Property<int>("Id")
@@ -685,6 +800,79 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.HasIndex("ProductSku");
 
                     b.ToTable("pos_sale_line", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PqrsCase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("AnsweredAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("answered_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("CreatedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("created_date");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<string>("Response")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("response");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("subject");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("CreatedDate", "StoreId")
+                        .HasDatabaseName("IX_pqrs_case_date_store");
+
+                    b.HasIndex("Status", "DueDate")
+                        .HasDatabaseName("IX_pqrs_case_status_due");
+
+                    b.ToTable("pqrs_case", (string)null);
                 });
 
             modelBuilder.Entity("TiendaFlow.Domain.Product", b =>
@@ -1439,6 +1627,21 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.LoyaltyMovement", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.PosSale", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.Store", null)
@@ -1454,6 +1657,21 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .WithMany("Lines")
                         .HasForeignKey("PosSaleId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.PqrsCase", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

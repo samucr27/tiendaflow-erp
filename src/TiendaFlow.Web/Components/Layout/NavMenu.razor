@@ -235,7 +235,10 @@
     }
 
     @if (AccessControl.Has(Permissions.CrmCustomersView)
-         || AccessControl.Has(Permissions.CrmReportsView))
+         || AccessControl.Has(Permissions.CrmReportsView)
+         || AccessControl.Has(Permissions.CrmPointsManage)
+         || AccessControl.Has(Permissions.CrmPqrsManage)
+         || AccessControl.Has(Permissions.CrmCampaignsManage))
     {
         <p class="nav-section">CRM</p>
 
@@ -249,6 +252,24 @@
         {
             <NavLink class="nav-item" href="crm/segmentacion" Match="NavLinkMatch.Prefix">
                 Segmentación
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.CrmPointsManage))
+        {
+            <NavLink class="nav-item" href="crm/puntos" Match="NavLinkMatch.Prefix">
+                Puntos de fidelización
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.CrmPqrsManage))
+        {
+            <NavLink class="nav-item" href="crm/pqrs" Match="NavLinkMatch.Prefix">
+                PQRS
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.CrmCampaignsManage))
+        {
+            <NavLink class="nav-item" href="crm/campanas" Match="NavLinkMatch.Prefix">
+                Campañas
             </NavLink>
         }
     }

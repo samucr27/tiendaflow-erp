@@ -4,7 +4,7 @@
 con .NET 9 en Windows y SQL Server 2022 en Docker.
 
 Esta página se actualiza al cerrar cada fase. La última fila de resultados
-corresponde a la fase de asistencia y turnos.
+corresponde a la fase de puntos, PQRS y campañas.
 
 ## Comandos
 
@@ -26,11 +26,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 766 | 0 | 0 | 766 |
+| `TiendaFlow.UnitTests` | 806 | 0 | 0 | 806 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 62 | 0 | 0 | 62 |
+| `TiendaFlow.IntegrationTests` | 67 | 0 | 0 | 67 |
 
-Total ejecutado: **834 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **879 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -42,8 +42,8 @@ contexto apunta a otra base. Sin esa variable las pruebas se omiten, pero en
 esta verificación se ejecutaron.
 
 **GitHub Actions ejecuta la suite sin SQL Server y sin
-`TIENDAFLOW_TEST_CONNECTION`.** En ese modo pasan 766 pruebas unitarias, 6 de
-aceptación y 2 de integración que no requieren base; las 60 restantes se omiten
+`TIENDAFLOW_TEST_CONNECTION`.** En ese modo pasan 806 pruebas unitarias, 6 de
+aceptación y 2 de integración que no requieren base; las 65 restantes se omiten
 por diseño. La ejecución completa contra SQL Server solo se realizó en el
 equipo local con el contenedor desechable indicado arriba.
 
@@ -60,10 +60,10 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 4188 | 4333 | **96,6 %** |
-| `TiendaFlow.Domain` | 1170 | 1232 | **94,9 %** |
-| Aplicación + dominio | 5358 | 5565 | **96,2 %** |
-| `TiendaFlow.Infrastructure` (con integración SQL) | 16024 | 16262 | **98,5 %** |
+| `TiendaFlow.Application` | 4752 | 4914 | **96,7 %** |
+| `TiendaFlow.Domain` | 1348 | 1437 | **93,8 %** |
+| Aplicación + dominio | 6100 | 6351 | **96,0 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 18356 | 18608 | **98,6 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura de
 `TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
@@ -288,7 +288,7 @@ prueba que fallaba antes del cambio o que cubre la regla nueva.
 
 Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en la
 verificación de esta rama (unión de las tres suites, `coverlet.collector`):
-**96,5 %** (Application 97,0 %, Domain 94,7 %).
+**96,0 %** (Application 96,7 %, Domain 93,8 %).
 
 ## Alcance por tienda en inventario (PASS 1B)
 
@@ -389,6 +389,37 @@ La fase 7 cerró asistencia y turnos con una migración nueva
   directorio y conversiones explícitas a la zona horaria de Colombia. En GitHub
   Actions se omiten las que necesitan SQL Server.
 
+## Puntos, PQRS y campañas (fase 8)
+
+La fase 8 cerró los tres módulos de CRM que faltaban con una migración nueva
+(`Phase14CrmLoyaltyPqrsCampaigns`) y sin editar las anteriores.
+
+- `CrmManagementTests` y `CrmServiceTests`: dominio del libro de puntos,
+  acumulación y canje con las tarifas configuradas, saldo y valor canjeable,
+  referencia única, fecha límite de PQRS en días hábiles (fin de semana omitido),
+  flujo de estados solo hacia adelante de PQRS y campañas, alcance por tienda con
+  `CrmStoreScope`, permiso exigido antes de cada repositorio y auditoría con una
+  sola transacción. Los CSV comprueban las cabeceras en español y la
+  neutralización de fórmulas.
+- `CrmManagementIntegrationTests`: persistencia real del libro inmutable y su
+  índice único `(type, reference)`, columnas `date` de PQRS y campañas, el flujo
+  de estados y la auditoría. Los nombres y referencias son únicos por prueba
+  porque el fixture de SQL es compartido.
+- `FinalScreenAuthorizationTests` y `WebSmokeTests`: las cuatro rutas declaran
+  su política, el menú usa el permiso correcto, los roles autorizados abren las
+  pantallas y descargan los tres CSV, y un rol sin permiso recibe la redirección
+  a acceso denegado sin el archivo. La prueba de CSV de CRM usa su propio host
+  para no agotar el límite de intentos de inicio de sesión compartido.
+- `SeedIdempotencyTests` amplía el inventario con las tres tablas nuevas:
+  ejecutar el sembrador dos veces no duplica movimientos, solicitudes ni
+  campañas, y una base a la que le falte una fila la recupera.
+
+Durante la verificación se corrigieron tres expectativas de prueba que no
+coincidían con las reglas implementadas: dos días hábiles desde un viernes
+caen en martes, quince días hábiles son más que quince días calendario, y el
+saldo canjeable usa la tarifa de punto canjeado. Ninguna corrección cambió el
+código de producción: las reglas ya estaban cubiertas y documentadas.
+
 ## Cómo reproducir la verificación
 
 ```powershell
@@ -399,7 +430,7 @@ dotnet test TiendaFlow.slnx -c Release --no-build --collect:"XPlat Code Coverage
 
 Sin `TIENDAFLOW_TEST_CONNECTION` el segundo y tercer comando reproducen el
 comportamiento de CI: pasan las pruebas unitarias, las de aceptación y dos de
-integración, y se omiten las 60 que necesitan SQL Server. Para reproducir la
+integración, y se omiten las 65 que necesitan SQL Server. Para reproducir la
 ejecución completa, define esa variable en el proceso con la cadena de tu
 contenedor de pruebas antes de ejecutar `dotnet test`; no escribas la contraseña
 en el repositorio.

@@ -1,0 +1,305 @@
+@page "/crm/puntos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmPointsManage)]
+@using System.Globalization
+@inject LoyaltyService LoyaltyService
+@inject NavigationManager Navigation
+
+<PageTitle>Puntos de fidelización · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="Puntos de fidelización"
+            Subtitle="Acumulación y canje por compra, con libro inmutable y saldo por cliente" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_customers is null)
+{
+    <p class="muted">Cargando los puntos…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Registrar movimiento</h2>
+                <p class="card-subtitle">
+                    La referencia identifica la compra o el canje y evita que se registre dos veces.
+                </p>
+            </div>
+        </div>
+        <div class="form-grid">
+            <label>
+                <span>Cliente</span>
+                <select @bind="_customerId">
+                    <option value="0">Selecciona un cliente</option>
+                    @foreach (var customer in _customers)
+                    {
+                        <option value="@customer.Id">@customer.FullName · @customer.DocumentNumber</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Tienda</span>
+                <select @bind="_storeId">
+                    <option value="0">Selecciona una tienda</option>
+                    @foreach (var store in _stores)
+                    {
+                        <option value="@store.Id">@store.Name</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Referencia</span>
+                <input type="text" maxlength="120" @bind="_reference"
+                       placeholder="Ej. FACT-2026-0001" />
+            </label>
+            <label>
+                <span>Valor de la compra (COP)</span>
+                <input type="number" min="1" step="100" @bind="_purchaseAmount" />
+            </label>
+            <label>
+                <span>Puntos a canjear</span>
+                <input type="number" min="1" step="1" @bind="_points" />
+            </label>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="button button-primary" @onclick="Earn">
+                Acumular puntos
+            </button>
+            <button type="button" class="button button-secondary" @onclick="Redeem">
+                Canjear puntos
+            </button>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Libro de puntos</h2>
+                <p class="card-subtitle">@FilteredLedger.Count() de @_ledger.Count movimientos</p>
+            </div>
+            <div class="toolbar">
+                <input class="search-input" type="search" aria-label="Buscar movimientos"
+                       placeholder="Buscar por cliente o referencia" @bind="_search" @bind:event="oninput" />
+                <a class="button button-secondary button-small"
+                   href="@CsvUrl()">Exportar CSV</a>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Tipo</th>
+                        <th>Puntos</th>
+                        <th>Valor COP</th>
+                        <th>Referencia</th>
+                        <th>Tienda</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in LedgerPage)
+                    {
+                        <tr>
+                            <td>@LocalTime.ToLocal(row.CreatedAt).ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@row.CustomerName</td>
+                            <td>
+                                <span class="badge @(row.Type == LoyaltyMovementType.Earned ? "badge-success" : "badge-info")">
+                                    @CrmText.LoyaltyLabel(row.Type)
+                                </span>
+                            </td>
+                            <td>@(row.Type == LoyaltyMovementType.Earned ? "+" : "-" )@row.Points</td>
+                            <td>@Money(row.AmountCop)</td>
+                            <td>@row.Reference</td>
+                            <td>@row.StoreName</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_ledger.Count > PageSize)
+        {
+            <div class="pager">
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_ledgerPage == 1)" @onclick="PreviousLedgerPage">Anterior</button>
+                <span class="muted">Página @_ledgerPage de @LedgerTotalPages</span>
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_ledgerPage == LedgerTotalPages)" @onclick="NextLedgerPage">Siguiente</button>
+            </div>
+        }
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Saldo por cliente</h2>
+                <p class="card-subtitle">Puntos disponibles y valor canjeable a la tarifa vigente</p>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Documento</th>
+                        <th>Acumulados</th>
+                        <th>Canjeados</th>
+                        <th>Saldo</th>
+                        <th>Canjeable (COP)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in BalancePage)
+                    {
+                        <tr>
+                            <td>@row.CustomerName</td>
+                            <td>@row.CustomerDocument</td>
+                            <td>@row.EarnedPoints</td>
+                            <td>@row.RedeemedPoints</td>
+                            <td><strong>@row.Balance</strong></td>
+                            <td>@Money(row.RedeemableCop)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_balances.Count > PageSize)
+        {
+            <div class="pager">
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_balancePage == 1)" @onclick="PreviousBalancePage">Anterior</button>
+                <span class="muted">Página @_balancePage de @BalanceTotalPages</span>
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_balancePage == BalanceTotalPages)" @onclick="NextBalancePage">Siguiente</button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private IReadOnlyList<CustomerRow>? _customers;
+    private IReadOnlyList<WorkforceStoreOption> _stores = Array.Empty<WorkforceStoreOption>();
+    private IReadOnlyList<LoyaltyRow> _ledger = Array.Empty<LoyaltyRow>();
+    private IReadOnlyList<LoyaltyBalanceRow> _balances = Array.Empty<LoyaltyBalanceRow>();
+    private int _customerId;
+    private int _storeId;
+    private int _points = 1;
+    private decimal _purchaseAmount = 1000m;
+    private string _reference = string.Empty;
+    private string? _search;
+    private int _ledgerPage = 1;
+    private int _balancePage = 1;
+    private string? _error;
+    private string? _success;
+
+    private IEnumerable<LoyaltyRow> FilteredLedger =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _ledger
+            : _ledger.Where(row =>
+                row.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || row.Reference.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    private int LedgerTotalPages => Math.Max(1, (int)Math.Ceiling(FilteredLedger.Count() / (double)PageSize));
+
+    private IEnumerable<LoyaltyRow> LedgerPage =>
+        FilteredLedger.Skip((_ledgerPage - 1) * PageSize).Take(PageSize);
+
+    private int BalanceTotalPages => Math.Max(1, (int)Math.Ceiling(_balances.Count / (double)PageSize));
+
+    private IEnumerable<LoyaltyBalanceRow> BalancePage =>
+        _balances.Skip((_balancePage - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _customers = LoyaltyService.Customers();
+            _stores = LoyaltyService.Stores();
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Load()
+    {
+        _error = null;
+        _ledger = LoyaltyService.List(null, null, null, null);
+        _balances = LoyaltyService.Balances();
+        _ledgerPage = 1;
+        _balancePage = 1;
+    }
+
+    private void Earn()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            LoyaltyService.Earn(new LoyaltyEarnRequest(
+                _customerId, _storeId, _purchaseAmount, _reference));
+            _success = "Puntos acumulados correctamente.";
+            _reference = string.Empty;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Redeem()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            LoyaltyService.Redeem(new LoyaltyRedeemRequest(
+                _customerId, _storeId, _points, _reference));
+            _success = "Puntos canjeados correctamente.";
+            _reference = string.Empty;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private string CsvUrl() => "/crm/puntos/export.csv";
+
+    private static string Money(decimal value) =>
+        value.ToString("C0", new CultureInfo("es-CO"));
+
+    private void PreviousLedgerPage() { if (_ledgerPage > 1) _ledgerPage--; }
+    private void NextLedgerPage() { if (_ledgerPage < LedgerTotalPages) _ledgerPage++; }
+    private void PreviousBalancePage() { if (_balancePage > 1) _balancePage--; }
+    private void NextBalancePage() { if (_balancePage < BalanceTotalPages) _balancePage++; }
+}

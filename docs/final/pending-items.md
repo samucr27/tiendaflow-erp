@@ -22,10 +22,8 @@ continuación se documentan con el permiso que las reserva.
 | Área | Permiso reservado | Qué falta | Por qué queda pendiente | Siguiente paso sugerido |
 | --- | --- | --- | --- | --- |
 | Seguridad | `security.reports.view` | Reportes de seguridad | La auditoría ya es consultable en `/seguridad/auditoria`; no hay reportes agregados | Agregar conteos de accesos, cambios de usuario y exportación CSV |
+| Seguridad | `security.roles.manage` | Edición de roles desde la interfaz | La matriz es código de solo lectura por decisión de diseño | Solo si la organización exige cambio en caliente, con aprobación de dos personas y auditoría |
 | Ventas | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
-| CRM | `crm.points.manage` | Puntos de fidelización | El cliente no tiene saldo ni movimientos de puntos | Libro de puntos con acumulación y canje |
-| CRM | `crm.pqrs.manage` | PQRS | No hay entidad de peticiones, quejas o reclamos | Radicado, responsable, estados y tiempos |
-| CRM | `crm.campaigns.manage` | Campañas | La segmentación es de solo consulta | Campaña sobre un segmento, vigencia y resultado |
 
 ## Decisión de diseño: contratos solo para el Gestor de recursos humanos
 
@@ -56,6 +54,20 @@ Si la organización llega a exigir edición en caliente, el cambio debe incluir
 auditoría, aprobación de dos personas y pruebas de autorización; no se descarta
 por diseño, simplemente no entra en este alcance académico.
 
+## Decisión de diseño: el Administrador no opera CRM
+
+Los tres permisos nuevos de CRM se asignan de forma exclusiva: `crm.points.manage`
+al Cajero, `crm.pqrs.manage` al Jefe de tienda y `crm.campaigns.manage` al Gerente
+corporativo. El **Administrador no recibe ninguno**, aunque sus servicios de
+puntos y PQRS tienen alcance global por tienda. Es deliberado: se separa la
+operación de punto de venta, la atención de solicitudes en la sucursal y la
+gestión corporativa de campañas del rol técnico que administra usuarios,
+tiendas y parámetros. La matriz está en código y cubierta por
+`RolePermissionsTests`, así que la decisión es determinista. Si la organización
+necesita que el Administrador opere estos módulos, basta una línea en
+`RolePermissions.cs` más la prueba de la matriz; no hay que tocar pantallas ni
+servicios.
+
 ## Resuelto en la revisión final (16 y 17 de noviembre)
 
 - **Venta del POS:** se guarda como documento y la cuentan el panel, el reporte
@@ -68,6 +80,10 @@ por diseño, simplemente no entra en este alcance académico.
 - **Turnos:** hay plantillas con tope configurable, agenda semanal, asignación
   con control de solapamiento y tope diario, cancelación y reporte cruzado con
   la asistencia. El Jefe de tienda opera solo en su tienda.
+- **CRM:** hay libro de puntos inmutable con acumulación y canje, solicitudes
+  PQRS con estados y plazo en días hábiles, y campañas con vigencia y estados.
+  Cada módulo tiene pantalla, permiso, CSV y auditoría; la migración es propia y
+  no se editaron las anteriores.
 
 Queda pendiente un proceso, no código: los pull requests deben tener una
 revisión registrada en GitHub por otro integrante antes de fusionarse, como
@@ -81,6 +97,14 @@ exige la Definition of Done.
   facturación.
 - **Segmentación A/B/C:** es una regla académica (20 % / 30 % / resto). No es
   una política comercial validada ni usa un modelo estadístico.
+- **Puntos:** las tasas de acumulación y canje son parámetros académicos
+  (`crm.points.cop_per_point` y `crm.points.cop_per_redeemed_point`). El saldo no
+  se guarda: se deriva del libro inmutable, y el índice único por tipo y
+  referencia evita contar dos veces la misma compra o canje. No está integrado
+  con la venta real ni con un programa de fidelización externo.
+- **Plazo de PQRS:** se calcula en días hábiles omitiendo sábados y domingos. No
+  se modelan días festivos ni calendario laboral por país, así que el vencimiento
+  puede caer en un festivo. Para uso real haría falta una tabla de festivos.
 - **Nómina:** los parámetros son referencias académicas y están documentados en
   `docs/sprint2/payroll-parameters-validation.md`. El sistema calcula la
   corrida, pero no reemplaza una liquidación laboral certificada.
@@ -125,9 +149,9 @@ exige la Definition of Done.
 
 Compras (órdenes, puntualidad y cumplimiento con datos de recepción,
 exportación del ranking y borradores de reposición con relación producto ·
-proveedor), panel, reportes, segmentación CRM, exportación XML simulada,
-administración de tiendas, parámetros configurables, inventario con conteos
-físicos y traslados entre tiendas, devoluciones con nota crédito, contratos
-laborales con prórrogas y adjuntos, asistencia con novedades y turnos con reporte
-cruzado están implementados, con permisos, pruebas y documentación. El detalle
-está en [implemented-modules.md](implemented-modules.md).
+proveedor), panel, reportes, CRM (segmentación, puntos, PQRS y campañas),
+exportación XML simulada, administración de tiendas, parámetros configurables,
+inventario con conteos físicos y traslados entre tiendas, devoluciones con nota
+crédito, contratos laborales con prórrogas y adjuntos, asistencia con novedades y
+turnos con reporte cruzado están implementados, con permisos, pruebas y
+documentación. El detalle está en [implemented-modules.md](implemented-modules.md).

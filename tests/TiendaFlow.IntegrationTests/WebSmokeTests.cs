@@ -209,6 +209,75 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         }
     }
 
+    [SqlServerFact]
+    public async Task CrmCsvDownloadsRequireTheirPermission()
+    {
+        await _factory.PrepareAsync();
+
+        // A dedicated host owns its own login rate limiter, so these four
+        // sign-ins never consume the shared factory's attempts. The derived
+        // host reuses the same disposable database and seeded passwords.
+        using var host = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("Security:LoginAttemptsPerMinute", "20"));
+
+        var cases = new (string Role, string Email, string Path, string Header)[]
+        {
+            (RoleNames.Cashier, "cajero@tiendaflow.local",
+                "/crm/puntos/export.csv", "Fecha,Cliente"),
+            (RoleNames.StoreManager, "jefe.tienda@tiendaflow.local",
+                "/crm/pqrs/export.csv", "ID,Fecha"),
+            (RoleNames.CorporateManager, "gerente@tiendaflow.local",
+                "/crm/campanas/export.csv", "Nombre,Descripción")
+        };
+
+        foreach (var item in cases)
+        {
+            using var client = host.CreateClient(
+                new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+                {
+                    BaseAddress = new Uri("https://localhost"),
+                    AllowAutoRedirect = true,
+                    HandleCookies = true
+                });
+
+            await SignInAsync(client, new SeedAccount(item.Role, item.Email, _factory.DemoPassword));
+
+            using var response = await client.GetAsync(item.Path);
+            var content = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("text/csv", response.Content.Headers.ContentType?.MediaType ?? string.Empty);
+            Assert.Contains(item.Header, content);
+        }
+
+        // A role without the policy is redirected before the service runs. Do
+        // not follow the redirect: the CSV payload itself must never be served.
+        using var denied = host.CreateClient(
+            new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost"),
+                AllowAutoRedirect = false,
+                HandleCookies = true
+            });
+        await SignInAsync(
+            denied,
+            new SeedAccount(RoleNames.CorporateManager, "gerente@tiendaflow.local", _factory.DemoPassword),
+            followRedirect: false);
+
+        foreach (var path in new[]
+                 {
+                     "/crm/puntos/export.csv",
+                     "/crm/pqrs/export.csv"
+                 })
+        {
+            using var response = await denied.GetAsync(path);
+
+            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Contains("/acceso-denegado", response.Headers.Location?.OriginalString ?? string.Empty);
+            Assert.DoesNotContain("Fecha,Cliente", await response.Content.ReadAsStringAsync());
+        }
+    }
+
     private static async Task SignInAsync(
         HttpClient client,
         SeedAccount account,
@@ -285,6 +354,7 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         var transferId = await context.InventoryTransfers.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var salesReturnId = await context.SalesReturns.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var contractId = await context.EmployeeContracts.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
+        var pqrsId = await context.PqrsCases.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var parameterKey = SystemParameterCatalog.All.First().Key;
 
         return new[]
@@ -343,7 +413,11 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute("/crm/clientes", Permissions.CrmCustomersView),
             new SmokeRoute($"/crm/clientes/{customerId}", Permissions.CrmCustomersManage),
             new SmokeRoute("/crm/clientes/nuevo", Permissions.CrmCustomersManage),
-            new SmokeRoute("/crm/segmentacion", Permissions.CrmReportsView)
+            new SmokeRoute("/crm/segmentacion", Permissions.CrmReportsView),
+            new SmokeRoute("/crm/puntos", Permissions.CrmPointsManage),
+            new SmokeRoute("/crm/pqrs", Permissions.CrmPqrsManage),
+            new SmokeRoute($"/crm/pqrs/{pqrsId}", Permissions.CrmPqrsManage),
+            new SmokeRoute("/crm/campanas", Permissions.CrmCampaignsManage)
         };
     }
 

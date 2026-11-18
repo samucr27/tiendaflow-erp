@@ -21,6 +21,7 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261116154129_Phase11PosSalesAndInvoiceStock` | Ventas del POS y tienda de la factura |
 | `20261117044933_Phase12HrContracts` | Contratos laborales y adjuntos |
 | `20261118005708_Phase13HrAttendanceAndShifts` | Asistencia, novedades, plantillas de turno y asignaciones |
+| `20261118014039_Phase14CrmLoyaltyPqrsCampaigns` | Libro de puntos, solicitudes PQRS y campañas |
 
 La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
 existía. Añade tres índices que sostienen las consultas de la pantalla y del
@@ -82,8 +83,9 @@ cabecera y los índices `IX_inventory_count_store_status`,
 y `IX_inventory_transfer_line_transfer_sku` sostienen las pantallas, el filtro
 por tienda y las líneas de cada documento.
 
-Las fases posteriores a la entrega final (CRM restante y seguridad) añadirán su
-propia migración; esta tabla se amplía a medida que se generan.
+La fase de CRM restante ya añadió su migración propia (`Phase14`); la única
+función que sigue pendiente es la edición de roles (`security.roles.manage`),
+que no requiere tablas nuevas porque la matriz vive en código.
 
 `AddSalesReturns` crea `sales_return` y `sales_return_line`:
 
@@ -152,6 +154,27 @@ guardan como columnas y se derivan de las marcaciones y de los horarios. El
 sembrado crea plantillas, asignaciones de la semana actual y marcaciones con
 claves naturales estables; no sustituye a una fuente biométrica real.
 
+`Phase14CrmLoyaltyPqrsCampaigns` crea los tres módulos de CRM que faltaban:
+
+- `loyalty_movement` es un libro inmutable: cliente, tienda, tipo (`Earned` o
+  `Redeemed`), puntos, valor COP, referencia y fecha UTC. El índice único
+  `IX_loyalty_movement_type_reference` impide registrar dos veces la misma
+  compra o canje. El saldo y el valor canjeable se derivan del libro; no hay
+  columna de saldo que pueda quedar desincronizada.
+- `pqrs_case` guarda cliente, tienda, tipo, asunto, descripción, estado
+  (`Open`, `InProgress`, `Answered`, `Closed`), fechas de radicación y límite
+  (`date`), respuesta y fecha de respuesta UTC. El plazo se calcula en días
+  hábiles sin festivos; el servicio valida las transiciones hacia adelante.
+- `campaign` guarda nombre único, descripción, canal, segmento, vigencia
+  (`date`), estado (`Draft`, `Active`, `Paused`, `Closed`) y fecha de creación
+  UTC. `IX_campaign_name` garantiza el nombre único en la base y
+  `IX_campaign_dates` sostiene el listado por vigencia.
+
+Las claves foráneas de puntos y PQRS a cliente y tienda tienen borrado
+restringido. Los índices por cliente + fecha, fecha + tienda, estado + límite y
+tienda sostienen los listados filtrados y paginados. El sembrado usa las claves
+naturales `(tipo, referencia)`, `(cliente, asunto)` y nombre de campaña.
+
 ## Generar una migración
 
 Se genera sin aplicarla:
@@ -218,7 +241,8 @@ ejecutable `efbundle.exe` no se commitea.
 
 `DevDataSeeder` crea las tiendas, los siete roles, un usuario por rol, empleados,
 productos, existencias, proveedores, clientes, órdenes, facturas, devoluciones,
-conteos, traslados, contratos, turnos y asistencia de demostración. Se registra siempre que
+conteos, traslados, contratos, turnos, asistencia, movimientos de puntos,
+solicitudes PQRS y campañas de demostración. Se registra siempre que
 `Seed:Enabled` sea `true`, **sin importar el entorno**; no está condicionado a
 `Development`.
 
@@ -242,11 +266,14 @@ El sembrado decide **por registro**, no por tabla, con una clave natural estable
 | Plantillas de turno | Nombre |
 | Asignaciones de turno | Empleado + fecha + plantilla |
 | Asistencia y novedades | Empleado + fecha |
+| Movimientos de puntos | Tipo + referencia |
+| Solicitudes PQRS | Cliente + asunto |
+| Campañas | Nombre |
 
 Así, ejecutar la aplicación dos veces no duplica nada y una base sembrada por una
 versión anterior que perdió algunos registros recupera solo los que faltan. Las
 pruebas `SeedIdempotencyTests` ejecutan el seeder real dos veces y también borran
-filas de cinco secciones para comprobar la reparación sin duplicados.
+filas de diez secciones para comprobar la reparación sin duplicados.
 
 - Si `Seed:Enabled` es `false` o no existe, el servicio no se registra y ninguna
   ruta crea datos de ejemplo.

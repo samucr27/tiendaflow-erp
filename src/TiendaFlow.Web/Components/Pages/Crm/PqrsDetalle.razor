@@ -1,0 +1,154 @@
+@page "/crm/pqrs/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmPqrsManage)]
+@inject PqrsService PqrsService
+@inject NavigationManager Navigation
+
+<PageTitle>Solicitud @Id · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="Detalle de la solicitud"
+            Subtitle="Seguimiento del radicado, la respuesta y el plazo de atención">
+    <Actions>
+        <a class="button button-secondary" href="/crm/pqrs">Volver a PQRS</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_case is null)
+{
+    <p class="muted">Cargando la solicitud…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Radicado @_case.Id · @CrmText.PqrsLabel(_case.Type)</h2>
+                <p class="card-subtitle">@_case.Subject</p>
+            </div>
+            <div>
+                <span class="badge @StatusTone(_case.Status)">
+                    @CrmText.PqrsStatusLabel(_case.Status)
+                </span>
+                @if (_case.IsOverdue)
+                {
+                    <span class="badge badge-error">Vencida</span>
+                }
+            </div>
+        </div>
+        <dl class="detail-grid">
+            <dt>Cliente</dt>
+            <dd>@_case.CustomerName · @_case.CustomerDocument</dd>
+            <dt>Tienda</dt>
+            <dd>@_case.StoreName</dd>
+            <dt>Fecha de radicación</dt>
+            <dd>@_case.CreatedDate.ToString("yyyy-MM-dd")</dd>
+            <dt>Fecha límite</dt>
+            <dd>@_case.DueDate.ToString("yyyy-MM-dd")</dd>
+            <dt>Respondida</dt>
+            <dd>@(_case.AnsweredAt is null ? "—" : LocalTime.ToLocal(_case.AnsweredAt.Value).ToString("yyyy-MM-dd HH:mm"))</dd>
+        </dl>
+        <h3>Descripción</h3>
+        <p class="preserve-lines">@_case.Description</p>
+
+        @if (_case.Response is not null)
+        {
+            <h3>Respuesta</h3>
+            <p class="preserve-lines">@_case.Response</p>
+        }
+
+        <div class="form-actions">
+            @if (_case.Status == PqrsStatus.Open)
+            {
+                <button type="button" class="button button-secondary" @onclick="Start">Iniciar trámite</button>
+            }
+            @if (_case.Status is PqrsStatus.Open or PqrsStatus.InProgress)
+            {
+                <label class="full-width">
+                    <span>Respuesta</span>
+                    <textarea maxlength="4000" rows="4" @bind="_response"></textarea>
+                </label>
+                <button type="button" class="button button-primary" @onclick="Answer">Guardar respuesta</button>
+            }
+            @if (_case.Status == PqrsStatus.Answered)
+            {
+                <button type="button" class="button button-primary" @onclick="Close">Cerrar solicitud</button>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private PqrsRow? _case;
+    private string _response = string.Empty;
+    private string? _error;
+    private string? _success;
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        _error = null;
+        _response = string.Empty;
+
+        try
+        {
+            _case = PqrsService.Get(Id);
+            _response = _case.Response ?? string.Empty;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Start() => Run(() => PqrsService.Start(Id), "La solicitud pasó a en trámite.");
+
+    private void Answer() => Run(() => PqrsService.Answer(Id, _response), "La respuesta se guardó correctamente.");
+
+    private void Close() => Run(() => PqrsService.Close(Id), "La solicitud se cerró correctamente.");
+
+    private void Run(Action action, string success)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            action();
+            _success = success;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static string StatusTone(PqrsStatus status) => status switch
+    {
+        PqrsStatus.Answered or PqrsStatus.Closed => "badge-success",
+        PqrsStatus.InProgress => "badge-info",
+        _ => "badge-warning"
+    };
+}

@@ -67,6 +67,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICustomerRepository, EfCustomerRepository>();
         services.AddScoped<ICustomerQuery, EfCustomerQuery>();
 
+        services.AddScoped<ILoyaltyRepository, EfLoyaltyRepository>();
+        services.AddScoped<IPqrsRepository, EfPqrsRepository>();
+        services.AddScoped<ICampaignRepository, EfCampaignRepository>();
+
         services.AddScoped<IAccessControl, AccessControl>();
 
         services.AddSingleton<IClock, SystemClock>();
@@ -104,6 +108,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<EmploymentContractService>();
         services.AddScoped<AttendanceService>();
         services.AddScoped<ShiftService>();
+        services.AddScoped<LoyaltyService>();
+        services.AddScoped<PqrsService>();
+        services.AddScoped<CampaignService>();
 
         return services;
     }

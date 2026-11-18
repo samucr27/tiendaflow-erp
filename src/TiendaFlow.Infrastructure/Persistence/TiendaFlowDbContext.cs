@@ -45,6 +45,12 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<Customer> Customers => Set<Customer>();
 
+    public DbSet<LoyaltyMovement> LoyaltyMovements => Set<LoyaltyMovement>();
+
+    public DbSet<PqrsCase> PqrsCases => Set<PqrsCase>();
+
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+
     public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
 
     public DbSet<InventoryCount> InventoryCounts => Set<InventoryCount>();

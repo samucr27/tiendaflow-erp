@@ -126,6 +126,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedSuppliersAsync(context, cancellationToken);
         await SeedProductSuppliersAsync(context, cancellationToken);
         await SeedCustomersAsync(context, cancellationToken);
+        await SeedCrmAsync(context, cancellationToken);
         await SeedPurchaseOrdersAsync(context, cancellationToken);
         await SeedInvoicesAsync(context, cancellationToken);
         await SeedSalesReturnsAsync(context, cancellationToken);
@@ -671,7 +672,122 @@ public sealed class DevDataSeeder : IHostedService
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    // Default supplier of each demo product, so the replenishment screen can
+    /// <summary>
+    /// Demo data for the three CRM modules. A loyalty movement is identified by
+    /// (type, reference), a PQRS case by (customer, subject) and a campaign by
+    /// its unique name, the same natural keys the domain and the database use.
+    /// A second run therefore adds nothing and a database missing one row gets
+    /// only that row back. The cases show three workflow states and the ledger
+    /// shows an earning and a redemption, so every screen opens with data.
+    /// </summary>
+    private static async Task SeedCrmAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var createdAt = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(LocalTime.ToLocal(createdAt));
+        var defaultStoreId = await context.Stores
+            .Where(store => store.Name == DemoStores[0].Name)
+            .Select(store => store.Id)
+            .SingleAsync(cancellationToken);
+
+        var customer = await context.Customers
+            .SingleAsync(item => item.DocumentNumber == DemoCustomers[0].DocumentNumber, cancellationToken);
+        var secondCustomer = await context.Customers
+            .SingleAsync(item => item.DocumentNumber == DemoCustomers[2].DocumentNumber, cancellationToken);
+
+        var movements = new[]
+        {
+            new SeedLoyalty(customer.Id, LoyaltyMovementType.Earned, 25, 25000m,
+                defaultStoreId, "SEED-FACT-0001"),
+            new SeedLoyalty(secondCustomer.Id, LoyaltyMovementType.Earned, 12, 12000m,
+                defaultStoreId, "SEED-FACT-0002"),
+            new SeedLoyalty(customer.Id, LoyaltyMovementType.Redeemed, 10, 5000m,
+                defaultStoreId, "SEED-CANJE-0001")
+        };
+
+        foreach (var seed in movements)
+        {
+            if (await context.LoyaltyMovements.AnyAsync(
+                    item => item.Type == seed.Type && item.Reference == seed.Reference,
+                    cancellationToken))
+            {
+                continue;
+            }
+
+            context.LoyaltyMovements.Add(new LoyaltyMovement(
+                0, seed.CustomerId, seed.Type, seed.Points, seed.AmountCop,
+                seed.StoreId, seed.Reference, createdAt));
+        }
+
+        var cases = new[]
+        {
+            new SeedPqrs(customer.Id, defaultStoreId, PqrsType.Complaint,
+                "Entrega tardía del pedido", "El pedido llegó dos días después de la fecha prometida.",
+                true, "Disculpa la demora. Coordinamos la entrega prioritaria y un descuento."),
+            new SeedPqrs(secondCustomer.Id, defaultStoreId, PqrsType.Suggestion,
+                "Ampliar el horario de atención", "Sugerimos extender el horario los días sábado.",
+                false, null)
+        };
+
+        foreach (var seed in cases)
+        {
+            if (await context.PqrsCases.AnyAsync(
+                    item => item.CustomerId == seed.CustomerId && item.Subject == seed.Subject,
+                    cancellationToken))
+            {
+                continue;
+            }
+
+            var item = new PqrsCase(
+                0, seed.CustomerId, seed.StoreId, seed.Type, seed.Subject,
+                seed.Description, today, today.AddDays(20), createdAt);
+
+            if (seed.Answered)
+            {
+                item.Start();
+                item.Answer(seed.Response!, createdAt.AddHours(1));
+            }
+
+            context.PqrsCases.Add(item);
+        }
+
+        var campaigns = new[]
+        {
+            new SeedCampaign("Bienvenida fidelización", CampaignChannel.Email, "Todos",
+                0, 30, CampaignStatus.Draft),
+            new SeedCampaign("Reactivación segmento A", CampaignChannel.WhatsApp, "A",
+                1, 45, CampaignStatus.Active),
+            new SeedCampaign("Cierre de temporada", CampaignChannel.Sms, "B",
+                2, 25, CampaignStatus.Paused)
+        };
+
+        foreach (var seed in campaigns)
+        {
+            if (await context.Campaigns.AnyAsync(
+                    item => item.Name == seed.Name, cancellationToken))
+            {
+                continue;
+            }
+
+            var campaign = new Campaign(
+                0, seed.Name, "Campaña de demostración del programa de fidelización.",
+                seed.Channel, seed.Segment, today.AddDays(seed.StartOffset),
+                today.AddDays(seed.EndOffset), createdAt);
+
+            if (seed.Status is CampaignStatus.Active or CampaignStatus.Paused)
+                campaign.Activate(today);
+
+            if (seed.Status == CampaignStatus.Paused)
+                campaign.Pause();
+
+            context.Campaigns.Add(campaign);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    // Default supplier of each demo product, so the replenishment screen can   
     // turn the critical stock alerts (HU-05) into draft purchase orders
     // without any manual setup. The last cost is about 65 % of the sale price.
     private static readonly (string Sku, string SupplierNit)[] DemoProductSuppliers =
@@ -1289,6 +1405,31 @@ public sealed class DevDataSeeder : IHostedService
         string? Phone,
         string? Address,
         bool Active);
+
+    private sealed record SeedLoyalty(
+        int CustomerId,
+        LoyaltyMovementType Type,
+        int Points,
+        decimal AmountCop,
+        int StoreId,
+        string Reference);
+
+    private sealed record SeedPqrs(
+        int CustomerId,
+        int StoreId,
+        PqrsType Type,
+        string Subject,
+        string Description,
+        bool Answered,
+        string? Response);
+
+    private sealed record SeedCampaign(
+        string Name,
+        CampaignChannel Channel,
+        string Segment,
+        int StartOffset,
+        int EndOffset,
+        CampaignStatus Status);
 
     private sealed record SeedInvoice(
         string CustomerName,

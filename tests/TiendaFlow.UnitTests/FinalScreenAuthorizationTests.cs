@@ -254,6 +254,55 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("app.MapWorkforceEndpoints();", program);
     }
 
+    [Theory]
+    [InlineData("Crm/Puntos.razor", "/crm/puntos", "CrmPointsManage")]
+    [InlineData("Crm/Pqrs.razor", "/crm/pqrs", "CrmPqrsManage")]
+    [InlineData("Crm/PqrsDetalle.razor", "/crm/pqrs/{Id:int}", "CrmPqrsManage")]
+    [InlineData("Crm/Campanas.razor", "/crm/campanas", "CrmCampaignsManage")]
+    public void CrmManagementRoutesDeclareThePolicyOfTheMatrix(
+        string file,
+        string route,
+        string permission)
+    {
+        var source = ReadPage(file);
+
+        Assert.Contains($"@page \"{route}\"", source);
+        Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
+    }
+
+    [Fact]
+    public void MenuShowsCrmManagementOnlyWithTheirOwnPermissions()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"crm/puntos\"", menu);
+        Assert.Contains("href=\"crm/pqrs\"", menu);
+        Assert.Contains("href=\"crm/campanas\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.CrmPointsManage)", menu);
+        Assert.Contains("AccessControl.Has(Permissions.CrmPqrsManage)", menu);
+        Assert.Contains("AccessControl.Has(Permissions.CrmCampaignsManage)", menu);
+    }
+
+    [Fact]
+    public void CrmCsvEndpointsRequireTheSamePermissionsAsTheirPages()
+    {
+        var endpoints = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Endpoints", "CrmEndpoints.cs"));
+        var program = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Program.cs"));
+
+        Assert.Contains("\"/crm/puntos/export.csv\"", endpoints);
+        Assert.Contains("\"/crm/pqrs/export.csv\"", endpoints);
+        Assert.Contains("\"/crm/campanas/export.csv\"", endpoints);
+        Assert.Contains("RequireAuthorization(Permissions.CrmPointsManage)", endpoints);
+        Assert.Contains("RequireAuthorization(Permissions.CrmPqrsManage)", endpoints);
+        Assert.Contains("RequireAuthorization(Permissions.CrmCampaignsManage)", endpoints);
+        Assert.Contains("CsvReport.Build", File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Application", "CrmManagement.cs")));
+        Assert.Contains("app.MapCrmEndpoints();", program);
+    }
+
     private static string ReadPage(string file) =>
         File.ReadAllText(Path.Combine(
             RepoRoot, "src", "TiendaFlow.Web", "Components", "Pages", file));

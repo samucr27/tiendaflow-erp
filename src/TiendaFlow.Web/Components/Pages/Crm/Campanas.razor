@@ -1,0 +1,272 @@
+@page "/crm/campanas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmCampaignsManage)]
+@inject CampaignService CampaignService
+@inject NavigationManager Navigation
+
+<PageTitle>Campañas · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="Campañas"
+            Subtitle="Acciones de marketing por canal y segmento de clientes" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_campaigns is null)
+{
+    <p class="muted">Cargando las campañas…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Nueva campaña</h2>
+                <p class="card-subtitle">La fecha de inicio no puede estar en el pasado. Solo se edita en borrador.</p>
+            </div>
+        </div>
+        <div class="form-grid">
+            <label>
+                <span>Nombre</span>
+                <input type="text" maxlength="100" @bind="_name" />
+            </label>
+            <label>
+                <span>Canal</span>
+                <select @bind="_channel">
+                    @foreach (var channel in Channels)
+                    {
+                        <option value="@((int)channel)">@CrmText.CampaignChannelLabel(channel)</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Segmento</span>
+                <select @bind="_segment">
+                    @foreach (var segment in Campaign.Segments)
+                    {
+                        <option value="@segment">@segment</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Fecha de inicio</span>
+                <input type="date" @bind="_startDate" />
+            </label>
+            <label>
+                <span>Fecha de fin</span>
+                <input type="date" @bind="_endDate" />
+            </label>
+            <label class="full-width">
+                <span>Descripción</span>
+                <textarea maxlength="500" rows="2" @bind="_description"></textarea>
+            </label>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="button button-primary" @onclick="Create">
+                Crear campaña
+            </button>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Campañas registradas</h2>
+                <p class="card-subtitle">@_campaigns.Count campañas</p>
+            </div>
+            <a class="button button-secondary button-small" href="/crm/campanas/export.csv">
+                Exportar CSV
+            </a>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Canal</th>
+                        <th>Segmento</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in PageItems)
+                    {
+                        <tr>
+                            <td>@row.Name</td>
+                            <td>@CrmText.CampaignChannelLabel(row.Channel)</td>
+                            <td>@row.Segment</td>
+                            <td>@row.StartDate.ToString("yyyy-MM-dd")</td>
+                            <td>@row.EndDate.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                <span class="badge @StatusTone(row.Status)">
+                                    @CrmText.CampaignStatusLabel(row.Status)
+                                </span>
+                            </td>
+                            <td class="table-actions">
+                                @if (row.Status == CampaignStatus.Draft)
+                                {
+                                    <button type="button" class="table-action" @onclick="() => Activate(row.Id)">
+                                        Activar
+                                    </button>
+                                }
+                                @if (row.Status == CampaignStatus.Active)
+                                {
+                                    <button type="button" class="table-action" @onclick="() => Pause(row.Id)">
+                                        Pausar
+                                    </button>
+                                }
+                                @if (row.Status == CampaignStatus.Paused)
+                                {
+                                    <button type="button" class="table-action" @onclick="() => Resume(row.Id)">
+                                        Reanudar
+                                    </button>
+                                }
+                                @if (row.Status is CampaignStatus.Active or CampaignStatus.Paused)
+                                {
+                                    <button type="button" class="table-action" @onclick="() => Close(row.Id)">
+                                        Cerrar
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_campaigns.Count > PageSize)
+        {
+            <div class="pager">
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_page == 1)" @onclick="PreviousPage">Anterior</button>
+                <span class="muted">Página @_page de @TotalPages</span>
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_page == TotalPages)" @onclick="NextPage">Siguiente</button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private static readonly CampaignChannel[] Channels =
+    [
+        CampaignChannel.Email, CampaignChannel.Sms,
+        CampaignChannel.WhatsApp, CampaignChannel.Social
+    ];
+
+    private IReadOnlyList<CampaignRow>? _campaigns;
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private int _channel = (int)CampaignChannel.Email;
+    private string _segment = "Todos";
+    private DateOnly _startDate;
+    private DateOnly _endDate;
+    private int _page = 1;
+    private string? _error;
+    private string? _success;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((_campaigns?.Count ?? 0) / (double)PageSize));
+
+    private IEnumerable<CampaignRow> PageItems =>
+        (_campaigns ?? Array.Empty<CampaignRow>()).Skip((_page - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized()
+    {
+        var today = DateOnly.FromDateTime(LocalTime.ToLocal(DateTime.UtcNow));
+        _startDate = today;
+        _endDate = today.AddDays(30);
+
+        try
+        {
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Load()
+    {
+        _error = null;
+        _campaigns = CampaignService.List();
+        _page = 1;
+    }
+
+    private void Create()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            var id = CampaignService.Create(new CampaignCreateRequest(
+                _name, _description, (CampaignChannel)_channel,
+                _segment, _startDate, _endDate));
+            _success = $"Campaña {id} creada en borrador.";
+            _name = string.Empty;
+            _description = string.Empty;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Activate(int id) => Run(() => CampaignService.Activate(id), "La campaña está activa.");
+    private void Pause(int id) => Run(() => CampaignService.Pause(id), "La campaña quedó pausada.");
+    private void Resume(int id) => Run(() => CampaignService.Resume(id), "La campaña se reanudó.");
+    private void Close(int id) => Run(() => CampaignService.Close(id), "La campaña se cerró.");
+
+    private void Run(Action action, string success)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            action();
+            _success = success;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void PreviousPage() { if (_page > 1) _page--; }
+    private void NextPage() { if (_page < TotalPages) _page++; }
+
+    private static string StatusTone(CampaignStatus status) => status switch
+    {
+        CampaignStatus.Active => "badge-success",
+        CampaignStatus.Paused => "badge-warning",
+        CampaignStatus.Closed => "badge-muted",
+        _ => "badge-info"
+    };
+}

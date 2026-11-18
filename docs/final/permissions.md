@@ -39,11 +39,9 @@ las tres capas y no depende de que el enlace esté oculto.
 | RR. HH.: turnos y reporte | `hr.shifts.manage` | `hr.shifts.manage` |
 | CRM: clientes | `crm.customers.view` | `crm.customers.manage` |
 | CRM: segmentación | `crm.reports.view` | — |
-| CRM: puntos, PQRS y campañas | — | `crm.points.manage`*, `crm.pqrs.manage`*, `crm.campaigns.manage`* |
-
-`*` El permiso existe en la matriz y se asigna a algún rol, pero todavía no
-tiene pantalla ni caso de uso. El detalle está en
-[pending-items.md](pending-items.md).
+| CRM: puntos | `crm.points.manage` | `crm.points.manage` |
+| CRM: PQRS | `crm.pqrs.manage` | `crm.pqrs.manage` |
+| CRM: campañas | `crm.campaigns.manage` | `crm.campaigns.manage` |
 
 ## Roles de la matriz
 
@@ -184,18 +182,52 @@ servicios vuelven a exigir el permiso con `IAccessControl.Demand(...)`. Los CSV
 son endpoints mínimos con la misma política de autorización que la pantalla y
 usan el escritor seguro `CsvReport`.
 
+## Cambios en la matriz por los puntos, PQRS y campañas
+
+La fase de CRM no creó permisos nuevos: los tres ya estaban declarados y
+asignados. La lectura y la escritura comparten permiso porque la información que
+muestra cada pantalla es la misma que se modifica. La asignación es
+deliberadamente exclusiva:
+
+| Ruta o acción | Permiso | Roles |
+| --- | --- | --- |
+| `/crm/puntos`, `/crm/puntos/export.csv` | `crm.points.manage` | Cajero |
+| `/crm/pqrs`, `/crm/pqrs/{Id:int}`, `/crm/pqrs/export.csv` | `crm.pqrs.manage` | Jefe de tienda |
+| `/crm/campanas`, `/crm/campanas/export.csv` | `crm.campaigns.manage` | Gerente corporativo |
+
+El Administrador **no** recibió ninguno de los tres permisos: se separa la
+operación de punto de venta, la atención de solicitudes en tienda y la gestión
+corporativa de campañas del rol técnico. Es una decisión de diseño documentada
+en [pending-items.md](pending-items.md). Las campañas son un recurso global: no
+tienen alcance por tienda, sino permiso por rol.
+
+Puntos y PQRS sí tienen alcance por tienda: `CrmStoreScope` concede acceso global
+al Administrador y al Gerente corporativo, y limita al Cajero y al Jefe de tienda
+a su propia sucursal. El código de negación es `crm.store.scope`. Como el
+Administrador no posee los permisos de estas pantallas, en la práctica el alcance
+global lo aprovecha solo el Gerente corporativo.
+
+Las tres capas se cumplen: las páginas declaran
+`[Authorize(Policy = Permissions.CrmPointsManage)]`, `CrmPqrsManage` o
+`CrmCampaignsManage`, el menú comprueba `AccessControl.Has(...)` y los servicios
+vuelven a exigir el permiso con `IAccessControl.Demand(...)` antes de tocar un
+repositorio. Los CSV son endpoints mínimos con la misma política y usan el
+escritor seguro `CsvReport`.
+
 ## Alcance por tienda
 
 Los permisos deciden **qué** puede hacer un rol; el alcance decide **sobre qué
 tienda**. `StoreScope` aplica la segunda regla dentro de los servicios de
-conteos, traslados y devoluciones, y `HrStoreScope` dentro de asistencia y
-turnos, antes de consultar cualquier repositorio.
+conteos, traslados y devoluciones, `HrStoreScope` dentro de asistencia y turnos,
+y `CrmStoreScope` dentro de puntos y PQRS, antes de consultar cualquier
+repositorio.
 
 | Rol | Alcance |
 | --- | --- |
 | Administrador | Todas las tiendas |
 | Gerente corporativo | Todas las tiendas |
-| Jefe de tienda | Solo su tienda |
+| Jefe de tienda | Solo su tienda (también en PQRS) |
+| Cajero | Solo su tienda (puntos) |
 | Auxiliar de bodega | Solo su tienda |
 | Gestor de recursos humanos | Todas las tiendas en asistencia y turnos |
 
@@ -203,7 +235,8 @@ Los roles con alcance limitado no pueden crear, listar, enviar, recibir, anular,
 autorizar ni rechazar documentos de otra tienda, aunque llamen al servicio
 directamente. Si el usuario no tiene tienda asignada, la operación se deniega.
 El Administrador y el Gerente corporativo también deben tener el permiso del
-módulo: el alcance global no concede permisos por sí solo.
+módulo: el alcance global no concede permisos por sí solo. Las campañas no
+aparecen en esta tabla porque son globales y se gobiernan solo por permiso.
 
 ## Comprobaciones automáticas
 
@@ -216,3 +249,8 @@ módulo: el alcance global no concede permisos por sí solo.
 - `WebSmokeTests.WorkforceCsvDownloadsRequireTheirPermission` comprueba con el
   pipeline HTTP real que el Gestor de recursos humanos descarga ambos CSV y que
   un Cajero recibe la redirección a acceso denegado sin el archivo.
+- `WebSmokeTests.CrmCsvDownloadsRequireTheirPermission` hace lo mismo para los
+  tres CSV de CRM: el Cajero, el Jefe de tienda y el Gerente corporativo descargan
+  el suyo, y un rol sin permiso recibe la redirección a acceso denegado sin el
+  archivo. Usa un host propio para no agotar el límite de intentos de inicio de
+  sesión que comparten las demás pruebas HTTP.

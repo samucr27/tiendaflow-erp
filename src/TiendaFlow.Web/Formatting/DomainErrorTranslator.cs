@@ -149,6 +149,17 @@ public static class DomainErrorTranslator
             "No encontramos la plantilla de turno solicitada.",
         ShiftAssignmentNotFoundException =>
             "No encontramos el turno solicitado.",
+        InvalidLoyaltyMovementException invalidLoyalty => invalidLoyalty.Message,
+        LoyaltyReferenceAlreadyUsedException =>
+            "Ya existe un movimiento con esa referencia. Usa el número de compra o canje correcto.",
+        InvalidPqrsException invalidPqrs => invalidPqrs.Message,
+        PqrsNotFoundException =>
+            "No encontramos la solicitud PQRS solicitada.",
+        InvalidCampaignException invalidCampaign => invalidCampaign.Message,
+        DuplicateCampaignNameException =>
+            "Ya existe una campaña con ese nombre. Usa un nombre diferente.",
+        CampaignNotFoundException =>
+            "No encontramos la campaña solicitada.",
         Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException =>
             "Otro usuario modificó estos datos al mismo tiempo. Revisa los valores actuales e intenta de nuevo.",
         _ => UnexpectedMessage

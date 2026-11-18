@@ -223,6 +223,51 @@ anuladas aparecen en el detalle pero no suman al total vendido.
 La regla es explícita, está cubierta por pruebas y se presenta en pantalla como
 referencia académica, no como política comercial validada.
 
+## Puntos, PQRS y campañas
+
+| Ruta | Permiso de página | Función |
+| --- | --- | --- |
+| `/crm/puntos` | `crm.points.manage` | Saldo por cliente, libro de movimientos, acumulación y canje |
+| `/crm/pqrs` | `crm.pqrs.manage` | Listado de peticiones, quejas, reclamos y sugerencias |
+| `/crm/pqrs/{Id:int}` | `crm.pqrs.manage` | Detalle, toma en carga, respuesta y cierre |
+| `/crm/campanas` | `crm.campaigns.manage` | Listado de campañas, creación y cambios de estado |
+
+Los tres CSV (`/crm/puntos/export.csv`, `/crm/pqrs/export.csv` y
+`/crm/campanas/export.csv`) son endpoints mínimos con la misma política que la
+pantalla y usan el escritor seguro `CsvReport`, que neutraliza las fórmulas de
+hoja de cálculo.
+
+Reglas de negocio aplicadas en el dominio, los servicios y la base de datos:
+
+1. **Puntos.** El libro `loyalty_movement` es inmutable: cada acumulación o canje
+   es una fila con cliente, tienda, tipo, puntos, valor COP, referencia y fecha
+   UTC. El saldo y el valor canjeable se calculan desde el libro, nunca se
+   guardan. La tasa de acumulación la da `crm.points.cop_per_point` (1000 COP por
+   punto) y la de canje `crm.points.cop_per_redeemed_point` (500 COP por punto).
+   El índice único `(tipo, referencia)` impide contar dos veces la misma compra o
+   el mismo canje. El canje exige saldo suficiente; ambos importes deben ser
+   positivos y la referencia obligatoria.
+2. **PQRS.** El estado avanza solo hacia adelante: `Abierta → En curso →
+   Respondida → Cerrada`. La fecha límite se calcula en días hábiles con
+   `crm.pqrs.response_days` (15), omitiendo sábados y domingos; no se modelan
+   festivos. La respuesta conserva texto y fecha UTC. Las fechas de radicación y
+   límite se guardan como `date`, no como `datetime2`, y el listado se filtra por
+   estado y se pagina a 20 filas.
+3. **Campañas.** Recurso global sin alcance por tienda. El nombre es único, la
+   fecha de inicio no puede estar en el pasado y los detalles solo se editan en
+   borrador. Los estados son `Borrador`, `Activa`, `Pausada` y `Cerrada`: una
+   campaña activa puede pausarse y reanudarse (vuelve a `Activa`), y solo se
+   activa dentro de su vigencia. Canal, estado y segmento son enumeraciones fijas,
+   no texto libre.
+
+Puntos y PQRS aplican `CrmStoreScope`: el Gerente corporativo ve todas las
+tiendas, el Cajero y el Jefe de tienda solo la suya, con el código de negación
+`crm.store.scope`. El Administrador tiene alcance global en el servicio, pero no
+posee estos tres permisos por decisión de diseño; el detalle está en
+[permissions.md](permissions.md) y [pending-items.md](pending-items.md). Cada
+operación sensible escribe auditoría con módulo `crm`, usuario, IP y detalle, y
+comparte transacción con la escritura principal.
+
 ## Devoluciones y notas crédito
 
 | Ruta | Permiso de página | Función |

@@ -1,0 +1,261 @@
+@page "/crm/pqrs"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.CrmPqrsManage)]
+@inject PqrsService PqrsService
+@inject NavigationManager Navigation
+
+<PageTitle>PQRS · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="CRM"
+            Title="PQRS"
+            Subtitle="Peticiones, quejas, reclamos, sugerencias y denuncias con plazo de respuesta" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_customers is null)
+{
+    <p class="muted">Cargando las solicitudes…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Nueva solicitud</h2>
+                <p class="card-subtitle">El plazo de respuesta se calcula en días hábiles desde hoy.</p>
+            </div>
+        </div>
+        <div class="form-grid">
+            <label>
+                <span>Cliente</span>
+                <select @bind="_customerId">
+                    <option value="0">Selecciona un cliente</option>
+                    @foreach (var customer in _customers)
+                    {
+                        <option value="@customer.Id">@customer.FullName · @customer.DocumentNumber</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Tienda</span>
+                <select @bind="_storeId">
+                    <option value="0">Selecciona una tienda</option>
+                    @foreach (var store in _stores)
+                    {
+                        <option value="@store.Id">@store.Name</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Tipo</span>
+                <select @bind="_type">
+                    @foreach (var type in Types)
+                    {
+                        <option value="@((int)type)">@CrmText.PqrsLabel(type)</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Asunto</span>
+                <input type="text" maxlength="150" @bind="_subject" />
+            </label>
+            <label class="full-width">
+                <span>Descripción</span>
+                <textarea maxlength="4000" rows="3" @bind="_description"></textarea>
+            </label>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="button button-primary" @onclick="Create">
+                Registrar solicitud
+            </button>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Solicitudes registradas</h2>
+                <p class="card-subtitle">@Filtered.Count() de @_rows.Count solicitudes</p>
+            </div>
+            <div class="toolbar">
+                <select aria-label="Filtrar por estado" value="@_status" @onchange="OnStatusChanged">
+                    <option value="">Todos los estados</option>
+                    @foreach (var status in Statuses)
+                    {
+                        <option value="@((int)status)">@CrmText.PqrsStatusLabel(status)</option>
+                    }
+                </select>
+                <a class="button button-secondary button-small" href="/crm/pqrs/export.csv">
+                    Exportar CSV
+                </a>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Radicado</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Tipo</th>
+                        <th>Asunto</th>
+                        <th>Estado</th>
+                        <th>Fecha límite</th>
+                        <th>Tienda</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in PageItems)
+                    {
+                        <tr>
+                            <td>@row.Id</td>
+                            <td>@row.CreatedDate.ToString("yyyy-MM-dd")</td>
+                            <td>@row.CustomerName</td>
+                            <td>@CrmText.PqrsLabel(row.Type)</td>
+                            <td>@row.Subject</td>
+                            <td>
+                                <span class="badge @StatusTone(row.Status)">
+                                    @CrmText.PqrsStatusLabel(row.Status)
+                                </span>
+                                @if (row.IsOverdue)
+                                {
+                                    <span class="badge badge-error">Vencida</span>
+                                }
+                            </td>
+                            <td>@row.DueDate.ToString("yyyy-MM-dd")</td>
+                            <td>@row.StoreName</td>
+                            <td class="table-actions">
+                                <a class="button button-secondary button-small"
+                                   href="@($"/crm/pqrs/{row.Id}")">Ver</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_rows.Count > PageSize)
+        {
+            <div class="pager">
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_page == 1)" @onclick="PreviousPage">Anterior</button>
+                <span class="muted">Página @_page de @TotalPages</span>
+                <button type="button" class="button button-secondary button-small"
+                        disabled="@(_page == TotalPages)" @onclick="NextPage">Siguiente</button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private static readonly PqrsType[] Types =
+    [
+        PqrsType.Petition, PqrsType.Complaint, PqrsType.Claim,
+        PqrsType.Suggestion, PqrsType.Report
+    ];
+
+    private static readonly PqrsStatus[] Statuses =
+    [
+        PqrsStatus.Open, PqrsStatus.InProgress, PqrsStatus.Answered, PqrsStatus.Closed
+    ];
+
+    private IReadOnlyList<CustomerRow>? _customers;
+    private IReadOnlyList<WorkforceStoreOption> _stores = Array.Empty<WorkforceStoreOption>();
+    private IReadOnlyList<PqrsRow> _rows = Array.Empty<PqrsRow>();
+    private int _customerId;
+    private int _storeId;
+    private int _type = (int)PqrsType.Petition;
+    private string _subject = string.Empty;
+    private string _description = string.Empty;
+    private string _status = string.Empty;
+    private int _page = 1;
+    private string? _error;
+    private string? _success;
+
+    private IEnumerable<PqrsRow> Filtered => _rows;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(Filtered.Count() / (double)PageSize));
+
+    private IEnumerable<PqrsRow> PageItems =>
+        Filtered.Skip((_page - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _customers = PqrsService.Customers();
+            _stores = PqrsService.Stores();
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Load()
+    {
+        _error = null;
+        _rows = PqrsService.List(null, string.IsNullOrWhiteSpace(_status)
+            ? null
+            : (PqrsStatus)int.Parse(_status, System.Globalization.CultureInfo.InvariantCulture));
+        _page = 1;
+    }
+
+    private void Create()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            var id = PqrsService.Create(new PqrsCreateRequest(
+                _customerId,
+                _storeId,
+                (PqrsType)_type,
+                _subject,
+                _description));
+            _success = $"Solicitud {id} registrada correctamente.";
+            _subject = string.Empty;
+            _description = string.Empty;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void OnStatusChanged(ChangeEventArgs args)
+    {
+        _status = args.Value?.ToString() ?? string.Empty;
+        Load();
+    }
+
+    private void PreviousPage() { if (_page > 1) _page--; }
+    private void NextPage() { if (_page < TotalPages) _page++; }
+
+    private static string StatusTone(PqrsStatus status) => status switch
+    {
+        PqrsStatus.Answered or PqrsStatus.Closed => "badge-success",
+        PqrsStatus.InProgress => "badge-info",
+        _ => "badge-warning"
+    };
+}

@@ -24,7 +24,9 @@ Esta carpeta reúne la documentación de la entrega final, escrita sobre la rama
 - Panel: indicadores de ventas del día y órdenes de compra, filtrados por
   permiso.
 - Reportes: inventario, ventas y nómina, con exportación CSV.
-- CRM: segmentación A/B/C de clientes por volumen de compra.
+- CRM: segmentación A/B/C de clientes por volumen de compra, libro de puntos
+  con acumulación y canje, solicitudes PQRS con plazo en días hábiles y campañas
+  con vigencia y estados.
 - Facturación: exportación de un XML **simulado** de factura electrónica.
 - Seguridad: administración de tiendas y parámetros configurables con versiones,
   vigencia y auditoría.
