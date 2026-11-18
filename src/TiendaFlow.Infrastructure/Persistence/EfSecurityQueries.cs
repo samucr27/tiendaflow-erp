@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TiendaFlow.Application;
 using TiendaFlow.Application.Security;
 
 namespace TiendaFlow.Infrastructure.Persistence;
@@ -82,13 +83,58 @@ public sealed class EfAuditTrailQuery : IAuditTrailQuery
             .Take(take)
             .ToList();
 
+        return AuditRowResolver.ResolveRows(entries, _context);
+    }
+}
+
+/// <summary>
+/// Source for the aggregated security report. The cap keeps a long-lived audit
+/// table bounded; the newest rows win because they are the ones an operator
+/// needs when investigating an incident.
+/// </summary>
+public sealed class EfSecurityEventQuery : ISecurityEventQuery
+{
+    private const int MaxRows = 5000;
+
+    private readonly TiendaFlowDbContext _context;
+
+    public EfSecurityEventQuery(TiendaFlowDbContext context) => _context = context;
+
+    public IReadOnlyList<AuditTrailRow> InRange(DateTime fromUtc, DateTime toUtc)
+    {
+        var entries = _context.AuditEntries
+            .AsNoTracking()
+            .Where(entry => entry.Date >= fromUtc && entry.Date < toUtc)
+            .OrderByDescending(entry => entry.Date)
+            .ThenByDescending(entry => entry.Id)
+            .Take(MaxRows)
+            .ToList();
+
+        // The service orders the rows forward for display; the cap above keeps
+        // the newest instants, so reversing here preserves both behaviors.
+        entries.Reverse();
+
+        return AuditRowResolver.ResolveRows(entries, _context);
+    }
+}
+
+internal static class AuditRowResolver
+{
+    /// <summary>
+    /// Resolves display names in two batched queries instead of one query per
+    /// row, and is shared by the audit trail and the security report.
+    /// </summary>
+    internal static IReadOnlyList<AuditTrailRow> ResolveRows(
+        IReadOnlyList<AuditEntry> entries,
+        TiendaFlowDbContext context)
+    {
         var userIds = entries
             .Where(entry => entry.UserId is not null)
             .Select(entry => entry.UserId!.Value)
             .Distinct()
             .ToList();
 
-        var users = _context.AppUsers
+        var users = context.AppUsers
             .AsNoTracking()
             .Where(user => userIds.Contains(user.Id))
             .ToDictionary(user => user.Id);
@@ -99,7 +145,7 @@ public sealed class EfAuditTrailQuery : IAuditTrailQuery
             .Distinct()
             .ToList();
 
-        var employees = _context.Employees
+        var employees = context.Employees
             .AsNoTracking()
             .Where(employee => employeeIds.Contains(employee.Id))
             .ToDictionary(employee => employee.Id);

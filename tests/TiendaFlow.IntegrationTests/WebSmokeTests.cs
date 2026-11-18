@@ -278,6 +278,59 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         }
     }
 
+    [SqlServerFact]
+    public async Task SecurityReportCsvDownloadRequiresItsPermission()
+    {
+        await _factory.PrepareAsync();
+
+        // A dedicated host owns its own login rate limiter, so these sign-ins
+        // never consume the shared factory's attempts.
+        using var host = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("Security:LoginAttemptsPerMinute", "20"));
+
+        const string header = "Fecha,Hora,Evento,Modulo,Usuario,IP,Detalle";
+
+        using var allowed = host.CreateClient(
+            new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost"),
+                AllowAutoRedirect = true,
+                HandleCookies = true
+            });
+        await SignInAsync(
+            allowed,
+            new SeedAccount(RoleNames.Administrator, "admin@tiendaflow.local", _factory.AdminPassword));
+
+        using var response = await allowed.GetAsync("/seguridad/reportes/export.csv");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("text/csv", response.Content.Headers.ContentType?.MediaType ?? string.Empty);
+        Assert.Contains(header, content);
+
+        // A role without the policy is redirected before the service runs. Do
+        // not follow it: the CSV payload itself must never be served.
+        using var deniedClient = host.CreateClient(
+            new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost"),
+                AllowAutoRedirect = false,
+                HandleCookies = true
+            });
+        await SignInAsync(
+            deniedClient,
+            new SeedAccount(RoleNames.Cashier, "cajero@tiendaflow.local", _factory.DemoPassword),
+            followRedirect: false);
+
+        using var denied = await deniedClient.GetAsync("/seguridad/reportes/export.csv");
+
+        Assert.Equal(HttpStatusCode.Redirect, denied.StatusCode);
+        Assert.Contains(
+            "/acceso-denegado",
+            denied.Headers.Location?.OriginalString ?? string.Empty);
+        Assert.DoesNotContain(header, await denied.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
     private static async Task SignInAsync(
         HttpClient client,
         SeedAccount account,
@@ -380,6 +433,7 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute("/seguridad/usuarios/nuevo", Permissions.SecurityUsersManage),
             new SmokeRoute("/seguridad/roles", Permissions.SecurityRolesView),
             new SmokeRoute("/seguridad/auditoria", Permissions.SecurityAuditView),
+            new SmokeRoute("/seguridad/reportes", Permissions.SecurityReportsView),
             new SmokeRoute("/seguridad/parametros", Permissions.SecurityParametersManage),
             new SmokeRoute(
                 $"/seguridad/parametros/{Uri.EscapeDataString(parameterKey)}",

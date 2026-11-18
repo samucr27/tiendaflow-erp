@@ -22,6 +22,7 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261117044933_Phase12HrContracts` | Contratos laborales y adjuntos |
 | `20261118005708_Phase13HrAttendanceAndShifts` | Asistencia, novedades, plantillas de turno y asignaciones |
 | `20261118014039_Phase14CrmLoyaltyPqrsCampaigns` | Libro de puntos, solicitudes PQRS y campañas |
+| `20261118021007_Phase15SecurityReportIndexes` | Índice de fecha sobre `audit_log` para el reporte de seguridad |
 
 La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
 existía. Añade tres índices que sostienen las consultas de la pantalla y del
@@ -175,6 +176,14 @@ restringido. Los índices por cliente + fecha, fecha + tienda, estado + límite 
 tienda sostienen los listados filtrados y paginados. El sembrado usa las claves
 naturales `(tipo, referencia)`, `(cliente, asunto)` y nombre de campaña.
 
+`Phase15SecurityReportIndexes` no crea tablas: añade `IX_audit_log_logged_at`
+sobre `audit_log.logged_at`. El reporte de seguridad filtra ese rango y el índice
+evita recorrer toda la tabla de auditoría. La tabla y las columnas ya existían
+desde `Phase2Security`; la migración nueva no modifica las anteriores. La
+consulta está limitada a los 5000 eventos más recientes del rango para que la
+agregación no crezca sin límite; ese tope es una decisión documentada, no un
+límite de la base de datos.
+
 ## Generar una migración
 
 Se genera sin aplicarla:
@@ -269,11 +278,14 @@ El sembrado decide **por registro**, no por tabla, con una clave natural estable
 | Movimientos de puntos | Tipo + referencia |
 | Solicitudes PQRS | Cliente + asunto |
 | Campañas | Nombre |
+| Auditoría de seguridad | Detalle `SEED-` estable |
 
 Así, ejecutar la aplicación dos veces no duplica nada y una base sembrada por una
 versión anterior que perdió algunos registros recupera solo los que faltan. Las
 pruebas `SeedIdempotencyTests` ejecutan el seeder real dos veces y también borran
-filas de diez secciones para comprobar la reparación sin duplicados.
+filas de once secciones para comprobar la reparación sin duplicados. En auditoría
+solo se borra una fila `SEED-`: los eventos reales de inicio de sesión o rechazo
+no se tocan.
 
 - Si `Seed:Enabled` es `false` o no existe, el servicio no se registra y ninguna
   ruta crea datos de ejemplo.

@@ -41,6 +41,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleRepository, EfRoleRepository>();
         services.AddScoped<IUserDirectoryQuery, EfUserDirectoryQuery>();
         services.AddScoped<IAuditTrailQuery, EfAuditTrailQuery>();
+        services.AddScoped<ISecurityEventQuery, EfSecurityEventQuery>();
         services.AddScoped<IStoreDirectoryQuery, EfStoreDirectoryQuery>();
         services.AddScoped<IStoreUsageQuery, EfStoreUsageQuery>();
         services.AddScoped<ISystemParameterRepository, EfSystemParameterRepository>();
@@ -95,6 +96,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ParameterService>();
         services.AddScoped<IParameterValues, ParameterValues>();
         services.AddScoped<AuditTrailService>();
+        services.AddScoped<SecurityReportService>();
         services.AddScoped<RoleCatalogService>();
         services.AddScoped<AuthenticationService>();
         services.AddScoped<SupplierService>();

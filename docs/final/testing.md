@@ -4,7 +4,7 @@
 con .NET 9 en Windows y SQL Server 2022 en Docker.
 
 Esta página se actualiza al cerrar cada fase. La última fila de resultados
-corresponde a la fase de puntos, PQRS y campañas.
+corresponde a la fase de reportes de seguridad.
 
 ## Comandos
 
@@ -26,11 +26,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 806 | 0 | 0 | 806 |
+| `TiendaFlow.UnitTests` | 815 | 0 | 0 | 815 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 67 | 0 | 0 | 67 |
+| `TiendaFlow.IntegrationTests` | 70 | 0 | 0 | 70 |
 
-Total ejecutado: **879 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **891 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -42,8 +42,8 @@ contexto apunta a otra base. Sin esa variable las pruebas se omiten, pero en
 esta verificación se ejecutaron.
 
 **GitHub Actions ejecuta la suite sin SQL Server y sin
-`TIENDAFLOW_TEST_CONNECTION`.** En ese modo pasan 806 pruebas unitarias, 6 de
-aceptación y 2 de integración que no requieren base; las 65 restantes se omiten
+`TIENDAFLOW_TEST_CONNECTION`.** En ese modo pasan 815 pruebas unitarias, 6 de
+aceptación y 2 de integración que no requieren base; las 68 restantes se omiten
 por diseño. La ejecución completa contra SQL Server solo se realizó en el
 equipo local con el contenedor desechable indicado arriba.
 
@@ -60,10 +60,10 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 4752 | 4914 | **96,7 %** |
+| `TiendaFlow.Application` | 4832 | 4995 | **96,7 %** |
 | `TiendaFlow.Domain` | 1348 | 1437 | **93,8 %** |
-| Aplicación + dominio | 6100 | 6351 | **96,0 %** |
-| `TiendaFlow.Infrastructure` (con integración SQL) | 18356 | 18608 | **98,6 %** |
+| Aplicación + dominio | 6180 | 6432 | **96,1 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 20161 | 20417 | **98,7 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura de
 `TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
@@ -288,7 +288,7 @@ prueba que fallaba antes del cambio o que cubre la regla nueva.
 
 Cobertura de líneas de `TiendaFlow.Application` y `TiendaFlow.Domain` en la
 verificación de esta rama (unión de las tres suites, `coverlet.collector`):
-**96,0 %** (Application 96,7 %, Domain 93,8 %).
+**96,1 %** (Application 96,7 %, Domain 93,8 %).
 
 ## Alcance por tienda en inventario (PASS 1B)
 
@@ -420,6 +420,33 @@ caen en martes, quince días hábiles son más que quince días calendario, y el
 saldo canjeable usa la tarifa de punto canjeado. Ninguna corrección cambió el
 código de producción: las reglas ya estaban cubiertas y documentadas.
 
+## Reportes de seguridad (fase 9)
+
+La fase 9 cerró el reporte agregado de seguridad sobre la auditoría existente,
+sin crear tablas de negocio nuevas. La migración nueva
+(`Phase15SecurityReportIndexes`) solo añade el índice `IX_audit_log_logged_at`
+para el escaneo por rango de fechas.
+
+- `SecurityReportServiceTests`: denegación antes de consultar, conversión del
+  rango local a instantes UTC, rechazo de rango invertido, clasificación de los
+  seis KPI, agrupación por fecha local de Colombia (un evento a las 02:00 UTC
+  cuenta para el día anterior en tienda), orden por instante e identificador y
+  CSV con cabeceras en español y neutralización de fórmulas.
+- `SecurityReportIntegrationTests`: consulta EF real sobre `audit_log`, límite
+  superior exclusivo, resolución agrupada del nombre de usuario y presencia del
+  índice después de aplicar las migraciones. El rango se aísla en enero de 2020,
+  que ninguna otra prueba usa, para que los datos del fixture compartido no
+  alteren los conteos.
+- `FinalScreenAuthorizationTests` y `WebSmokeTests`: la ruta declara
+  `security.reports.view`, el menú la oculta sin el permiso, el CSV usa la misma
+  política, el Administrador descarga el archivo y un Cajero recibe la
+  redirección a acceso denegado sin el archivo. La prueba de CSV usa su propio
+  host para no agotar el límite de intentos de inicio de sesión compartido.
+- `SeedIdempotencyTests` incluye la auditoría como sección número once: el
+  sembrador no duplica los eventos `SEED-` en una segunda ejecución, recupera el
+  evento borrado y **no** elimina los eventos reales de inicio de sesión ni de
+  rechazo.
+
 ## Cómo reproducir la verificación
 
 ```powershell
@@ -430,7 +457,7 @@ dotnet test TiendaFlow.slnx -c Release --no-build --collect:"XPlat Code Coverage
 
 Sin `TIENDAFLOW_TEST_CONNECTION` el segundo y tercer comando reproducen el
 comportamiento de CI: pasan las pruebas unitarias, las de aceptación y dos de
-integración, y se omiten las 65 que necesitan SQL Server. Para reproducir la
+integración, y se omiten las 68 que necesitan SQL Server. Para reproducir la
 ejecución completa, define esa variable en el proceso con la cadena de tu
 contenedor de pruebas antes de ejecutar `dotnet test`; no escribas la contraseña
 en el repositorio.

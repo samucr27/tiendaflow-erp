@@ -1,0 +1,248 @@
+@page "/seguridad/reportes"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.SecurityReportsView)]
+@using TiendaFlow.Application
+@using TiendaFlow.Application.Security
+@inject SecurityReportService ReportService
+@inject NavigationManager Navigation
+
+<PageTitle>Reportes de seguridad · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Seguridad"
+            Title="Reportes de seguridad"
+            Subtitle="Accesos, rechazos y cambios de usuario a partir del registro de auditoría">
+    <Actions>
+        <a class="button button-primary" href="@ExportUrl">Exportar CSV</a>
+    </Actions>
+</PageHeader>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Rango del reporte</h2>
+            <p class="card-subtitle">
+                Las fechas se interpretan en la zona horaria de la tienda; los eventos se guardan en UTC.
+            </p>
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="field">
+            <label for="security-report-from">Desde</label>
+            <input id="security-report-from" class="input" type="date" @bind="_from" />
+        </div>
+        <div class="field">
+            <label for="security-report-to">Hasta</label>
+            <input id="security-report-to" class="input" type="date" @bind="_to" />
+        </div>
+        <div class="field">
+            <label>&nbsp;</label>
+            <button type="button" class="button button-secondary" @onclick="Load">Actualizar reporte</button>
+        </div>
+    </div>
+</section>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_report is null)
+{
+    <p class="muted">Cargando el reporte de seguridad…</p>
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Inicios de sesión" Value="@Format(_report.SuccessfulLogins)"
+                 Hint="Accesos correctos" Tone="ok" />
+        <KpiCard Label="Intentos fallidos" Value="@Format(_report.FailedLogins)"
+                 Hint="Correo o contraseña incorrectos" Tone="alert" />
+        <KpiCard Label="Accesos denegados" Value="@Format(_report.AccessDenials)"
+                 Hint="Funciones sin permiso" Tone="alert" />
+        <KpiCard Label="Cambios de usuario" Value="@Format(_report.UserChanges)"
+                 Hint="Altas, cambios, bajas y claves" Tone="primary" />
+        <KpiCard Label="Eventos registrados" Value="@Format(_report.TotalEvents)"
+                 Hint="@($"{_report.DistinctActors} usuarios identificados")" Tone="info" />
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Actividad por día</h2>
+                <p class="card-subtitle">@_report.Daily.Count días con actividad en el rango</p>
+            </div>
+        </div>
+        @if (_report.Daily.Count == 0)
+        {
+            <EmptyState Title="Sin actividad en el rango"
+                        Message="No hay eventos de auditoría entre las fechas seleccionadas." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th class="num">Correctos</th>
+                            <th class="num">Fallidos</th>
+                            <th class="num">Denegados</th>
+                            <th class="num">Cambios</th>
+                            <th class="num">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var day in DailyPage)
+                        {
+                            <tr>
+                                <td>@day.Date.ToString("dd/MM/yyyy")</td>
+                                <td class="num">@day.SuccessfulLogins</td>
+                                <td class="num">@day.FailedLogins</td>
+                                <td class="num">@day.AccessDenials</td>
+                                <td class="num">@day.UserChanges</td>
+                                <td class="num"><strong>@day.TotalEvents</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_report.Daily.Count > PageSize)
+            {
+                <div class="pager">
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_dailyPage == 1)" @onclick="PreviousDailyPage">Anterior</button>
+                    <span class="muted">Página @_dailyPage de @DailyTotalPages</span>
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_dailyPage == DailyTotalPages)" @onclick="NextDailyPage">Siguiente</button>
+                </div>
+            }
+        }
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Eventos registrados</h2>
+                <p class="card-subtitle">
+                    @_report.Events.Count eventos, del más reciente al más antiguo
+                </p>
+            </div>
+        </div>
+        @if (_report.Events.Count == 0)
+        {
+            <EmptyState Title="Sin eventos" Message="Todavía no hay movimientos de auditoría en este rango." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha y hora</th>
+                            <th>Evento</th>
+                            <th>Módulo</th>
+                            <th>Usuario</th>
+                            <th>IP</th>
+                            <th>Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in EventsPage)
+                        {
+                            <tr>
+                                <td>@Formatters.ShortDateTime(LocalTime.ToLocal(entry.Date))</td>
+                                <td>@entry.Action</td>
+                                <td>@entry.Module</td>
+                                <td>@(entry.UserName ?? "Sin usuario")</td>
+                                <td>@(entry.Ip ?? "—")</td>
+                                <td>@entry.Detail</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_report.Events.Count > PageSize)
+            {
+                <div class="pager">
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_eventsPage == 1)" @onclick="PreviousEventsPage">Anterior</button>
+                    <span class="muted">Página @_eventsPage de @EventsTotalPages</span>
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_eventsPage == EventsTotalPages)" @onclick="NextEventsPage">Siguiente</button>
+                </div>
+            }
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private DateTime _from;
+    private DateTime _to;
+    private SecurityReport? _report;
+    private string? _error;
+    private int _dailyPage = 1;
+    private int _eventsPage = 1;
+
+    private string ExportUrl =>
+        $"/seguridad/reportes/export.csv?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}";
+
+    private int DailyTotalPages =>
+        _report is null ? 1 : Math.Max(1, (int)Math.Ceiling(_report.Daily.Count / (double)PageSize));
+
+    private IEnumerable<SecurityDailyRow> DailyPage =>
+        _report is null
+            ? Array.Empty<SecurityDailyRow>()
+            : _report.Daily.Skip((_dailyPage - 1) * PageSize).Take(PageSize);
+
+    private int EventsTotalPages =>
+        _report is null ? 1 : Math.Max(1, (int)Math.Ceiling(_report.Events.Count / (double)PageSize));
+
+    private IEnumerable<AuditTrailRow> EventsPage =>
+        _report is null
+            ? Array.Empty<AuditTrailRow>()
+            : _report.Events.Reverse().Skip((_eventsPage - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized()
+    {
+        var today = LocalTime.ToLocal(DateTime.UtcNow).Date;
+        _from = new DateTime(today.Year, today.Month, 1);
+        _to = today;
+        Load();
+    }
+
+    private void Load()
+    {
+        _error = null;
+
+        if (_from.Date > _to.Date)
+        {
+            _error = "La fecha inicial no puede ser posterior a la fecha final.";
+            return;
+        }
+
+        try
+        {
+            _report = ReportService.Get(
+                DateOnly.FromDateTime(_from),
+                DateOnly.FromDateTime(_to));
+            _dailyPage = 1;
+            _eventsPage = 1;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private static string Format(int value) => value.ToString("N0", new System.Globalization.CultureInfo("es-CO"));
+
+    private void PreviousDailyPage() { if (_dailyPage > 1) _dailyPage--; }
+    private void NextDailyPage() { if (_dailyPage < DailyTotalPages) _dailyPage++; }
+    private void PreviousEventsPage() { if (_eventsPage > 1) _eventsPage--; }
+    private void NextEventsPage() { if (_eventsPage < EventsTotalPages) _eventsPage++; }
+}

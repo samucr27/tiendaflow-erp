@@ -132,6 +132,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedSalesReturnsAsync(context, cancellationToken);
         await SeedInventoryCountsAsync(context, cancellationToken);
         await SeedInventoryTransfersAsync(context, cancellationToken);
+        await SeedSecurityAuditAsync(context, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -1370,6 +1371,72 @@ public sealed class DevDataSeeder : IHostedService
             ',',
             skus.OrderBy(sku => sku, StringComparer.Ordinal))}";
 
+    /// <summary>
+    /// Demo audit events so the security report opens with data. Each row is
+    /// identified by a stable SEED- detail value, the same natural key used by
+    /// the other sections: a second run adds nothing and a database missing one
+    /// event gets only that event back. Timestamps are built from the current
+    /// Colombian date at fixed hours and stored as UTC; the report groups them
+    /// back into local business days. The event mix exercises every KPI.
+    /// </summary>
+    private static async Task SeedSecurityAuditAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var users = await context.AppUsers
+            .AsNoTracking()
+            .ToDictionaryAsync(user => user.Email, cancellationToken);
+
+        int? UserId(string email) =>
+            users.TryGetValue(email, out var user) ? user.Id : null;
+
+        var today = DateOnly.FromDateTime(LocalTime.ToLocal(DateTime.UtcNow));
+        var firstOfMonth = new DateOnly(today.Year, today.Month, 1);
+
+        DateOnly Day(int daysAgo)
+        {
+            var candidate = today.AddDays(-daysAgo);
+            return candidate < firstOfMonth ? firstOfMonth : candidate;
+        }
+
+        DateTime At(int daysAgo, int hour) =>
+            LocalTime.ToUtc(Day(daysAgo)).AddHours(hour);
+
+        var events = new[]
+        {
+            new SeedAudit(SecurityAuditActions.LoginSucceeded, "login", "SEED-login-admin", UserId("admin@tiendaflow.local"), 0, 8),
+            new SeedAudit(SecurityAuditActions.LoginSucceeded, "login", "SEED-login-gerente", UserId("gerente@tiendaflow.local"), 0, 9),
+            new SeedAudit(SecurityAuditActions.LoginSucceeded, "login", "SEED-login-cajero", UserId("cajero@tiendaflow.local"), 1, 8),
+            new SeedAudit(SecurityAuditActions.LoginFailed, "login", "SEED-login-failed", null, 0, 7),
+            new SeedAudit(SecurityAuditActions.AccessDenied, "crm.pqrs.manage", "SEED-denied-cajero", UserId("cajero@tiendaflow.local"), 1, 10),
+            new SeedAudit("UserCreated", "user", "SEED-user-created", UserId("admin@tiendaflow.local"), 1, 11),
+            new SeedAudit("UserUpdated", "user", "SEED-user-updated", UserId("admin@tiendaflow.local"), 0, 14),
+            new SeedAudit("UserDeactivated", "user", "SEED-user-deactivated", UserId("admin@tiendaflow.local"), 2, 15),
+            new SeedAudit("PasswordReset", "user", "SEED-password-reset", UserId("admin@tiendaflow.local"), 0, 16)
+        };
+
+        foreach (var seed in events)
+        {
+            if (await context.AuditEntries.AnyAsync(
+                    entry => entry.Detail == seed.Detail,
+                    cancellationToken))
+            {
+                continue;
+            }
+
+            context.AuditEntries.Add(new AuditEntry(
+                seed.Action,
+                seed.EntityId,
+                seed.Detail,
+                seed.UserId,
+                At(seed.DaysAgo, seed.Hour),
+                module: "security",
+                ip: "127.0.0.1"));
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     private sealed record SeedStore(int Id, string Name, string Address);
 
     private sealed record SeedEmployee(
@@ -1444,4 +1511,12 @@ public sealed class DevDataSeeder : IHostedService
         string Email,
         string RoleName,
         string Password);
+
+    private sealed record SeedAudit(
+        string Action,
+        string EntityId,
+        string Detail,
+        int? UserId,
+        int DaysAgo,
+        int Hour);
 }

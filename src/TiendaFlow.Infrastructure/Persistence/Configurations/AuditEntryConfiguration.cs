@@ -50,6 +50,11 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
                 value => UtcDateTimeConverter.ToUtc(value),
                 value => UtcDateTimeConverter.FromUtc(value));
 
+        // The security report scans a date range of the audit log; without an
+        // index the aggregated counts degrade into a full table scan.
+        builder.HasIndex(entry => entry.Date)
+            .HasDatabaseName("IX_audit_log_logged_at");
+
         builder.HasOne<Domain.AppUser>()
             .WithMany()
             .HasForeignKey(entry => entry.UserId)

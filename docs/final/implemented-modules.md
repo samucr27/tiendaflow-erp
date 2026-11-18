@@ -408,6 +408,30 @@ La lista de facturas ofrece **XML simulado** para facturas emitidas. La ruta
 la única implementación es `SimulatedElectronicInvoiceGateway`. No hay CUFE,
 firma certificada, transmisión ni almacenamiento del documento.
 
+## Seguridad: reportes
+
+| Ruta | Permiso de página | Función |
+| --- | --- | --- |
+| `/seguridad/reportes` | `security.reports.view` | KPI de accesos, rechazos y cambios de usuario por día local |
+| `/seguridad/reportes/export.csv` | `security.reports.view` | Descarga de los eventos del rango en CSV |
+
+Los seis KPI se derivan de `audit_log`: inicios de sesión correctos
+(`LoginSucceeded`), fallidos (`LoginFailed`), accesos denegados (`AccessDenied`),
+cambios de usuario (`UserCreated`, `UserUpdated`, `UserDeactivated`,
+`PasswordReset`), total de eventos y usuarios identificados distintos. No hay
+tablas nuevas: la única migración de la fase añade el índice
+`IX_audit_log_logged_at` sobre la columna de fecha.
+
+El rango se elige en fechas locales de Colombia; los eventos se guardan en UTC y
+se agrupan por fecha local, de modo que un evento de las 02:00 UTC del día
+siguiente cuenta para la noche anterior en la tienda. El listado y el detalle se
+paginan a 20 filas y el CSV usa el escritor seguro `CsvReport`, que neutraliza
+fórmulas de hoja de cálculo. La consulta se limita a los 5000 eventos más
+recientes del rango; esa limitación se documenta en
+[pending-items.md](pending-items.md). La página y el CSV comprueban el permiso en
+tres capas: directiva de la página, enlace del menú y `IAccessControl.Demand`
+en `SecurityReportService`.
+
 ## Infraestructura y operación
 
 - Terraform crea App Service Linux B1, Azure SQL Basic, firewall y nombres
@@ -433,3 +457,14 @@ firma certificada, transmisión ni almacenamiento del documento.
 | `f0d8a50` | Ranking y evaluación de proveedores |
 | `700034d` | Segmentación A/B/C de clientes |
 | `40e77ea` | Exportación de factura electrónica simulada |
+| `20e6636` | Devoluciones y notas crédito |
+| `f7c76d7` | Alcance por tienda en conteos y traslados |
+| `009cd85` | Sembrado idempotente por registro |
+| `66882d6` | Contratos laborales con prórrogas y adjuntos |
+| `39e3d78` | Pruebas independientes del sistema operativo y sin SQL |
+| `2c70ccd` | Asistencia y turnos |
+| `10b33b7` | Puntos, PQRS y campañas |
+
+El commit de reportes de seguridad se incluye en el informe final, porque se
+crea después de cerrar esta documentación. La lista completa y su orden están en
+`git log --oneline feature/erp-complete`.

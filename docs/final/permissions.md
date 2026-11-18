@@ -21,7 +21,7 @@ las tres capas y no depende de que el enlace esté oculto.
 | Seguridad: auditoría | `security.audit.view` | — |
 | Seguridad: tiendas | `security.stores.view` | `security.stores.manage` |
 | Seguridad: parámetros | `security.parameters.manage` | `security.parameters.manage` |
-| Seguridad: reportes | `security.reports.view` (declarado, sin pantalla) | — |
+| Seguridad: reportes | `security.reports.view` | — |
 | Inventario: productos y precios | `inventory.products.view` | `inventory.products.manage`, `inventory.price.change` |
 | Inventario: stock | `inventory.stock.view` | `inventory.stock.receive`, `inventory.stock.transfer`, `inventory.stock.count` |
 | Inventario: alertas y reportes | `inventory.alerts.view`, `inventory.reports.view` | — |
@@ -213,6 +213,25 @@ Las tres capas se cumplen: las páginas declaran
 vuelven a exigir el permiso con `IAccessControl.Demand(...)` antes de tocar un
 repositorio. Los CSV son endpoints mínimos con la misma política y usan el
 escritor seguro `CsvReport`.
+
+## Cambios en la matriz por los reportes de seguridad
+
+La fase 9 no creó permisos: `security.reports.view` ya estaba declarado y
+asignado al Administrador y al Gerente corporativo. La pantalla
+`/seguridad/reportes` y el CSV `/seguridad/reportes/export.csv` comparten esa
+política, y `SecurityReportService` la vuelve a exigir con
+`IAccessControl.Demand(...)` antes de consultar `audit_log`. El menú solo muestra
+el enlace cuando `AccessControl.Has(...)` devuelve verdadero.
+
+| Ruta o acción | Permiso | Roles |
+| --- | --- | --- |
+| `/seguridad/reportes` y `/seguridad/reportes/export.csv` | `security.reports.view` | Administrador, Gerente corporativo |
+
+A diferencia de inventario, RR. HH. y CRM, este reporte no tiene alcance por
+tienda: resume la auditoría de toda la organización. Por eso el Gerente
+corporativo puede verlo, mientras que el Jefe de tienda y el Cajero no. La
+consulta se limita a 5000 eventos, como se explica en
+[pending-items.md](pending-items.md).
 
 ## Alcance por tienda
 

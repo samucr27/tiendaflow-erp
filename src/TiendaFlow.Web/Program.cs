@@ -252,6 +252,7 @@ app.MapReportEndpoints();
 app.MapContractEndpoints();
 app.MapWorkforceEndpoints();
 app.MapCrmEndpoints();
+app.MapSecurityEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

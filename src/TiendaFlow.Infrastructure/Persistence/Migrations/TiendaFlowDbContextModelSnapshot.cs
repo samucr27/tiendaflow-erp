@@ -70,6 +70,9 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Date")
+                        .HasDatabaseName("IX_audit_log_logged_at");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("audit_log", (string)null);

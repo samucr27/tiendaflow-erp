@@ -303,6 +303,42 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("app.MapCrmEndpoints();", program);
     }
 
+    [Fact]
+    public void SecurityReportRouteDeclaresThePolicyOfTheMatrix()
+    {
+        var source = ReadPage("Seguridad/Reportes.razor");
+
+        Assert.Contains("@page \"/seguridad/reportes\"", source);
+        Assert.Contains(
+            "@attribute [Authorize(Policy = Permissions.SecurityReportsView)]",
+            source);
+    }
+
+    [Fact]
+    public void MenuShowsSecurityReportsOnlyWithItsOwnPermission()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"seguridad/reportes\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.SecurityReportsView)", menu);
+    }
+
+    [Fact]
+    public void SecurityReportCsvEndpointRequiresTheSamePermissionAsItsPage()
+    {
+        var endpoints = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Endpoints", "SecurityEndpoints.cs"));
+        var program = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Program.cs"));
+
+        Assert.Contains("\"/seguridad/reportes/export.csv\"", endpoints);
+        Assert.Contains("RequireAuthorization(Permissions.SecurityReportsView)", endpoints);
+        Assert.Contains("CsvReport.Build", File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Application", "Security", "SecurityReport.cs")));
+        Assert.Contains("app.MapSecurityEndpoints();", program);
+    }
+
     private static string ReadPage(string file) =>
         File.ReadAllText(Path.Combine(
             RepoRoot, "src", "TiendaFlow.Web", "Components", "Pages", file));

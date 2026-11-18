@@ -21,7 +21,6 @@ continuación se documentan con el permiso que las reserva.
 
 | Área | Permiso reservado | Qué falta | Por qué queda pendiente | Siguiente paso sugerido |
 | --- | --- | --- | --- | --- |
-| Seguridad | `security.reports.view` | Reportes de seguridad | La auditoría ya es consultable en `/seguridad/auditoria`; no hay reportes agregados | Agregar conteos de accesos, cambios de usuario y exportación CSV |
 | Seguridad | `security.roles.manage` | Edición de roles desde la interfaz | La matriz es código de solo lectura por decisión de diseño | Solo si la organización exige cambio en caliente, con aprobación de dos personas y auditoría |
 | Ventas | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
 
@@ -84,6 +83,10 @@ servicios.
   PQRS con estados y plazo en días hábiles, y campañas con vigencia y estados.
   Cada módulo tiene pantalla, permiso, CSV y auditoría; la migración es propia y
   no se editaron las anteriores.
+- **Reportes de seguridad:** `/seguridad/reportes` agrega los eventos de
+  `audit_log` por día local, muestra los seis KPI y exporta CSV con la misma
+  política `security.reports.view`. No añade tablas de negocio; su migración
+  solo crea el índice de fecha.
 
 Queda pendiente un proceso, no código: los pull requests deben tener una
 revisión registrada en GitHub por otro integrante antes de fusionarse, como
@@ -105,6 +108,13 @@ exige la Definition of Done.
 - **Plazo de PQRS:** se calcula en días hábiles omitiendo sábados y domingos. No
   se modelan días festivos ni calendario laboral por país, así que el vencimiento
   puede caer en un festivo. Para uso real haría falta una tabla de festivos.
+- **Reporte de seguridad:** los KPI provienen de los eventos `LoginSucceeded`,
+  `LoginFailed`, `AccessDenied` y los cuatro de cambios de usuario; cualquier
+  otra acción cuenta solo en el total. El rango se interpreta en hora de
+  Colombia y los eventos UTC se agrupan por fecha local. Se consultan como mucho
+  los **5000 eventos más recientes** del rango: en una auditoría mayor el reporte
+  sería parcial, por lo que no debe presentarse como un conteo forense completo.
+  Es un reporte académico de apoyo, no un sistema de detección de intrusiones.
 - **Nómina:** los parámetros son referencias académicas y están documentados en
   `docs/sprint2/payroll-parameters-validation.md`. El sistema calcula la
   corrida, pero no reemplaza una liquidación laboral certificada.
