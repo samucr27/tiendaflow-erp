@@ -464,7 +464,6 @@ en `SecurityReportService`.
 | `39e3d78` | Pruebas independientes del sistema operativo y sin SQL |
 | `2c70ccd` | Asistencia y turnos |
 | `10b33b7` | Puntos, PQRS y campañas |
+| `392e3f3` | Reportes de seguridad |
 
-El commit de reportes de seguridad se incluye en el informe final, porque se
-crea después de cerrar esta documentación. La lista completa y su orden están en
-`git log --oneline feature/erp-complete`.
+La lista completa y su orden están en `git log --oneline feature/erp-complete`.

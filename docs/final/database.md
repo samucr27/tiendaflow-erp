@@ -251,9 +251,9 @@ ejecutable `efbundle.exe` no se commitea.
 `DevDataSeeder` crea las tiendas, los siete roles, un usuario por rol, empleados,
 productos, existencias, proveedores, clientes, órdenes, facturas, devoluciones,
 conteos, traslados, contratos, turnos, asistencia, movimientos de puntos,
-solicitudes PQRS y campañas de demostración. Se registra siempre que
-`Seed:Enabled` sea `true`, **sin importar el entorno**; no está condicionado a
-`Development`.
+solicitudes PQRS, campañas y eventos de auditoría de seguridad de demostración.
+Se registra siempre que `Seed:Enabled` sea `true`, **sin importar el entorno**;
+no está condicionado a `Development`.
 
 El sembrado decide **por registro**, no por tabla, con una clave natural estable:
 
