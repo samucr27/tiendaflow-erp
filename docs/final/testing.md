@@ -26,11 +26,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 815 | 0 | 0 | 815 |
+| `TiendaFlow.UnitTests` | 824 | 0 | 0 | 824 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 70 | 0 | 0 | 70 |
+| `TiendaFlow.IntegrationTests` | 71 | 0 | 0 | 71 |
 
-Total ejecutado: **891 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **901 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -42,8 +42,8 @@ contexto apunta a otra base. Sin esa variable las pruebas se omiten, pero en
 esta verificación se ejecutaron.
 
 **GitHub Actions ejecuta la suite sin SQL Server y sin
-`TIENDAFLOW_TEST_CONNECTION`.** En ese modo pasan 815 pruebas unitarias, 6 de
-aceptación y 2 de integración que no requieren base; las 68 restantes se omiten
+`TIENDAFLOW_TEST_CONNECTION`.** En ese modo pasan 824 pruebas unitarias, 6 de
+aceptación y 2 de integración que no requieren base; las 69 restantes se omiten
 por diseño. La ejecución completa contra SQL Server solo se realizó en el
 equipo local con el contenedor desechable indicado arriba.
 
@@ -60,10 +60,10 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 4832 | 4995 | **96,7 %** |
+| `TiendaFlow.Application` | 4847 | 5011 | **96,7 %** |
 | `TiendaFlow.Domain` | 1348 | 1437 | **93,8 %** |
-| Aplicación + dominio | 6180 | 6432 | **96,1 %** |
-| `TiendaFlow.Infrastructure` (con integración SQL) | 20161 | 20417 | **98,7 %** |
+| Aplicación + dominio | 6195 | 6448 | **96,1 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 20164 | 20420 | **98,7 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura de
 `TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
@@ -432,11 +432,19 @@ para el escaneo por rango de fechas.
   seis KPI, agrupación por fecha local de Colombia (un evento a las 02:00 UTC
   cuenta para el día anterior en tienda), orden por instante e identificador y
   CSV con cabeceras en español y neutralización de fórmulas.
+- **Aviso de truncamiento:** `SecurityEventWindow.SplitProbe` se prueba con 0,
+  1, 4999 y 5000 filas de sonda (sin aviso) y con 5001 y 6000 (con aviso y
+  recorte a 5000). Dos pruebas más comprueban que el indicador llega al DTO y
+  que el CSV incluye el aviso como primera fila solo cuando el reporte está
+  truncado. `FinalScreenAuthorizationTests` comprueba que la página muestra el
+  aviso con `alert-warning`.
 - `SecurityReportIntegrationTests`: consulta EF real sobre `audit_log`, límite
   superior exclusivo, resolución agrupada del nombre de usuario y presencia del
   índice después de aplicar las migraciones. El rango se aísla en enero de 2020,
   que ninguna otra prueba usa, para que los datos del fixture compartido no
-  alteren los conteos.
+  alteren los conteos. Una prueba adicional inserta 5001 eventos en marzo de 2019
+  y confirma contra SQL Server que se conservan los 5000 más recientes, se
+  descarta el más antiguo, `Truncated` es verdadero y el CSV incluye el aviso.
 - `FinalScreenAuthorizationTests` y `WebSmokeTests`: la ruta declara
   `security.reports.view`, el menú la oculta sin el permiso, el CSV usa la misma
   política, el Administrador descarga el archivo y un Cajero recibe la

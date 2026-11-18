@@ -45,37 +45,88 @@ public sealed record SecurityReport(
     int TotalEvents,
     int DistinctActors,
     IReadOnlyList<SecurityDailyRow> Daily,
-    IReadOnlyList<AuditTrailRow> Events)
+    IReadOnlyList<AuditTrailRow> Events,
+    bool Truncated)
 {
-    public string ToCsv() =>
-        CsvReport.Build(
-            ["Fecha", "Hora", "Evento", "Modulo", "Usuario", "IP", "Detalle"],
-            Events.Select(entry =>
-            {
-                var local = LocalTime.ToLocal(entry.Date);
+    /// <summary>
+    /// Shared by the page and the CSV so a partial report is never mistaken for
+    /// a complete count. The number matches <see cref="SecurityEventWindow.MaxEvents"/>.
+    /// </summary>
+    public const string TruncationNotice =
+        "Mostrando los 5.000 eventos más recientes del rango seleccionado. Acota el rango de fechas para ver el detalle completo.";
 
-                return new[]
-                {
-                    local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    local.ToString("HH:mm", CultureInfo.InvariantCulture),
-                    entry.Action,
-                    entry.Module,
-                    entry.UserName ?? string.Empty,
-                    entry.Ip ?? string.Empty,
-                    entry.Detail
-                };
-            }));
+    public string ToCsv()
+    {
+        var rows = new List<IReadOnlyList<string>>();
+
+        if (Truncated)
+            rows.Add([TruncationNotice]);
+
+        rows.AddRange(Events.Select(entry =>
+        {
+            var local = LocalTime.ToLocal(entry.Date);
+
+            return new[]
+            {
+                local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                local.ToString("HH:mm", CultureInfo.InvariantCulture),
+                entry.Action,
+                entry.Module,
+                entry.UserName ?? string.Empty,
+                entry.Ip ?? string.Empty,
+                entry.Detail
+            };
+        }));
+
+        return CsvReport.Build(
+            ["Fecha", "Hora", "Evento", "Modulo", "Usuario", "IP", "Detalle"],
+            rows);
+    }
 }
 
 /// <summary>
-/// Read side of the security report. It returns audit rows already ordered by
-/// instant and capped, so a long-lived audit table cannot exhaust memory. The
-/// date range is expressed in UTC instants; grouping into business days happens
-/// in the application layer where the Colombian time zone is known.
+/// Result of a capped audit query. Implementations fetch one probe row beyond
+/// the limit and call <see cref="SplitProbe"/> to learn whether the range was
+/// truncated, avoiding a separate COUNT over the whole audit log.
+/// </summary>
+public sealed record SecurityEventWindow(
+    IReadOnlyList<AuditTrailRow> Events,
+    bool Truncated)
+{
+    public const int MaxEvents = 5000;
+
+    /// <summary>
+    /// Splits a probe result already ordered newest first. When the extra row is
+    /// present it is discarded, so the caller keeps exactly the newest
+    /// <paramref name="maxEvents"/> rows and can flag the report as partial.
+    /// </summary>
+    public static (IReadOnlyList<T> Kept, bool Truncated) SplitProbe<T>(
+        IReadOnlyList<T> newestFirst,
+        int maxEvents = MaxEvents)
+    {
+        ArgumentNullException.ThrowIfNull(newestFirst);
+
+        if (maxEvents < 0)
+            throw new ArgumentOutOfRangeException(nameof(maxEvents));
+
+        var truncated = newestFirst.Count > maxEvents;
+
+        return (
+            truncated ? newestFirst.Take(maxEvents).ToArray() : newestFirst.ToArray(),
+            truncated);
+    }
+}
+
+/// <summary>
+/// Read side of the security report. It returns at most
+/// <see cref="SecurityEventWindow.MaxEvents"/> audit rows, plus a flag that says
+/// whether the range held more. The date range is expressed in UTC instants;
+/// grouping into business days happens in the application layer where the
+/// Colombian time zone is known.
 /// </summary>
 public interface ISecurityEventQuery
 {
-    IReadOnlyList<AuditTrailRow> InRange(DateTime fromUtc, DateTime toUtc);
+    SecurityEventWindow InRange(DateTime fromUtc, DateTime toUtc);
 }
 
 public sealed class SecurityReportService
@@ -96,8 +147,9 @@ public sealed class SecurityReportService
         if (from > to)
             throw new ArgumentException("The start date cannot be after the end date.");
 
-        var events = _query
-            .InRange(LocalTime.ToUtc(from), LocalTime.ToUtc(to.AddDays(1)))
+        var window = _query.InRange(LocalTime.ToUtc(from), LocalTime.ToUtc(to.AddDays(1)));
+
+        var events = window.Events
             .OrderBy(entry => entry.Date)
             .ThenBy(entry => entry.Id)
             .ToList();
@@ -128,6 +180,7 @@ public sealed class SecurityReportService
                 .Distinct()
                 .Count(),
             daily,
-            events);
+            events,
+            window.Truncated);
     }
 }

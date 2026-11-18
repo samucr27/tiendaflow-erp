@@ -315,6 +315,16 @@ public class FinalScreenAuthorizationTests
     }
 
     [Fact]
+    public void SecurityReportPageShowsTheTruncationNotice()
+    {
+        var source = ReadPage("Seguridad/Reportes.razor");
+
+        Assert.Contains("_report.Truncated", source);
+        Assert.Contains("alert alert-warning", source);
+        Assert.Contains("@SecurityReport.TruncationNotice", source);
+    }
+
+    [Fact]
     public void MenuShowsSecurityReportsOnlyWithItsOwnPermission()
     {
         var menu = File.ReadAllText(Path.Combine(

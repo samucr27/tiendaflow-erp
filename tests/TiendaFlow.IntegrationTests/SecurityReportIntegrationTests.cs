@@ -65,6 +65,44 @@ public class SecurityReportIntegrationTests : IClassFixture<SqlServerDatabaseFix
     }
 
     [SqlServerFact]
+    public async Task RangeAboveTheCapIsFlaggedAndKeepsTheNewestEvents()
+    {
+        await using var context = _database.CreateContext();
+        var rangeDay = new DateOnly(2019, 3, 4);
+        var tag = Guid.NewGuid().ToString("N");
+        var firstInstant = LocalTime.ToUtc(rangeDay).AddHours(8);
+
+        // One probe row beyond the cap. Inserting more than 5000 rows is the
+        // only way to verify that EF asks for limit + 1 and that the service
+        // reports a partial range without a separate COUNT query.
+        var batch = Enumerable.Range(0, SecurityEventWindow.MaxEvents + 1)
+            .Select(index => new AuditEntry(
+                SecurityAuditActions.LoginSucceeded,
+                "integration",
+                $"SEED-{tag}-{index:D5}",
+                null,
+                firstInstant.AddSeconds(index),
+                module: "security",
+                ip: "127.0.0.1"))
+            .ToList();
+        context.AuditEntries.AddRange(batch);
+        await context.SaveChangesAsync();
+
+        var service = new SecurityReportService(
+            new EfSecurityEventQuery(context),
+            new AllowAllAccessControl());
+
+        var report = service.Get(rangeDay, rangeDay);
+        var details = report.Events.Select(entry => entry.Detail).ToHashSet(StringComparer.Ordinal);
+
+        Assert.True(report.Truncated);
+        Assert.Equal(SecurityEventWindow.MaxEvents, report.Events.Count);
+        Assert.Contains($"SEED-{tag}-{SecurityEventWindow.MaxEvents:D5}", details);
+        Assert.DoesNotContain($"SEED-{tag}-00000", details);
+        Assert.Contains(SecurityReport.TruncationNotice, report.ToCsv());
+    }
+
+    [SqlServerFact]
     public async Task SecurityReportIndexIsPresentAfterMigration()
     {
         await using var context = _database.CreateContext();

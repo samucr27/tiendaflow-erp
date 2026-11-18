@@ -33,7 +33,7 @@ public class SecurityReportServiceTests
         var query = new Mock<ISecurityEventQuery>();
         query
             .Setup(source => source.InRange(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
-            .Returns(Array.Empty<AuditTrailRow>());
+            .Returns(new SecurityEventWindow(Array.Empty<AuditTrailRow>(), Truncated: false));
 
         var service = new SecurityReportService(query.Object, AllowAll);
         service.Get(Day, Day);
@@ -132,6 +132,87 @@ public class SecurityReportServiceTests
 
         Assert.Contains("Fecha,Hora,Evento,Modulo,Usuario,IP,Detalle\r\n", csv);
         Assert.Contains("2026-11-10,09:00,AccessDenied,security,Ana,10.0.0.1,'=1+1", csv);
+        Assert.DoesNotContain(SecurityReport.TruncationNotice, csv);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(SecurityEventWindow.MaxEvents - 1)]
+    public void ProbeAtOrBelowTheCapKeepsEveryRowWithoutATruncationFlag(int count)
+    {
+        var probe = Enumerable.Range(1, count).ToArray();
+
+        var (kept, truncated) = SecurityEventWindow.SplitProbe(probe);
+
+        Assert.False(truncated);
+        Assert.Equal(probe, kept);
+    }
+
+    [Fact]
+    public void ProbeWithExactlyTheCapIsNotTruncated()
+    {
+        var probe = Enumerable.Range(1, SecurityEventWindow.MaxEvents).ToArray();
+
+        var (kept, truncated) = SecurityEventWindow.SplitProbe(probe);
+
+        Assert.False(truncated);
+        Assert.Equal(SecurityEventWindow.MaxEvents, kept.Count);
+        Assert.Equal(probe, kept);
+    }
+
+    [Theory]
+    [InlineData(SecurityEventWindow.MaxEvents + 1)]
+    [InlineData(SecurityEventWindow.MaxEvents + 1000)]
+    public void ProbeAboveTheCapDiscardsTheExtraRowAndFlagsTruncation(int count)
+    {
+        var probe = Enumerable.Range(1, count).ToArray();
+
+        var (kept, truncated) = SecurityEventWindow.SplitProbe(probe);
+
+        Assert.True(truncated);
+        Assert.Equal(SecurityEventWindow.MaxEvents, kept.Count);
+        Assert.Equal(probe.Take(SecurityEventWindow.MaxEvents), kept);
+        Assert.DoesNotContain(count, kept);
+    }
+
+    [Fact]
+    public void TruncatedWindowIsCarriedIntoTheReportAndTheCsv()
+    {
+        var events = new[] { Row(1, SecurityAuditActions.LoginSucceeded, 1, LocalTime.ToUtc(Day).AddHours(8)) };
+        var query = new Mock<ISecurityEventQuery>();
+        query
+            .Setup(source => source.InRange(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .Returns(new SecurityEventWindow(events, Truncated: true));
+        var service = new SecurityReportService(query.Object, AllowAll);
+
+        var report = service.Get(Day, Day);
+
+        Assert.True(report.Truncated);
+        Assert.Single(report.Events);
+
+        var csv = report.ToCsv();
+        var lines = csv.Split("\r\n", StringSplitOptions.None);
+
+        Assert.Equal("Fecha,Hora,Evento,Modulo,Usuario,IP,Detalle", lines[0]);
+        Assert.Equal(SecurityReport.TruncationNotice, lines[1]);
+        Assert.Equal(1, csv.Split(SecurityReport.TruncationNotice).Length - 1);
+    }
+
+    [Fact]
+    public void NonTruncatedWindowHasNoCsvNotice()
+    {
+        var events = new[] { Row(1, SecurityAuditActions.LoginSucceeded, 1, LocalTime.ToUtc(Day).AddHours(8)) };
+        var query = new Mock<ISecurityEventQuery>();
+        query
+            .Setup(source => source.InRange(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .Returns(new SecurityEventWindow(events, Truncated: false));
+        var service = new SecurityReportService(query.Object, AllowAll);
+
+        var report = service.Get(Day, Day);
+
+        Assert.False(report.Truncated);
+        Assert.DoesNotContain(SecurityReport.TruncationNotice, report.ToCsv());
     }
 
     private static SecurityReportService CreateService(IReadOnlyList<AuditTrailRow> events)
@@ -139,7 +220,7 @@ public class SecurityReportServiceTests
         var query = new Mock<ISecurityEventQuery>();
         query
             .Setup(source => source.InRange(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
-            .Returns(events);
+            .Returns(new SecurityEventWindow(events, Truncated: false));
 
         return new SecurityReportService(query.Object, AllowAll);
     }

@@ -90,31 +90,34 @@ public sealed class EfAuditTrailQuery : IAuditTrailQuery
 /// <summary>
 /// Source for the aggregated security report. The cap keeps a long-lived audit
 /// table bounded; the newest rows win because they are the ones an operator
-/// needs when investigating an incident.
+/// needs when investigating an incident. One extra probe row reveals a partial
+/// range without a COUNT over the whole audit log.
 /// </summary>
 public sealed class EfSecurityEventQuery : ISecurityEventQuery
 {
-    private const int MaxRows = 5000;
-
     private readonly TiendaFlowDbContext _context;
 
     public EfSecurityEventQuery(TiendaFlowDbContext context) => _context = context;
 
-    public IReadOnlyList<AuditTrailRow> InRange(DateTime fromUtc, DateTime toUtc)
+    public SecurityEventWindow InRange(DateTime fromUtc, DateTime toUtc)
     {
-        var entries = _context.AuditEntries
+        var probe = _context.AuditEntries
             .AsNoTracking()
             .Where(entry => entry.Date >= fromUtc && entry.Date < toUtc)
             .OrderByDescending(entry => entry.Date)
             .ThenByDescending(entry => entry.Id)
-            .Take(MaxRows)
+            .Take(SecurityEventWindow.MaxEvents + 1)
             .ToList();
 
-        // The service orders the rows forward for display; the cap above keeps
-        // the newest instants, so reversing here preserves both behaviors.
-        entries.Reverse();
+        var (kept, truncated) = SecurityEventWindow.SplitProbe(probe);
 
-        return AuditRowResolver.ResolveRows(entries, _context);
+        // The service orders the rows forward for display; the probe kept the
+        // newest instants, so reversing here preserves both behaviors.
+        var entries = kept.Reverse().ToList();
+
+        return new SecurityEventWindow(
+            AuditRowResolver.ResolveRows(entries, _context),
+            truncated);
     }
 }
 

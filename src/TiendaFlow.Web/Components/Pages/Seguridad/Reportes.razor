@@ -51,6 +51,11 @@ else if (_report is null)
 }
 else
 {
+    @if (_report.Truncated)
+    {
+        <div class="alert alert-warning" role="status">@SecurityReport.TruncationNotice</div>
+    }
+
     <div class="kpi-grid">
         <KpiCard Label="Inicios de sesión" Value="@Format(_report.SuccessfulLogins)"
                  Hint="Accesos correctos" Tone="ok" />

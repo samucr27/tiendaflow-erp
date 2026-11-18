@@ -427,10 +427,11 @@ se agrupan por fecha local, de modo que un evento de las 02:00 UTC del día
 siguiente cuenta para la noche anterior en la tienda. El listado y el detalle se
 paginan a 20 filas y el CSV usa el escritor seguro `CsvReport`, que neutraliza
 fórmulas de hoja de cálculo. La consulta se limita a los 5000 eventos más
-recientes del rango; esa limitación se documenta en
-[pending-items.md](pending-items.md). La página y el CSV comprueban el permiso en
-tres capas: directiva de la página, enlace del menú y `IAccessControl.Demand`
-en `SecurityReportService`.
+recientes del rango; cuando hay más, la página muestra un aviso visible y el CSV
+lo incluye como primera fila, ambos con el mismo texto. La limitación se
+documenta en [pending-items.md](pending-items.md). La página y el CSV comprueban
+el permiso en tres capas: directiva de la página, enlace del menú y
+`IAccessControl.Demand` en `SecurityReportService`.
 
 ## Infraestructura y operación
 

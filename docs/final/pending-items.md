@@ -112,9 +112,14 @@ exige la Definition of Done.
   `LoginFailed`, `AccessDenied` y los cuatro de cambios de usuario; cualquier
   otra acción cuenta solo en el total. El rango se interpreta en hora de
   Colombia y los eventos UTC se agrupan por fecha local. Se consultan como mucho
-  los **5000 eventos más recientes** del rango: en una auditoría mayor el reporte
-  sería parcial, por lo que no debe presentarse como un conteo forense completo.
-  Es un reporte académico de apoyo, no un sistema de detección de intrusiones.
+  los **5000 eventos más recientes** del rango. La consulta pide 5001 filas de
+  sonda y descarta la más antigua, sin un `COUNT` adicional; cuando aparece esa
+  fila extra el DTO marca `Truncated` y la página y el CSV muestran el aviso
+  «Mostrando los 5.000 eventos más recientes del rango seleccionado. Acota el
+  rango de fechas para ver el detalle completo.». El reporte sigue siendo
+  parcial en auditorías grandes: el aviso lo hace explícito, pero no sustituye a
+  un conteo forense completo. Es un reporte académico de apoyo, no un sistema de
+  detección de intrusiones.
 - **Nómina:** los parámetros son referencias académicas y están documentados en
   `docs/sprint2/payroll-parameters-validation.md`. El sistema calcula la
   corrida, pero no reemplaza una liquidación laboral certificada.
