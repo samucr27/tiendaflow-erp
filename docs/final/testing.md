@@ -1,17 +1,17 @@
 # Compilación, pruebas y cobertura
 
-Última verificación: **16 de noviembre de 2026**, sobre `feature/erp-complete`,
+Última verificación: **17 de noviembre de 2026**, sobre `feature/erp-complete`,
 con .NET 9 en Windows y SQL Server 2022 en Docker.
 
 Esta página se actualiza al cerrar cada fase. La última fila de resultados
-corresponde a la fase de contratos laborales.
+corresponde a la fase de asistencia y turnos.
 
 ## Comandos
 
 ```powershell
-dotnet build TiendaFlow.slnx
-dotnet test TiendaFlow.slnx --no-build
-dotnet test TiendaFlow.slnx --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+dotnet build TiendaFlow.slnx -c Release
+dotnet test TiendaFlow.slnx -c Release --no-build
+dotnet test TiendaFlow.slnx -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
 ```
 
 ## Resultado de compilación
@@ -26,11 +26,11 @@ Compilación correcta.
 
 | Proyecto | Superadas | Omitidas | Con error | Total |
 | --- | ---: | ---: | ---: | ---: |
-| `TiendaFlow.UnitTests` | 692 | 0 | 0 | 692 |
+| `TiendaFlow.UnitTests` | 766 | 0 | 0 | 766 |
 | `TiendaFlow.AcceptanceTests` | 6 | 0 | 0 | 6 |
-| `TiendaFlow.IntegrationTests` | 58 | 0 | 0 | 58 |
+| `TiendaFlow.IntegrationTests` | 62 | 0 | 0 | 62 |
 
-Total ejecutado: **756 pruebas superadas**, sin omisiones ni errores.
+Total ejecutado: **834 pruebas superadas**, sin omisiones ni errores.
 
 Las pruebas de integración se ejecutaron contra un contenedor SQL Server
 desechable (`tiendaflow-sql-test`, puerto 14333) mediante
@@ -40,6 +40,12 @@ pruebas de humo web usan su propia base desechable: la fábrica inyecta la caden
 en el entorno durante la creación del host y falla de forma explícita si el
 contexto apunta a otra base. Sin esa variable las pruebas se omiten, pero en
 esta verificación se ejecutaron.
+
+**GitHub Actions ejecuta la suite sin SQL Server y sin
+`TIENDAFLOW_TEST_CONNECTION`.** En ese modo pasan 766 pruebas unitarias, 6 de
+aceptación y 2 de integración que no requieren base; las 60 restantes se omiten
+por diseño. La ejecución completa contra SQL Server solo se realizó en el
+equipo local con el contenedor desechable indicado arriba.
 
 ## Cobertura
 
@@ -54,10 +60,10 @@ reportgenerator -reports:"TestResults\**\coverage.cobertura.xml" `
 
 | Capa | Líneas cubiertas | Líneas válidas | Cobertura de línea |
 | --- | ---: | ---: | ---: |
-| `TiendaFlow.Application` | 3545 | 3659 | **96,8 %** |
-| `TiendaFlow.Domain` | 1021 | 1074 | **95,0 %** |
-| Aplicación + dominio | 4566 | 4733 | **96,4 %** |
-| `TiendaFlow.Infrastructure` (con integración SQL) | 13981 | 14210 | **98,3 %** |
+| `TiendaFlow.Application` | 4188 | 4333 | **96,6 %** |
+| `TiendaFlow.Domain` | 1170 | 1232 | **94,9 %** |
+| Aplicación + dominio | 5358 | 5565 | **96,2 %** |
+| `TiendaFlow.Infrastructure` (con integración SQL) | 16024 | 16262 | **98,5 %** |
 
 La lógica de negocio supera el objetivo de 85 %. La cobertura de
 `TiendaFlow.Infrastructure` se midió en la misma ejecución, con las pruebas de
@@ -351,13 +357,52 @@ dentro de la suite, más ampliaciones de las pruebas de autorización y de humo)
   `hr.contracts.manage`, el menú oculta el enlace sin el permiso y los roles
   autorizados recorren las pantallas contra la base desechable.
 
+## Asistencia y turnos (fase 7)
+
+La fase 7 cerró asistencia y turnos con una migración nueva
+(`Phase13HrAttendanceAndShifts`) y sin editar las anteriores.
+
+- `AttendanceTests`, `AttendanceServiceTests` y `ShiftServiceTests`: dominio, marcación del día, novedades,
+  unicidad de día, plantillas con tope configurable, solapamiento, tope diario,
+  alcance por tienda, auditoría sin datos personales y reporte con estados
+  `A tiempo`, `Tarde`, `Ausente`, `Incompleto` y novedades. Dos pruebas verifican
+  que cada escritura (marcación, novedad, plantilla, asignación y cancelación)
+  y su auditoría comparten una sola transacción mediante `IUnitOfWork`, igual
+  que el resto de los servicios que escriben varias tablas.
+- `HrWorkforceIntegrationTests`: persistencia real de DateOnly/TimeOnly, la
+  unicidad de empleado + día, el reporte cruzado con una novedad, la agenda
+  semanal y la exportación CSV sobre SQL Server. Los nombres de plantilla y las
+  filas comprobadas se aíslan por prueba porque el fixture de SQL es compartido.
+- `FinalScreenAuthorizationTests` y `WebSmokeTests`: las tres rutas declaran su
+  política, el menú usa el permiso correcto, los roles autorizados abren las
+  pantallas y los CSV, y un Cajero recibe la redirección a acceso denegado sin
+  descargar el archivo.
+- `SeedIdempotencyTests` amplía el inventario con las tablas nuevas: ejecutar el
+  sembrador dos veces no duplica plantillas, asignaciones ni marcaciones, y una
+  base a la que le falte una fila la recupera.
+- Durante la verificación se corrigió un fallo real del pipeline: los endpoints
+  CSV resolvían `ICurrentUser` fuera del circuito de Blazor y lanzaban
+  `InvalidOperationException`. `ClaimsCurrentUser` prefiere el principal HTTP
+  cuando existe y solo usa `AuthenticationStateProvider` dentro de un circuito.
+- Las pruebas nuevas no dependen del sistema operativo: usan fechas fijas,
+  rutas construidas con `Path.Combine`, comparaciones sin separadores de
+  directorio y conversiones explícitas a la zona horaria de Colombia. En GitHub
+  Actions se omiten las que necesitan SQL Server.
+
 ## Cómo reproducir la verificación
 
 ```powershell
-dotnet build TiendaFlow.slnx
-dotnet test TiendaFlow.slnx --no-build
-dotnet test TiendaFlow.slnx --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+dotnet build TiendaFlow.slnx -c Release
+dotnet test TiendaFlow.slnx -c Release --no-build
+dotnet test TiendaFlow.slnx -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
 ```
+
+Sin `TIENDAFLOW_TEST_CONNECTION` el segundo y tercer comando reproducen el
+comportamiento de CI: pasan las pruebas unitarias, las de aceptación y dos de
+integración, y se omiten las 60 que necesitan SQL Server. Para reproducir la
+ejecución completa, define esa variable en el proceso con la cadena de tu
+contenedor de pruebas antes de ejecutar `dotnet test`; no escribas la contraseña
+en el repositorio.
 
 La carpeta `TestResults/` está ignorada por Git. No se deben subir los archivos
 de cobertura ni los resultados de la ejecución.

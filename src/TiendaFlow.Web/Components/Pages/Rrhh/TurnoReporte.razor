@@ -1,0 +1,244 @@
+@page "/rrhh/turnos/reporte"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrShiftsManage)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject ShiftService ShiftService
+@inject NavigationManager Navigation
+
+<PageTitle>Reporte de turnos · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Turnos vs. asistencia"
+            Subtitle="Compara la programación con las marcaciones para detectar tardanzas y ausencias" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+@if (_report is null)
+{
+    <p class="muted">Cargando el reporte…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Filtros</h2>
+                <p class="card-subtitle">El rango máximo es de un año; fechas en hora de Colombia.</p>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="shift-report-from">Desde</label>
+                <input id="shift-report-from" class="input" type="date" @bind="_from" />
+            </div>
+            <div class="field">
+                <label for="shift-report-to">Hasta</label>
+                <input id="shift-report-to" class="input" type="date" @bind="_to" />
+            </div>
+            @if (_stores.Count > 1)
+            {
+                <div class="field">
+                    <label for="shift-report-store">Tienda</label>
+                    <select id="shift-report-store" class="input" @bind="_storeId">
+                        <option value="0">Todas las tiendas</option>
+                        @foreach (var store in _stores)
+                        {
+                            <option value="@store.Id">@store.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="form-actions">
+                <button type="button" class="button button-primary button-small" @onclick="Load">
+                    Generar reporte
+                </button>
+                <a class="button button-secondary button-small"
+                   href="@($"/rrhh/turnos/reporte/export.csv?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}&storeId={FilterStoreId}")">
+                    Exportar CSV
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Indicadores del rango</h2>
+                <p class="card-subtitle">@_report.Rows.Count turnos programados analizados</p>
+            </div>
+        </div>
+        <dl class="definition-grid">
+            <div>
+                <dt>Tardanzas</dt>
+                <dd>@_report.LateCount</dd>
+            </div>
+            <div>
+                <dt>Ausencias y novedades</dt>
+                <dd>@_report.AbsenceCount</dd>
+            </div>
+            <div>
+                <dt>Horas trabajadas</dt>
+                <dd>@Formatters.Number(_report.WorkedHours)</dd>
+            </div>
+        </dl>
+    </section>
+
+    @if (_report.Rows.Count == 0)
+    {
+        <EmptyState Title="Sin turnos en el rango"
+                    Message="Asigna turnos en la programación semanal para ver la comparación con la asistencia." />
+    }
+    else
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Detalle</h2>
+                    <p class="card-subtitle">@PageSize registros por página</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Empleado</th>
+                            <th>Tienda</th>
+                            <th>Turno</th>
+                            <th>Entrada</th>
+                            <th>Salida</th>
+                            <th class="num">Retraso (min)</th>
+                            <th class="num">Horas</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in PageItems)
+                        {
+                            <tr>
+                                <td>@row.Date.ToString("dd/MM/yyyy")</td>
+                                <td>@row.EmployeeName</td>
+                                <td>@row.StoreName</td>
+                                <td>@row.ExpectedStart.ToString("HH:mm")–@row.ExpectedEnd.ToString("HH:mm")</td>
+                                <td>@(row.CheckIn is null ? "—" : Formatters.ShortDateTime(row.CheckIn.Value))</td>
+                                <td>@(row.CheckOut is null ? "—" : Formatters.ShortDateTime(row.CheckOut.Value))</td>
+                                <td class="num">@row.TardinessMinutes</td>
+                                <td class="num">@Formatters.Number(row.WorkedHours)</td>
+                                <td>
+                                    <StatusBadge Text="@row.StatusLabel" Tone="@Tone(row.Status)" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (_report.Rows.Count > PageSize)
+            {
+                <div class="pager">
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == 1)" @onclick="PreviousPage">
+                        Anterior
+                    </button>
+                    <span class="muted">Página @_page de @TotalPages</span>
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == TotalPages)" @onclick="NextPage">
+                        Siguiente
+                    </button>
+                </div>
+            }
+        </section>
+    }
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private DateOnly _from;
+    private DateOnly _to;
+    private int _storeId;
+    private int _page = 1;
+    private ShiftAttendanceReport? _report;
+    private IReadOnlyList<WorkforceStoreOption> _stores = Array.Empty<WorkforceStoreOption>();
+    private string? _error;
+
+    private int FilterStoreId => _storeId == 0 ? 0 : _storeId;
+
+    private int TotalPages => Math.Max(
+        1,
+        (int)Math.Ceiling((_report?.Rows.Count ?? 0) / (double)PageSize));
+
+    private IEnumerable<ShiftAttendanceRow> PageItems =>
+        (_report?.Rows ?? Array.Empty<ShiftAttendanceRow>())
+            .Skip((_page - 1) * PageSize)
+            .Take(PageSize);
+
+    protected override void OnInitialized()
+    {
+        var today = DateOnly.FromDateTime(LocalTime.ToLocal(DateTime.UtcNow));
+        _from = today.AddDays(-30);
+        _to = today;
+
+        try
+        {
+            _stores = ShiftService.Stores();
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Load()
+    {
+        _error = null;
+
+        try
+        {
+            _report = ShiftService.AttendanceReport(
+                _from,
+                _to,
+                _storeId == 0 ? null : _storeId);
+
+            _page = 1;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (_page > 1)
+            _page--;
+    }
+
+    private void NextPage()
+    {
+        if (_page < TotalPages)
+            _page++;
+    }
+
+    private static string Tone(ShiftAttendanceStatus status) => status switch
+    {
+        ShiftAttendanceStatus.OnTime => "ok",
+        ShiftAttendanceStatus.Late or ShiftAttendanceStatus.Incomplete => "warning",
+        ShiftAttendanceStatus.Absent or ShiftAttendanceStatus.UnjustifiedAbsence => "danger",
+        _ => "neutral"
+    };
+}

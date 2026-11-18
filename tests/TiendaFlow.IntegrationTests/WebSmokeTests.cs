@@ -152,7 +152,67 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         Assert.Contains("Demasiados intentos de inicio de sesión", html);
     }
 
-    private static async Task SignInAsync(HttpClient client, SeedAccount account)
+    [SqlServerFact]
+    public async Task WorkforceCsvDownloadsRequireTheirPermission()
+    {
+        await _factory.PrepareAsync();
+
+        using var client = _factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = true,
+            HandleCookies = true
+        });
+
+        var hr = Accounts().Single(account => account.RoleName == RoleNames.HumanResourcesOfficer);
+        await SignInAsync(client, hr);
+
+        foreach (var path in new[]
+                 {
+                     "/rrhh/asistencia/export.csv",
+                     "/rrhh/turnos/reporte/export.csv"
+                 })
+        {
+            using var response = await client.GetAsync(path);
+            var content = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("text/csv", response.Content.Headers.ContentType?.MediaType ?? string.Empty);
+            Assert.Contains("Empleado", content);
+        }
+
+        // The cookie handler turns a forbidden minimal API result into a
+        // redirect to the access-denied page. Do not follow it: the assertion
+        // must verify that the CSV payload itself was never served.
+        using var cashierClient = _factory.CreateClient(
+            new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost"),
+                AllowAutoRedirect = false,
+                HandleCookies = true
+            });
+        await SignInAsync(
+            cashierClient,
+            Accounts().Single(account => account.RoleName == RoleNames.Cashier),
+            followRedirect: false);
+
+        foreach (var path in new[]
+                 {
+                     "/rrhh/asistencia/export.csv",
+                     "/rrhh/turnos/reporte/export.csv"
+                 })
+        {
+            using var response = await cashierClient.GetAsync(path);
+            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Contains("/acceso-denegado", response.Headers.Location?.OriginalString ?? string.Empty, StringComparison.Ordinal);
+            Assert.DoesNotContain("Empleado", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+    }
+
+    private static async Task SignInAsync(
+        HttpClient client,
+        SeedAccount account,
+        bool followRedirect = true)
     {
         var token = await ReadAntiforgeryTokenAsync(client);
 
@@ -164,6 +224,13 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
                 ["returnUrl"] = "/",
                 ["__RequestVerificationToken"] = token
             }));
+
+        if (!followRedirect)
+        {
+            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Equal("/", response.Headers.Location?.OriginalString);
+            return;
+        }
 
         var html = await response.Content.ReadAsStringAsync();
 
@@ -257,6 +324,9 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute("/rrhh/contratos", Permissions.HrContractsManage),
             new SmokeRoute($"/rrhh/contratos/{contractId}", Permissions.HrContractsManage),
             new SmokeRoute("/rrhh/contratos/nuevo", Permissions.HrContractsManage),
+            new SmokeRoute("/rrhh/asistencia", Permissions.HrAttendanceManage),
+            new SmokeRoute("/rrhh/turnos", Permissions.HrShiftsManage),
+            new SmokeRoute("/rrhh/turnos/reporte", Permissions.HrShiftsManage),
             new SmokeRoute("/proveedores", Permissions.PurchasingSuppliersView),
             new SmokeRoute($"/proveedores/{supplierId}", Permissions.PurchasingSuppliersManage),
             new SmokeRoute("/proveedores/nuevo", Permissions.PurchasingSuppliersManage),

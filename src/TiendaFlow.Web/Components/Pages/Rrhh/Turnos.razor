@@ -1,0 +1,406 @@
+@page "/rrhh/turnos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrShiftsManage)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject ShiftService ShiftService
+@inject NavigationManager Navigation
+
+<PageTitle>Turnos · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Turnos"
+            Subtitle="Plantillas, programación semanal y control de horas del equipo">
+    <Actions>
+        <a class="button button-secondary" href="rrhh/turnos/reporte">Reporte turnos vs. asistencia</a>
+    </Actions>
+</PageHeader>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_week is null)
+{
+    <p class="muted">Cargando la programación…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Semana del @WeekStartLabel</h2>
+                <p class="card-subtitle">
+                    Los turnos se asignan desde hoy en adelante; no se pueden cruzar ni superar el tope diario.
+                </p>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="shift-week">Semana</label>
+                <input id="shift-week" class="input" type="date" @bind="_weekDate" />
+            </div>
+            @if (_stores.Count > 1)
+            {
+                <div class="field">
+                    <label for="shift-store">Tienda</label>
+                    <select id="shift-store" class="input" @bind="_storeId">
+                        <option value="0">Todas las tiendas</option>
+                        @foreach (var store in _stores)
+                        {
+                            <option value="@store.Id">@store.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="form-actions">
+                <button type="button" class="button button-secondary button-small" @onclick="PreviousWeek">
+                    ← Semana anterior
+                </button>
+                <button type="button" class="button button-secondary button-small" @onclick="NextWeek">
+                    Siguiente semana →
+                </button>
+                <button type="button" class="button button-primary button-small" @onclick="LoadWeek">
+                    Consultar
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Plantillas de turno</h2>
+                <p class="card-subtitle">Duración máxima configurada en hr.shifts.max_hours_per_shift</p>
+            </div>
+        </div>
+
+        @if (_templates.Count == 0)
+        {
+            <EmptyState Title="Sin plantillas"
+                        Message="Crea una plantilla para poder programar turnos en la semana." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th class="num">Horas</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var template in _templates)
+                        {
+                            <tr>
+                                <td>@template.Name</td>
+                                <td>@template.StartTime.ToString("HH:mm")</td>
+                                <td>@template.EndTime.ToString("HH:mm")</td>
+                                <td class="num">@Formatters.Number(template.Hours)</td>
+                                <td>
+                                    <StatusBadge Text="@(template.Active ? "Activa" : "Inactiva")"
+                                                 Tone="@(template.Active ? "ok" : "neutral")" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="template-name">Nombre</label>
+                <input id="template-name" class="input" maxlength="80"
+                       @bind="_templateName" placeholder="Ej. Mañana" />
+            </div>
+            <div class="field">
+                <label for="template-start">Inicio</label>
+                <input id="template-start" class="input" type="time" @bind="_templateStart" />
+            </div>
+            <div class="field">
+                <label for="template-end">Fin</label>
+                <input id="template-end" class="input" type="time" @bind="_templateEnd" />
+            </div>
+            <div class="form-actions">
+                <button type="button" class="button button-primary button-small" @onclick="CreateTemplate">
+                    Crear plantilla
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Asignar turno</h2>
+                <p class="card-subtitle">El empleado debe pertenecer a la tienda y estar activo.</p>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="assignment-employee">Empleado</label>
+                <select id="assignment-employee" class="input" @bind="_assignmentEmployeeId">
+                    <option value="0">Selecciona un empleado</option>
+                    @foreach (var employee in _week.Employees)
+                    {
+                        <option value="@employee.Id">@employee.Name · @employee.StoreName</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label for="assignment-date">Fecha</label>
+                <input id="assignment-date" class="input" type="date" @bind="_assignmentDate" />
+            </div>
+            <div class="field">
+                <label for="assignment-template">Plantilla</label>
+                <select id="assignment-template" class="input" @bind="_assignmentTemplateId">
+                    <option value="0">Selecciona una plantilla</option>
+                    @foreach (var template in _templates.Where(item => item.Active))
+                    {
+                        <option value="@template.Id">
+                            @template.Name · @template.StartTime.ToString("HH:mm")–@template.EndTime.ToString("HH:mm")
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="button button-primary button-small" @onclick="Assign">
+                    Asignar
+                </button>
+            </div>
+        </div>
+    </section>
+
+    @if (_week.Employees.Count == 0)
+    {
+        <EmptyState Title="Sin empleados activos"
+                    Message="No hay empleados activos en la tienda seleccionada para esta semana." />
+    }
+    else
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Programación semanal</h2>
+                    <p class="card-subtitle">@_week.Assignments.Count turnos asignados</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            @foreach (var day in _week.Days)
+                            {
+                                <th>@day.ToString("ddd dd/MM")</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var employee in _week.Employees)
+                        {
+                            <tr>
+                                <td>@employee.Name</td>
+                                @foreach (var day in _week.Days)
+                                {
+                                    <td>
+                                        @foreach (var assignment in AssignmentsFor(employee.Id, day))
+                                        {
+                                            <div class="shift-cell">
+                                                <span>@assignment.TemplateName</span>
+                                                <small>@assignment.StartTime.ToString("HH:mm")–@assignment.EndTime.ToString("HH:mm")</small>
+                                                @if (assignment.Date >= _today)
+                                                {
+                                                    <button type="button" class="table-action"
+                                                            @onclick="() => Cancel(assignment.Id)">
+                                                        Cancelar
+                                                    </button>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+}
+
+@code {
+    private DateOnly _today;
+    private DateOnly _weekDate;
+    private int _storeId;
+    private int _assignmentEmployeeId;
+    private int _assignmentTemplateId;
+    private DateOnly _assignmentDate;
+    private string _templateName = string.Empty;
+    private TimeOnly _templateStart = new(8, 0);
+    private TimeOnly _templateEnd = new(16, 0);
+    private ShiftWeek? _week;
+    private IReadOnlyList<ShiftTemplateRow> _templates = Array.Empty<ShiftTemplateRow>();
+    private IReadOnlyList<WorkforceStoreOption> _stores = Array.Empty<WorkforceStoreOption>();
+    private string? _error;
+    private string? _success;
+
+    private string WeekStartLabel => _week?.Start.ToString("dd/MM/yyyy") ?? string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _today = DateOnly.FromDateTime(LocalTime.ToLocal(DateTime.UtcNow));
+        _weekDate = _today;
+        _assignmentDate = _today;
+
+        try
+        {
+            _stores = ShiftService.Stores();
+            _templates = ShiftService.Templates();
+            LoadWeek();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void LoadWeek()
+    {
+        _error = null;
+
+        try
+        {
+            _week = ShiftService.Week(_weekDate, _storeId == 0 ? null : _storeId);
+            _assignmentEmployeeId = 0;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void PreviousWeek()
+    {
+        _weekDate = _weekDate.AddDays(-7);
+        LoadWeek();
+    }
+
+    private void NextWeek()
+    {
+        _weekDate = _weekDate.AddDays(7);
+        LoadWeek();
+    }
+
+    private void CreateTemplate()
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            ShiftService.CreateTemplate(new ShiftTemplateRequest(
+                _templateName,
+                _templateStart,
+                _templateEnd));
+
+            _success = "Plantilla creada correctamente.";
+            _templateName = string.Empty;
+            _templates = ShiftService.Templates();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Assign()
+    {
+        _error = null;
+        _success = null;
+
+        var employee = _week?.Employees.FirstOrDefault(item => item.Id == _assignmentEmployeeId);
+
+        if (employee is null)
+        {
+            _error = "Selecciona un empleado activo de la semana.";
+            return;
+        }
+
+        if (_assignmentTemplateId <= 0)
+        {
+            _error = "Selecciona una plantilla de turno.";
+            return;
+        }
+
+        try
+        {
+            ShiftService.Assign(new ShiftAssignmentRequest(
+                employee.Id,
+                employee.StoreId,
+                _assignmentTemplateId,
+                _assignmentDate));
+
+            _success = "Turno asignado correctamente.";
+            _weekDate = _assignmentDate;
+            LoadWeek();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Cancel(int assignmentId)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            ShiftService.Cancel(assignmentId);
+            _success = "Turno cancelado correctamente.";
+            LoadWeek();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private IEnumerable<ShiftAssignmentRow> AssignmentsFor(int employeeId, DateOnly date) =>
+        _week?.Assignments.Where(item => item.EmployeeId == employeeId && item.Date == date)
+        ?? Array.Empty<ShiftAssignmentRow>();
+}

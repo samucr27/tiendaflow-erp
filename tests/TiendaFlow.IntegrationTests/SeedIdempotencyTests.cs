@@ -44,7 +44,7 @@ public class SeedIdempotencyTests : IClassFixture<ErpWebApplicationFactory>, IAs
         var before = await SnapshotAsync();
 
         // An old table-wide guard could leave a database with some demo rows
-        // and not others. Remove one row from four different sections.
+        // and not others. Remove one row from seven different sections.
         using (var scope = _factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<TiendaFlowDbContext>();
@@ -74,6 +74,12 @@ public class SeedIdempotencyTests : IClassFixture<ErpWebApplicationFactory>, IAs
             var terminatedContract = await context.EmployeeContracts
                 .FirstAsync(item => item.Status == EmploymentContractStatus.Terminated);
             context.EmployeeContracts.Remove(terminatedContract);
+
+            var assignment = await context.ShiftAssignments.OrderBy(item => item.Id).FirstAsync();
+            context.ShiftAssignments.Remove(assignment);
+
+            var attendance = await context.AttendanceRecords.OrderBy(item => item.Id).FirstAsync();
+            context.AttendanceRecords.Remove(attendance);
 
             await context.SaveChangesAsync();
         }
@@ -126,7 +132,10 @@ public class SeedIdempotencyTests : IClassFixture<ErpWebApplicationFactory>, IAs
             ("transfers", await context.InventoryTransfers.CountAsync()),
             ("transfer lines", await context.InventoryTransferLines.CountAsync()),
             ("contracts", await context.EmployeeContracts.CountAsync()),
-            ("contract attachments", await context.ContractAttachments.CountAsync())
+            ("contract attachments", await context.ContractAttachments.CountAsync()),
+            ("shift templates", await context.ShiftTemplates.CountAsync()),
+            ("shift assignments", await context.ShiftAssignments.CountAsync()),
+            ("attendance records", await context.AttendanceRecords.CountAsync())
         };
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TiendaFlow.Application;
 using TiendaFlow.Application.Security;
 using TiendaFlow.Domain;
 using TiendaFlow.Infrastructure.Persistence;
@@ -119,6 +120,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedRolesAsync(context, cancellationToken);
         await SeedEmployeesAsync(context, cancellationToken);
         await SeedContractsAsync(context, cancellationToken);
+        await SeedWorkforceAsync(context, cancellationToken);
         await SeedUsersAsync(context, cancellationToken);
         await SeedCatalogAsync(context, cancellationToken);
         await SeedSuppliersAsync(context, cancellationToken);
@@ -341,6 +343,147 @@ public sealed class DevDataSeeder : IHostedService
             contract => contract.EmployeeId == employeeId
                 && contract.StartDate == startDate,
             cancellationToken);
+
+    /// <summary>
+    /// Shift templates, the current week's schedule and attendance for the
+    /// current week. Natural keys are template name, employee + date + template
+    /// for assignments and employee + date for attendance, so a second run adds
+    /// nothing and a database missing one row gets only that row back. The demo
+    /// includes one open check-in, four novelties and one deliberate tardiness
+    /// so every workforce screen and the shift report show real examples.
+    /// </summary>
+    private static async Task SeedWorkforceAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var employees = await context.Employees.ToListAsync(cancellationToken);
+        var byIdNumber = employees.ToDictionary(employee => employee.IdNumber, StringComparer.Ordinal);
+
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(LocalTime.ToLocal(now));
+        var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+
+        var templates = new (string Name, TimeOnly Start, TimeOnly End)[]
+        {
+            ("Mañana", new TimeOnly(7, 0), new TimeOnly(15, 0)),
+            ("Tarde", new TimeOnly(11, 0), new TimeOnly(19, 0)),
+            ("Medio turno", new TimeOnly(9, 0), new TimeOnly(13, 0))
+        };
+
+        foreach (var (name, start, end) in templates)
+        {
+            if (await context.ShiftTemplates.AnyAsync(template => template.Name == name, cancellationToken))
+                continue;
+
+            context.ShiftTemplates.Add(new ShiftTemplate(0, name, start, end, now));
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        var templateIds = await context.ShiftTemplates
+            .ToDictionaryAsync(template => template.Name, template => template.Id, cancellationToken);
+
+        var schedule = new (string IdNumber, string TemplateName)[]
+        {
+            ("1000000003", "Mañana"),
+            ("1000000004", "Mañana"),
+            ("1000000008", "Tarde"),
+            ("1000000009", "Tarde")
+        };
+
+        for (var offset = 0; offset < 7; offset++)
+        {
+            var date = monday.AddDays(offset);
+
+            if (date > today || date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                continue;
+
+            foreach (var (idNumber, templateName) in schedule)
+            {
+                if (!byIdNumber.TryGetValue(idNumber, out var employee))
+                    continue;
+
+                var templateId = templateIds[templateName];
+
+                if (await context.ShiftAssignments.AnyAsync(
+                        assignment => assignment.EmployeeId == employee.Id
+                            && assignment.WorkDate == date
+                            && assignment.ShiftTemplateId == templateId,
+                        cancellationToken))
+                {
+                    continue;
+                }
+
+                var template = await context.ShiftTemplates
+                    .FirstAsync(item => item.Id == templateId, cancellationToken);
+
+                context.ShiftAssignments.Add(new ShiftAssignment(
+                    0,
+                    employee.Id,
+                    employee.StoreId,
+                    templateId,
+                    date,
+                    template.StartTime,
+                    template.EndTime,
+                    now));
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        var novelties = new (string IdNumber, int Offset, AttendanceNovelty? Kind, string? Reason)[]
+        {
+            ("1000000005", 0, AttendanceNovelty.JustifiedAbsence, "Permiso personal aprobado"),
+            ("1000000006", 1, AttendanceNovelty.UnjustifiedAbsence, null),
+            ("1000000009", 2, AttendanceNovelty.Leave, "Licencia aprobada"),
+            ("1000000011", 3, AttendanceNovelty.Vacation, "Vacaciones programadas")
+        };
+
+        for (var offset = 0; offset <= today.DayNumber - monday.DayNumber; offset++)
+        {
+            var date = monday.AddDays(offset);
+
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                continue;
+
+            foreach (var employee in employees.Where(item => item.Active))
+            {
+                if (await context.AttendanceRecords.AnyAsync(
+                        record => record.EmployeeId == employee.Id && record.WorkDate == date,
+                        cancellationToken))
+                {
+                    continue;
+                }
+
+                var novelty = novelties.FirstOrDefault(item =>
+                    item.IdNumber == employee.IdNumber && item.Offset == offset);
+
+                var record = new AttendanceRecord(0, employee.Id, employee.StoreId, date, now);
+
+                if (novelty.Kind is AttendanceNovelty kind)
+                {
+                    record.RegisterNovelty(kind, novelty.Reason, now);
+                }
+                else
+                {
+                    // One employee is still inside their shift at seed time.
+                    var isOpen = employee.IdNumber == "1000000004" && date == today;
+                    var checkInHours = employee.IdNumber == "1000000004" && date == monday
+                        ? 7.5m
+                        : 8m;
+
+                    record.RegisterCheckIn(LocalTime.ToUtc(date).AddHours((double)checkInHours));
+
+                    if (!isOpen)
+                        record.RegisterCheckOut(LocalTime.ToUtc(date).AddHours((double)checkInHours + 8));
+                }
+
+                context.AttendanceRecords.Add(record);
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
 
     private async Task SeedUsersAsync(
         TiendaFlowDbContext context,

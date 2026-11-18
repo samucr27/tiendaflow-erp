@@ -1,6 +1,6 @@
 # Auditoría de pendientes
 
-Actualizado el 16 de noviembre de 2026.
+Actualizado el 17 de noviembre de 2026.
 
 La auditoría se hizo sobre el código de `feature/erp-final` y se actualiza en
 `feature/erp-complete` a medida que cada fase cierra un pendiente:
@@ -21,11 +21,8 @@ continuación se documentan con el permiso que las reserva.
 
 | Área | Permiso reservado | Qué falta | Por qué queda pendiente | Siguiente paso sugerido |
 | --- | --- | --- | --- | --- |
-| Seguridad | `security.roles.manage` | Editar roles desde la interfaz | La matriz es código para que la autorización sea determinista; la pantalla es de solo lectura | Persistir roles solo si el negocio lo exige, con auditoría y pruebas de autorización |
 | Seguridad | `security.reports.view` | Reportes de seguridad | La auditoría ya es consultable en `/seguridad/auditoria`; no hay reportes agregados | Agregar conteos de accesos, cambios de usuario y exportación CSV |
 | Ventas | `sales.invoices.view` | Factura electrónica real ante la DIAN | Solo existe el simulador académico | Integrar un proveedor autorizado, CUFE, firma certificada y transmisión |
-| RR. HH. | `hr.attendance.manage` | Asistencia | No hay registro de entrada/salida ni novedades | Marcaciones, ausencias y cálculo de días trabajados |
-| RR. HH. | `hr.shifts.manage` | Turnos | No hay calendario de turnos | Turnos por tienda, asignación y cruce con asistencia |
 | CRM | `crm.points.manage` | Puntos de fidelización | El cliente no tiene saldo ni movimientos de puntos | Libro de puntos con acumulación y canje |
 | CRM | `crm.pqrs.manage` | PQRS | No hay entidad de peticiones, quejas o reclamos | Radicado, responsable, estados y tiempos |
 | CRM | `crm.campaigns.manage` | Campañas | La segmentación es de solo consulta | Campaña sobre un segmento, vigencia y resultado |
@@ -47,12 +44,30 @@ deliberada, no un permiso olvidado:
   cambio es una línea en `RolePermissions.cs` más las pruebas de la matriz; no
   requiere tocar pantallas ni servicios.
 
-## Resuelto en la revisión final (16 de noviembre)
+## Decisión de diseño: roles de solo lectura
+
+`security.roles.manage` aparece en el catálogo de permisos, pero no se
+implementó la edición de roles desde la interfaz y no está en la tabla de
+pendientes funcionales. La matriz `RolePermissions.cs` es código y `/seguridad/roles`
+es una vista informativa. Es una decisión deliberada: hacer de la autorización
+una tabla editable desde la misma aplicación permitiría que un error o un acceso
+indebido cambiara quién puede autorizar compras, devoluciones o datos de RR. HH.
+Si la organización llega a exigir edición en caliente, el cambio debe incluir
+auditoría, aprobación de dos personas y pruebas de autorización; no se descarta
+por diseño, simplemente no entra en este alcance académico.
+
+## Resuelto en la revisión final (16 y 17 de noviembre)
 
 - **Venta del POS:** se guarda como documento y la cuentan el panel, el reporte
   de ventas y la reposición.
 - **Facturas e inventario:** emitir descuenta stock y anular lo devuelve.
 - **Facturas emitidas:** ya no se editan; se anulan y se emite otra.
+- **Asistencia:** hay marcación de entrada y salida del día, novedades para
+  fechas pasadas, resumen por empleado, exportación CSV y unicidad por empleado
+  y día en SQL Server.
+- **Turnos:** hay plantillas con tope configurable, agenda semanal, asignación
+  con control de solapamiento y tope diario, cancelación y reporte cruzado con
+  la asistencia. El Jefe de tienda opera solo en su tienda.
 
 Queda pendiente un proceso, no código: los pull requests deben tener una
 revisión registrada en GitHub por otro integrante antes de fusionarse, como
@@ -112,6 +127,7 @@ Compras (órdenes, puntualidad y cumplimiento con datos de recepción,
 exportación del ranking y borradores de reposición con relación producto ·
 proveedor), panel, reportes, segmentación CRM, exportación XML simulada,
 administración de tiendas, parámetros configurables, inventario con conteos
-físicos y traslados entre tiendas, devoluciones con nota crédito y contratos
-laborales con prórrogas y adjuntos están implementados, con permisos, pruebas y
-documentación. El detalle está en [implemented-modules.md](implemented-modules.md).
+físicos y traslados entre tiendas, devoluciones con nota crédito, contratos
+laborales con prórrogas y adjuntos, asistencia con novedades y turnos con reporte
+cruzado están implementados, con permisos, pruebas y documentación. El detalle
+está en [implemented-modules.md](implemented-modules.md).

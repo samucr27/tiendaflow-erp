@@ -59,6 +59,12 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<ContractAttachment> ContractAttachments => Set<ContractAttachment>();
 
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+
+    public DbSet<ShiftTemplate> ShiftTemplates => Set<ShiftTemplate>();
+
+    public DbSet<ShiftAssignment> ShiftAssignments => Set<ShiftAssignment>();
+
     /// <summary>
     /// A failed save leaves its entities as Modified or Added in a context
     /// that lives as long as the browser tab. Outside an explicit transaction

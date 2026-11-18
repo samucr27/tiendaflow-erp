@@ -1,0 +1,435 @@
+@page "/rrhh/asistencia"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.HrAttendanceManage)]
+@using TiendaFlow.Application
+@using TiendaFlow.Domain
+@inject AttendanceService AttendanceService
+@inject NavigationManager Navigation
+
+<PageTitle>Asistencia · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Talento humano"
+            Title="Asistencia"
+            Subtitle="Entradas, salidas y novedades del equipo por día y por tienda" />
+
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+else if (_success is not null)
+{
+    <div class="alert alert-success" role="status">@_success</div>
+}
+
+@if (_employees is null)
+{
+    <p class="muted">Cargando la asistencia…</p>
+}
+else
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Registrar marcación</h2>
+                <p class="card-subtitle">
+                    La entrada solo se registra para hoy; los días anteriores se corrigen con una novedad.
+                </p>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="checkin-employee">Empleado</label>
+                <select id="checkin-employee" class="input" @bind="_checkInEmployeeId">
+                    <option value="0">Selecciona un empleado</option>
+                    @foreach (var employee in _employees)
+                    {
+                        <option value="@employee.Id">@employee.Name · @employee.IdNumber</option>
+                    }
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="button button-primary" @onclick="CheckIn">
+                    Registrar entrada
+                </button>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="novelty-employee">Empleado</label>
+                <select id="novelty-employee" class="input" @bind="_noveltyEmployeeId">
+                    <option value="0">Selecciona un empleado</option>
+                    @foreach (var employee in _employees)
+                    {
+                        <option value="@employee.Id">@employee.Name · @employee.IdNumber</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label for="novelty-date">Fecha</label>
+                <input id="novelty-date" class="input" type="date" @bind="_noveltyDate" />
+            </div>
+            <div class="field">
+                <label for="novelty-type">Novedad</label>
+                <select id="novelty-type" class="input" @bind="_novelty">
+                    @foreach (var type in NoveltyTypes)
+                    {
+                        <option value="@((int)type)">@WorkforceText.NoveltyLabel(type)</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label for="novelty-reason">Motivo</label>
+                <input id="novelty-reason" class="input" maxlength="300"
+                       @bind="_noveltyReason"
+                       placeholder="Obligatorio salvo ausencia injustificada" />
+            </div>
+            <div class="form-actions">
+                <button type="button" class="button button-secondary" @onclick="RegisterNovelty">
+                    Guardar novedad
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Consulta por fecha</h2>
+                <p class="card-subtitle">Fechas en hora de Colombia; el rango máximo es de un año.</p>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="attendance-from">Desde</label>
+                <input id="attendance-from" class="input" type="date" @bind="_from" />
+            </div>
+            <div class="field">
+                <label for="attendance-to">Hasta</label>
+                <input id="attendance-to" class="input" type="date" @bind="_to" />
+            </div>
+            @if (_stores.Count > 1)
+            {
+                <div class="field">
+                    <label for="attendance-store">Tienda</label>
+                    <select id="attendance-store" class="input" @bind="_storeId">
+                        <option value="0">Todas las tiendas</option>
+                        @foreach (var store in _stores)
+                        {
+                            <option value="@store.Id">@store.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="form-actions">
+                <button type="button" class="button button-primary" @onclick="Load">Consultar</button>
+            </div>
+            <div class="form-actions">
+                <a class="button button-secondary"
+                   href="@($"/rrhh/asistencia/export.csv?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}&storeId={FilterStoreId}")">
+                    Exportar CSV
+                </a>
+            </div>
+        </div>
+    </section>
+
+    @if (_summary.Count > 0)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Resumen por empleado</h2>
+                    <p class="card-subtitle">Días con marcación, horas trabajadas y novedades del rango</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Documento</th>
+                            <th class="num">Días</th>
+                            <th class="num">Sin salida</th>
+                            <th class="num">Horas</th>
+                            <th class="num">Justificadas</th>
+                            <th class="num">Injustificadas</th>
+                            <th class="num">Licencias</th>
+                            <th class="num">Vacaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _summary)
+                        {
+                            <tr>
+                                <td>@row.EmployeeName</td>
+                                <td>@row.IdNumber</td>
+                                <td class="num">@row.PresentDays</td>
+                                <td class="num">@row.OpenDays</td>
+                                <td class="num">@Formatters.Number(row.WorkedHours)</td>
+                                <td class="num">@row.JustifiedAbsences</td>
+                                <td class="num">@row.UnjustifiedAbsences</td>
+                                <td class="num">@row.Leaves</td>
+                                <td class="num">@row.Vacations</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+
+    @if (_rows.Count == 0)
+    {
+        <EmptyState Title="Sin registros en el rango"
+                    Message="Registra una entrada o una novedad para ver la asistencia del equipo." />
+    }
+    else
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Detalle diario</h2>
+                    <p class="card-subtitle">@_rows.Count registros · @PageSize por página</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Empleado</th>
+                            <th>Tienda</th>
+                            <th>Entrada</th>
+                            <th>Salida</th>
+                            <th>Estado</th>
+                            <th class="num">Horas</th>
+                            <th class="actions"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in PageItems)
+                        {
+                            <tr>
+                                <td>@row.WorkDate.ToString("dd/MM/yyyy")</td>
+                                <td>@row.EmployeeName</td>
+                                <td>@row.StoreName</td>
+                                <td>@(row.CheckIn is null ? "—" : Formatters.ShortDateTime(row.CheckIn.Value))</td>
+                                <td>@(row.CheckOut is null ? "—" : Formatters.ShortDateTime(row.CheckOut.Value))</td>
+                                <td>
+                                    <StatusBadge Text="@row.StatusLabel" Tone="@Tone(row.StatusLabel)" />
+                                </td>
+                                <td class="num">@Formatters.Number(row.HoursWorked)</td>
+                                <td class="actions">
+                                    @if (row.IsOpen)
+                                    {
+                                        <button type="button" class="table-action"
+                                                @onclick="() => CheckOut(row.Id)">
+                                            Registrar salida
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (_rows.Count > PageSize)
+            {
+                <div class="pager">
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == 1)" @onclick="PreviousPage">
+                        Anterior
+                    </button>
+                    <span class="muted">Página @_page de @TotalPages</span>
+                    <button type="button" class="button button-secondary button-small"
+                            disabled="@(_page == TotalPages)" @onclick="NextPage">
+                        Siguiente
+                    </button>
+                </div>
+            }
+        </section>
+    }
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private static readonly AttendanceNovelty[] NoveltyTypes =
+    [
+        AttendanceNovelty.JustifiedAbsence,
+        AttendanceNovelty.UnjustifiedAbsence,
+        AttendanceNovelty.Leave,
+        AttendanceNovelty.Vacation
+    ];
+
+    private DateOnly _today;
+    private DateOnly _from;
+    private DateOnly _to;
+    private DateOnly _noveltyDate;
+    private int _storeId;
+    private int _checkInEmployeeId;
+    private int _noveltyEmployeeId;
+    private int _novelty = (int)AttendanceNovelty.JustifiedAbsence;
+    private string _noveltyReason = string.Empty;
+    private int _page = 1;
+    private IReadOnlyList<WorkforceEmployeeOption>? _employees;
+    private IReadOnlyList<WorkforceStoreOption> _stores = Array.Empty<WorkforceStoreOption>();
+    private IReadOnlyList<AttendanceRow> _rows = Array.Empty<AttendanceRow>();
+    private IReadOnlyList<AttendanceSummaryRow> _summary = Array.Empty<AttendanceSummaryRow>();
+    private string? _error;
+    private string? _success;
+
+    private int FilterStoreId => _storeId == 0 ? 0 : _storeId;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_rows.Count / (double)PageSize));
+
+    private IEnumerable<AttendanceRow> PageItems =>
+        _rows.Skip((_page - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized()
+    {
+        _today = DateOnly.FromDateTime(LocalTime.ToLocal(DateTime.UtcNow));
+        _from = _today.AddDays(-30);
+        _to = _today;
+        _noveltyDate = _today;
+
+        try
+        {
+            _stores = AttendanceService.Stores();
+            _employees = AttendanceService.Employees(null);
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Load()
+    {
+        _error = null;
+
+        try
+        {
+            _rows = AttendanceService.List(_from, _to, _storeId == 0 ? null : _storeId);
+            _summary = AttendanceService.Summary(_from, _to, _storeId == 0 ? null : _storeId);
+            _page = 1;
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void CheckIn()
+    {
+        _error = null;
+        _success = null;
+
+        if (_checkInEmployeeId <= 0)
+        {
+            _error = "Selecciona un empleado para registrar la entrada.";
+            return;
+        }
+
+        try
+        {
+            AttendanceService.CheckIn(new AttendanceCheckInRequest(_checkInEmployeeId));
+            _success = "Entrada registrada correctamente.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void CheckOut(int recordId)
+    {
+        _error = null;
+        _success = null;
+
+        try
+        {
+            AttendanceService.CheckOut(recordId);
+            _success = "Salida registrada correctamente.";
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void RegisterNovelty()
+    {
+        _error = null;
+        _success = null;
+
+        if (_noveltyEmployeeId <= 0)
+        {
+            _error = "Selecciona un empleado para registrar la novedad.";
+            return;
+        }
+
+        try
+        {
+            AttendanceService.RegisterNovelty(new AttendanceNoveltyRequest(
+                _noveltyEmployeeId,
+                _noveltyDate,
+                (AttendanceNovelty)_novelty,
+                _noveltyReason));
+
+            _success = "Novedad registrada correctamente.";
+            _noveltyReason = string.Empty;
+            Load();
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (_page > 1)
+            _page--;
+    }
+
+    private void NextPage()
+    {
+        if (_page < TotalPages)
+            _page++;
+    }
+
+    private static string Tone(string label) => label switch
+    {
+        "Completo" or "A tiempo" => "ok",
+        "En turno" => "info",
+        "Sin marcación" or "Sin salida" => "warning",
+        _ => "neutral"
+    };
+}

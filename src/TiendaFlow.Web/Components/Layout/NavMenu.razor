@@ -140,7 +140,9 @@
 
     @if (AccessControl.Has(Permissions.HrEmployeesView)
          || AccessControl.Has(Permissions.HrPayrollManage)
-         || AccessControl.Has(Permissions.HrContractsManage))
+         || AccessControl.Has(Permissions.HrContractsManage)
+         || AccessControl.Has(Permissions.HrAttendanceManage)
+         || AccessControl.Has(Permissions.HrShiftsManage))
     {
         <p class="nav-section">Talento humano</p>
 
@@ -154,6 +156,24 @@
         {
             <NavLink class="nav-item" href="rrhh/contratos" Match="NavLinkMatch.Prefix">
                 Contratos
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrAttendanceManage))
+        {
+            <NavLink class="nav-item" href="rrhh/asistencia" Match="NavLinkMatch.Prefix">
+                Asistencia
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrShiftsManage))
+        {
+            <NavLink class="nav-item" href="rrhh/turnos" Match="NavLinkMatch.Prefix">
+                Turnos
+            </NavLink>
+        }
+        @if (AccessControl.Has(Permissions.HrShiftsManage))
+        {
+            <NavLink class="nav-item" href="rrhh/turnos/reporte" Match="NavLinkMatch.Prefix">
+                Turnos vs. asistencia
             </NavLink>
         }
         @if (AccessControl.Has(Permissions.HrPayrollManage))

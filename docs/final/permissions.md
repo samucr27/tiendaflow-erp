@@ -35,7 +35,8 @@ las tres capas y no depende de que el enlace esté oculto.
 | RR. HH.: empleados | `hr.employees.view` | `hr.employees.manage` |
 | RR. HH.: nómina | `hr.payroll.manage` | `hr.payroll.manage` |
 | RR. HH.: contratos | — | `hr.contracts.manage` |
-| RR. HH.: asistencia y turnos | — | `hr.attendance.manage`*, `hr.shifts.manage`* |
+| RR. HH.: asistencia | `hr.attendance.manage` | `hr.attendance.manage` |
+| RR. HH.: turnos y reporte | `hr.shifts.manage` | `hr.shifts.manage` |
 | CRM: clientes | `crm.customers.view` | `crm.customers.manage` |
 | CRM: segmentación | `crm.reports.view` | — |
 | CRM: puntos, PQRS y campañas | — | `crm.points.manage`*, `crm.pqrs.manage`*, `crm.campaigns.manage`* |
@@ -43,6 +44,7 @@ las tres capas y no depende de que el enlace esté oculto.
 `*` El permiso existe en la matriz y se asigna a algún rol, pero todavía no
 tiene pantalla ni caso de uso. El detalle está en
 [pending-items.md](pending-items.md).
+
 ## Roles de la matriz
 
 La matriz define siete roles: Administrador, Gerente corporativo, Jefe de
@@ -53,7 +55,9 @@ puede consultar en `/seguridad/roles` o en `RolePermissions.cs`.
 Los roles no se editan desde la interfaz: la pantalla `/seguridad/roles` es una
 matriz informativa. Esto es intencional para que la autorización sea
 determinista entre despliegues y no dependa de datos que alguien pueda cambiar
-por error.
+por error. `security.roles.manage` está declarado en el catálogo, pero no se
+implementó su caso de uso; la decisión y sus condiciones para reconsiderarla
+están en [pending-items.md](pending-items.md).
 
 ## Cambios en la matriz por la administración de tiendas
 
@@ -146,8 +150,7 @@ conserva la vista de empleados (`hr.employees.view`) pero no administra
 contratos: la decisión es intencional para separar la operación de RR. HH. del
 rol técnico y se documenta como decisión de diseño en
 [pending-items.md](pending-items.md). El Jefe de tienda tampoco lo tiene: su
-alcance de asistencia y turnos llegará en la siguiente fase y no incluye
-salarios ni contratos.
+alcance de asistencia y turnos no incluye salarios ni contratos.
 
 Las tres capas se cumplen: las páginas declaran
 `[Authorize(Policy = Permissions.HrContractsManage)]`, el menú oculta el enlace
@@ -156,11 +159,37 @@ sin el permiso y `EmploymentContractService` llama
 repositorio. La descarga del adjunto es un endpoint mínimo con la misma
 política y cada descarga deja una entrada de auditoría.
 
+## Cambios en la matriz por la asistencia y los turnos
+
+Los dos permisos ya estaban declarados y asignados; la fase no añadió roles.
+La lectura y la escritura comparten permiso porque las dos operaciones muestran
+identificadores, jornada y novedades del personal:
+
+| Ruta o acción | Permiso | Roles |
+| --- | --- | --- |
+| `/rrhh/asistencia` y `/rrhh/asistencia/export.csv` | `hr.attendance.manage` | Jefe de tienda, Gestor de recursos humanos |
+| `/rrhh/turnos`, `/rrhh/turnos/reporte` y `/rrhh/turnos/reporte/export.csv` | `hr.shifts.manage` | Jefe de tienda, Gestor de recursos humanos |
+
+El Administrador no recibió ninguno de los dos permisos: la decisión es la misma
+que para los contratos. Puede administrar usuarios y tiendas, pero no consultar
+jornadas ni novedades laborales sin una necesidad funcional. El Jefe de tienda
+ve solo su sucursal; el Gestor de recursos humanos ve todas. `HrStoreScope`
+aplica esa regla dentro de los servicios y de los endpoints CSV antes de leer
+cualquier repositorio, con el código `hr.store.scope` para la negación.
+
+Las tres capas se cumplen: las páginas declaran
+`[Authorize(Policy = Permissions.HrAttendanceManage)]` o
+`Permissions.HrShiftsManage`, el menú comprueba `AccessControl.Has(...)` y los
+servicios vuelven a exigir el permiso con `IAccessControl.Demand(...)`. Los CSV
+son endpoints mínimos con la misma política de autorización que la pantalla y
+usan el escritor seguro `CsvReport`.
+
 ## Alcance por tienda
 
 Los permisos deciden **qué** puede hacer un rol; el alcance decide **sobre qué
 tienda**. `StoreScope` aplica la segunda regla dentro de los servicios de
-conteos, traslados y devoluciones, antes de consultar cualquier repositorio.
+conteos, traslados y devoluciones, y `HrStoreScope` dentro de asistencia y
+turnos, antes de consultar cualquier repositorio.
 
 | Rol | Alcance |
 | --- | --- |
@@ -168,6 +197,7 @@ conteos, traslados y devoluciones, antes de consultar cualquier repositorio.
 | Gerente corporativo | Todas las tiendas |
 | Jefe de tienda | Solo su tienda |
 | Auxiliar de bodega | Solo su tienda |
+| Gestor de recursos humanos | Todas las tiendas en asistencia y turnos |
 
 Los roles con alcance limitado no pueden crear, listar, enviar, recibir, anular,
 autorizar ni rechazar documentos de otra tienda, aunque llamen al servicio
@@ -182,4 +212,7 @@ módulo: el alcance global no concede permisos por sí solo.
 - `FinalScreenAuthorizationTests` lee los archivos `.razor` y comprueba que cada
   ruta nueva declara la política esperada.
 - Las mismas pruebas revisan que el menú asocia cada enlace nuevo al permiso
-  correcto.
+  correcto y que los dos endpoints CSV declaran la política de su pantalla.
+- `WebSmokeTests.WorkforceCsvDownloadsRequireTheirPermission` comprueba con el
+  pipeline HTTP real que el Gestor de recursos humanos descarga ambos CSV y que
+  un Cajero recibe la redirección a acceso denegado sin el archivo.

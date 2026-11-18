@@ -2,8 +2,8 @@
 
 Esta entrega completa las pantallas que faltaban para los módulos de compras,
 panel, reportes, CRM, facturación simulada, devoluciones y notas crédito,
-administración de tiendas, parámetros configurables e inventario (conteos
-físicos y traslados). Todas las rutas declaran su `Authorize(Policy = ...)`
+administración de tiendas, parámetros configurables, inventario (conteos
+físicos y traslados), contratos, asistencia y turnos. Todas las rutas declaran su `Authorize(Policy = ...)`
 y los servicios vuelven a exigir el permiso, de modo que ocultar un enlace del
 menú no protege una función por sí solo.
 
@@ -303,6 +303,52 @@ El sembrado de demostración crea un contrato por empleado, un contrato a térmi
 fijo que vence dentro de la ventana de aviso, un contrato terminado y un
 historial de prórroga. La clave natural empleado + fecha de inicio mantiene el
 sembrado idempotente.
+
+## Asistencia y turnos
+
+| Ruta | Permiso de página | Función |
+| --- | --- | --- |
+| `/rrhh/asistencia` | `hr.attendance.manage` | Marcaciones del día, novedades, resumen y exportación CSV |
+| `/rrhh/turnos` | `hr.shifts.manage` | Plantillas, calendario semanal, asignación y cancelación |
+| `/rrhh/turnos/reporte` | `hr.shifts.manage` | Cruce turno · asistencia, tardanzas, ausencias y exportación CSV |
+| `/rrhh/asistencia/export.csv` | `hr.attendance.manage` | Resumen de asistencia con el mismo permiso que la pantalla |
+| `/rrhh/turnos/reporte/export.csv` | `hr.shifts.manage` | Reporte cruzado con el mismo permiso que la pantalla |
+
+Reglas aplicadas en `AttendanceService` y `ShiftService`:
+
+1. La entrada solo se registra para el día laboral actual calculado en hora de
+   Colombia; un segundo intento actualiza la misma fila en lugar de duplicarla.
+   La salida cierra la marcación abierta. Una fecha pasada no se marca: se corrige
+   con una novedad (ausencia justificada o injustificada, licencia o vacaciones).
+2. Un día es **trabajado o de novedad**, nunca ambos. El índice único por
+   empleado y fecha lo confirma en SQL Server, y `hours_worked` siempre es cero
+   cuando existe una novedad.
+3. Las plantillas tienen nombre único, duración positiva y no superan
+   `hr.shifts.max_hours_per_shift`. Una asignación exige empleado y tienda
+   activos, que el empleado pertenezca a esa tienda, plantilla activa, fecha de
+   hoy o futura, sin solapamiento con otro turno del mismo día y sin exceder
+   `hr.shifts.max_hours_per_day` con la suma de turnos.
+4. El reporte consulta primero las asignaciones y después la asistencia del
+   mismo rango. Una novedad muestra su etiqueta; sin marcación muestra
+   `Ausente`; marcación sin salida muestra `Incompleto`; y una marca después de
+   la hora esperada muestra `Tarde` con sus minutos de tardanza.
+5. El alcance lo decide `HrStoreScope`: el Jefe de tienda solo ve y opera su
+   tienda, mientras el Gestor de recursos humanos trabaja en cualquier tienda.
+   La negación se escribe con `hr.store.scope` y ocurre antes de consultar los
+   repositorios, también en las dos exportaciones CSV.
+6. Crear plantilla, asignar, cancelar, marcar entrada, registrar salida, registrar
+   novedad y exportar dejan auditoría con módulo `hr`, usuario, IP y detalle. Los
+   detalles usan identificadores numéricos de empleado, nunca el número de
+   identificación ni el motivo de la novedad.
+7. Los tres listados paginan de 20 en 20, muestran horas y fechas en es-CO y
+   almacenan los instantes en UTC. Los CSV usan `CsvReport`, con BOM UTF-8 y
+   neutralización de celdas que empiezan por `=`, `+`, `-` o `@`.
+
+El sembrado de demostración crea tres plantillas, la semana laboral actual de
+cuatro empleados, marcaciones de los días transcurridos, una marcación abierta,
+cuatro novedades y una entrada tardía para que las tres pantallas y el reporte
+muestren ejemplos reales. Las claves naturales son nombre de plantilla,
+empleado + fecha + plantilla y empleado + fecha.
 
 ## Facturación simulada
 

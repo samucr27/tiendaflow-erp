@@ -20,6 +20,7 @@ TiendaFlow usa EF Core con SQL Server. Las entidades y configuraciones viven en
 | `20261116144218_Phase10StockConcurrency` | `row_version` en `stock` para el control de concurrencia |
 | `20261116154129_Phase11PosSalesAndInvoiceStock` | Ventas del POS y tienda de la factura |
 | `20261117044933_Phase12HrContracts` | Contratos laborales y adjuntos |
+| `20261118005708_Phase13HrAttendanceAndShifts` | Asistencia, novedades, plantillas de turno y asignaciones |
 
 La migración `Phase6Stores` no añade tablas ni columnas: la entidad `Store` ya
 existía. Añade tres índices que sostienen las consultas de la pantalla y del
@@ -81,7 +82,7 @@ cabecera y los índices `IX_inventory_count_store_status`,
 y `IX_inventory_transfer_line_transfer_sku` sostienen las pantallas, el filtro
 por tienda y las líneas de cada documento.
 
-Las fases posteriores a la entrega final (CRM restante y RR. HH.) añadirán su
+Las fases posteriores a la entrega final (CRM restante y seguridad) añadirán su
 propia migración; esta tabla se amplía a medida que se generan.
 
 `AddSalesReturns` crea `sales_return` y `sales_return_line`:
@@ -127,6 +128,29 @@ tienda que las emitió; las devoluciones usan esa tienda para reponer el stock.
   quedan restringidas.
 - No crea datos iniciales. El sembrado de demostración añade contratos después
   de los empleados y usa la clave natural empleado + fecha de inicio.
+
+`Phase13HrAttendanceAndShifts` crea el registro de asistencia y la programación
+de turnos:
+
+- `attendance_record`: empleado, tienda, fecha laboral (`date`), entrada y
+  salida (`datetime2` en UTC), novedad (`int` convertido desde la enumeración),
+  motivo de hasta 300 caracteres y fecha de creación UTC. El índice único
+  `IX_attendance_record_employee_date` impide dos filas para el mismo empleado y
+  día; `IX_attendance_record_date_store` sostiene el listado diario por tienda.
+- `shift_template`: nombre único (80 caracteres), hora de inicio y fin (`time`),
+  activo y fecha de creación UTC. El nombre es la clave natural que usa el
+  sembrado y la validación de duplicados.
+- `shift_assignment`: empleado, tienda, plantilla, fecha laboral, horas copiadas
+  de la plantilla y fecha de creación UTC. Los índices por empleado + fecha,
+  fecha + tienda, plantilla y tienda sostienen la semana, el reporte y el
+  historial; la superposición y el tope diario se validan en el servicio antes
+  de insertar.
+
+Las claves foráneas a empleado, tienda y plantilla tienen borrado restringido.
+Las horas trabajadas, la asistencia y la duración son valores calculados: no se
+guardan como columnas y se derivan de las marcaciones y de los horarios. El
+sembrado crea plantillas, asignaciones de la semana actual y marcaciones con
+claves naturales estables; no sustituye a una fuente biométrica real.
 
 ## Generar una migración
 
@@ -194,7 +218,7 @@ ejecutable `efbundle.exe` no se commitea.
 
 `DevDataSeeder` crea las tiendas, los siete roles, un usuario por rol, empleados,
 productos, existencias, proveedores, clientes, órdenes, facturas, devoluciones,
-conteos, traslados y contratos de demostración. Se registra siempre que
+conteos, traslados, contratos, turnos y asistencia de demostración. Se registra siempre que
 `Seed:Enabled` sea `true`, **sin importar el entorno**; no está condicionado a
 `Development`.
 
@@ -215,6 +239,9 @@ El sembrado decide **por registro**, no por tabla, con una clave natural estable
 | Conteos | Tienda + ubicación |
 | Traslados | Tienda origen + tienda destino + conjunto de SKU |
 | Contratos | Empleado + fecha de inicio |
+| Plantillas de turno | Nombre |
+| Asignaciones de turno | Empleado + fecha + plantilla |
+| Asistencia y novedades | Empleado + fecha |
 
 Así, ejecutar la aplicación dos veces no duplica nada y una base sembrada por una
 versión anterior que perdió algunos registros recupera solo los que faltan. Las

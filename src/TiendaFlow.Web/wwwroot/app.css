@@ -586,6 +586,18 @@ h1:focus {
     text-decoration: underline;
 }
 
+.shift-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 96px;
+    font-size: 12px;
+}
+
+.shift-cell small {
+    color: var(--text-secondary);
+}
+
 .mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 13px;

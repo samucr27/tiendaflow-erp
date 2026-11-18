@@ -124,6 +124,62 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("app_user", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.AttendanceRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CheckIn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("check_in");
+
+                    b.Property<DateTime?>("CheckOut")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("check_out");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int")
+                        .HasColumnName("employee_id");
+
+                    b.Property<int?>("Novelty")
+                        .HasColumnType("int")
+                        .HasColumnName("novelty");
+
+                    b.Property<string>("NoveltyReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("novelty_reason");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateOnly>("WorkDate")
+                        .HasColumnType("date")
+                        .HasColumnName("work_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("EmployeeId", "WorkDate")
+                        .IsUnique()
+                        .HasDatabaseName("IX_attendance_record_employee_date");
+
+                    b.HasIndex("WorkDate", "StoreId")
+                        .HasDatabaseName("IX_attendance_record_date_store");
+
+                    b.ToTable("attendance_record", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.ContractAttachment", b =>
                 {
                     b.Property<int>("Id")
@@ -969,6 +1025,98 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("sales_return_line", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.ShiftAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int")
+                        .HasColumnName("employee_id");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time")
+                        .HasColumnName("end_time");
+
+                    b.Property<int>("ShiftTemplateId")
+                        .HasColumnType("int")
+                        .HasColumnName("shift_template_id");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time")
+                        .HasColumnName("start_time");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateOnly>("WorkDate")
+                        .HasColumnType("date")
+                        .HasColumnName("work_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftTemplateId");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("EmployeeId", "WorkDate")
+                        .HasDatabaseName("IX_shift_assignment_employee_date");
+
+                    b.HasIndex("WorkDate", "StoreId")
+                        .HasDatabaseName("IX_shift_assignment_date_store");
+
+                    b.ToTable("shift_assignment", (string)null);
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.ShiftTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit")
+                        .HasColumnName("active");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time")
+                        .HasColumnName("end_time");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("name");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time")
+                        .HasColumnName("start_time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_shift_template_name");
+
+                    b.ToTable("shift_template", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.StockItem", b =>
                 {
                     b.Property<string>("Sku")
@@ -1176,6 +1324,21 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.AttendanceRecord", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.ContractAttachment", b =>
                 {
                     b.HasOne("TiendaFlow.Domain.EmploymentContract", null)
@@ -1374,6 +1537,27 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                         .WithMany("Lines")
                         .HasForeignKey("ReturnId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.ShiftAssignment", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.ShiftTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

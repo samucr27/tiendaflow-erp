@@ -250,6 +250,7 @@ app.MapGet("/healthz", HealthCheckAsync).AllowAnonymous();
 
 app.MapReportEndpoints();
 app.MapContractEndpoints();
+app.MapWorkforceEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

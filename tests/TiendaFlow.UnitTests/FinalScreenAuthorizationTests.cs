@@ -209,6 +209,51 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("AccessControl.Has(Permissions.HrContractsManage)", menu);
     }
 
+    [Theory]
+    [InlineData("Rrhh/Asistencia.razor", "/rrhh/asistencia", "HrAttendanceManage")]
+    [InlineData("Rrhh/Turnos.razor", "/rrhh/turnos", "HrShiftsManage")]
+    [InlineData("Rrhh/TurnoReporte.razor", "/rrhh/turnos/reporte", "HrShiftsManage")]
+    public void WorkforceRoutesDeclareThePolicyOfTheMatrix(
+        string file,
+        string route,
+        string permission)
+    {
+        var source = ReadPage(file);
+
+        Assert.Contains($"@page \"{route}\"", source);
+        Assert.Contains($"@attribute [Authorize(Policy = Permissions.{permission})]", source);
+    }
+
+    [Fact]
+    public void MenuShowsWorkforceOnlyWithTheirOwnPermissions()
+    {
+        var menu = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Components", "Layout", "NavMenu.razor"));
+
+        Assert.Contains("href=\"rrhh/asistencia\"", menu);
+        Assert.Contains("href=\"rrhh/turnos\"", menu);
+        Assert.Contains("href=\"rrhh/turnos/reporte\"", menu);
+        Assert.Contains("AccessControl.Has(Permissions.HrAttendanceManage)", menu);
+        Assert.Contains("AccessControl.Has(Permissions.HrShiftsManage)", menu);
+    }
+
+    [Fact]
+    public void WorkforceCsvEndpointsRequireTheSamePermissionsAsTheirPages()
+    {
+        var endpoints = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Endpoints", "WorkforceEndpoints.cs"));
+        var program = File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Web", "Program.cs"));
+
+        Assert.Contains("\"/rrhh/asistencia/export.csv\"", endpoints);
+        Assert.Contains("\"/rrhh/turnos/reporte/export.csv\"", endpoints);
+        Assert.Contains("RequireAuthorization(Permissions.HrAttendanceManage)", endpoints);
+        Assert.Contains("RequireAuthorization(Permissions.HrShiftsManage)", endpoints);
+        Assert.Contains("CsvReport.Build", File.ReadAllText(Path.Combine(
+            RepoRoot, "src", "TiendaFlow.Application", "Workforce.cs")));
+        Assert.Contains("app.MapWorkforceEndpoints();", program);
+    }
+
     private static string ReadPage(string file) =>
         File.ReadAllText(Path.Combine(
             RepoRoot, "src", "TiendaFlow.Web", "Components", "Pages", file));

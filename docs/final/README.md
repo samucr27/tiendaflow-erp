@@ -28,6 +28,8 @@ Esta carpeta reúne la documentación de la entrega final, escrita sobre la rama
 - Facturación: exportación de un XML **simulado** de factura electrónica.
 - Seguridad: administración de tiendas y parámetros configurables con versiones,
   vigencia y auditoría.
+- RR. HH.: contratos con prórrogas y adjuntos, registro de asistencia,
+  novedades, turnos y el cruce entre turno y asistencia.
 - Infraestructura: Terraform para Azure SQL y App Service Linux, guía de
   despliegue y flujo de trabajo de validación.
 

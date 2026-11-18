@@ -35,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmployeeRepository, EfEmployeeRepository>();
         services.AddScoped<IEmploymentContractRepository, EfEmploymentContractRepository>();
         services.AddScoped<IEmploymentContractQuery, EfEmploymentContractQuery>();
+        services.AddScoped<IAttendanceRepository, EfAttendanceRepository>();
+        services.AddScoped<IShiftRepository, EfShiftRepository>();
         services.AddScoped<IStoreRepository, EfStoreRepository>();
         services.AddScoped<IRoleRepository, EfRoleRepository>();
         services.AddScoped<IUserDirectoryQuery, EfUserDirectoryQuery>();
@@ -100,6 +102,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CustomerService>();
         services.AddScoped<EmployeeService>();
         services.AddScoped<EmploymentContractService>();
+        services.AddScoped<AttendanceService>();
+        services.AddScoped<ShiftService>();
 
         return services;
     }

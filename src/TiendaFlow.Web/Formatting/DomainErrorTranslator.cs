@@ -131,6 +131,24 @@ public static class DomainErrorTranslator
             "Revisa los datos de la nómina. Los días trabajados deben estar entre 1 y 30 y la clase de riesgo entre 1 y 5.",
         UnsupportedContractTypeException =>
             "El tipo de contrato del empleado no tiene una regla de nómina configurada.",
+        InvalidEmploymentContractException invalidContract =>
+            invalidContract.Message,
+        EmploymentContractNotFoundException =>
+            "No encontramos el contrato solicitado.",
+        InvalidContractAttachmentException invalidAttachment =>
+            invalidAttachment.Message,
+        ContractAttachmentNotFoundException =>
+            "No encontramos el archivo adjunto solicitado.",
+        InvalidAttendanceException invalidAttendance =>
+            invalidAttendance.Message,
+        AttendanceRecordNotFoundException =>
+            "No encontramos el registro de asistencia solicitado.",
+        InvalidShiftException invalidShift =>
+            invalidShift.Message,
+        ShiftTemplateNotFoundException =>
+            "No encontramos la plantilla de turno solicitada.",
+        ShiftAssignmentNotFoundException =>
+            "No encontramos el turno solicitado.",
         Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException =>
             "Otro usuario modificó estos datos al mismo tiempo. Revisa los valores actuales e intenta de nuevo.",
         _ => UnexpectedMessage
