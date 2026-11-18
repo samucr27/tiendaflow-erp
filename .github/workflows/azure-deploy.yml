@@ -1,11 +1,17 @@
 name: Azure Deploy
 
-# Manual only. The primary deployment path is local (`az webapp deploy`); this
-# workflow is the secondary path for a machine without the Azure CLI. It uses a
-# publish profile because Azure for Students does not allow creating app
-# registrations or service principals for OIDC.
+# Se despliega automáticamente en cada push a main (por ejemplo, al hacer merge
+# de un PR) y también se puede lanzar a mano. Usa publish profile porque Azure
+# for Students no permite crear app registrations para OIDC.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+# Evita dos despliegues al mismo tiempo; el más nuevo espera al actual.
+concurrency:
+  group: azure-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -40,6 +46,10 @@ jobs:
         run: dotnet tool install --global dotnet-ef --version "9.*"
 
       - name: Create EF migration bundle
+        env:
+          # Valor falso solo para crear el DbContext en tiempo de diseño; el
+          # bundle no se conecta a ninguna base al generarse.
+          ConnectionStrings__DefaultConnection: "Server=localhost;Database=TiendaFlow_Design;Integrated Security=False;User Id=sa;Password=not-used;Encrypt=False;TrustServerCertificate=True;"
         run: >
           dotnet ef migrations bundle
           --project src/TiendaFlow.Infrastructure/TiendaFlow.Infrastructure.csproj
