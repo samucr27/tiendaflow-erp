@@ -12,7 +12,9 @@ namespace TiendaFlow.IntegrationTests;
 /// <summary>
 /// The demo seeder must be idempotent per record, not per table. These tests
 /// run the real seeder against the disposable SQL Server database twice and
-/// also simulate an old database that is missing a few demo rows.
+/// also simulate an old database that is missing a few demo rows. Like every
+/// SQL-backed test, they skip when no connection string is configured, so the
+/// host fixture is never created on a runner without SQL Server.
 /// </summary>
 public class SeedIdempotencyTests : IClassFixture<ErpWebApplicationFactory>, IAsyncLifetime
 {
@@ -24,7 +26,7 @@ public class SeedIdempotencyTests : IClassFixture<ErpWebApplicationFactory>, IAs
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    [Fact]
+    [SqlServerFact]
     public async Task RunningTheSeederTwiceDoesNotDuplicateAnyRecord()
     {
         var before = await SnapshotAsync();
@@ -36,7 +38,7 @@ public class SeedIdempotencyTests : IClassFixture<ErpWebApplicationFactory>, IAs
         Assert.Equal(before, after);
     }
 
-    [Fact]
+    [SqlServerFact]
     public async Task TheSeederRepairsAnOldDatabaseWithoutDuplicatingTheRest()
     {
         var before = await SnapshotAsync();

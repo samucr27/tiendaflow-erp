@@ -173,7 +173,7 @@ public class ContractAttachment
         if (string.IsNullOrWhiteSpace(fileName))
             throw new InvalidContractAttachmentException("El nombre del archivo es obligatorio.");
 
-        var name = Path.GetFileName(fileName.Trim());
+        var name = FileNameOnly(fileName);
         var extension = Path.GetExtension(name).ToLowerInvariant();
         var normalizedContentType = (contentType ?? string.Empty).Trim().ToLowerInvariant();
 
@@ -211,6 +211,29 @@ public class ContractAttachment
     public int? UploadedByUserId { get; }
 
     public DateTime UploadedAt { get; }
+
+    /// <summary>
+    /// Reduces an uploaded name to its last path segment. Path.GetFileName only
+    /// recognizes the separator of the host OS, so on Linux a Windows path would
+    /// be stored with its directories and ".." segments intact. Treating both
+    /// separators explicitly makes the check deterministic on every runner and
+    /// prevents a path traversal name from reaching storage.
+    /// </summary>
+    private static string FileNameOnly(string fileName)
+    {
+        var trimmed = fileName.Trim();
+        var separator = Math.Max(trimmed.LastIndexOf('/'), trimmed.LastIndexOf('\\'));
+        var name = (separator >= 0 ? trimmed[(separator + 1)..] : trimmed).Trim();
+
+        if (name.Length == 0
+            || name is "." or ".."
+            || name.Any(char.IsControl))
+        {
+            throw new InvalidContractAttachmentException("El nombre del archivo no es válido.");
+        }
+
+        return name;
+    }
 
     public int SizeBytes => Content.Length;
 }

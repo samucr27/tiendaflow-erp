@@ -185,19 +185,41 @@ public class EmploymentContractTests
         Assert.Equal(contentType, attachment.ContentType);
     }
 
-    [Fact]
-    public void AnAttachmentNameIsReducedToTheFileName()
+    [Theory]
+    [InlineData(@"C:\contratos\..\..\secreto.pdf", "secreto.pdf")]
+    [InlineData("/contratos/../../secreto.pdf", "secreto.pdf")]
+    [InlineData("contratos/secreto.pdf", "secreto.pdf")]
+    [InlineData("  secreto.pdf  ", "secreto.pdf")]
+    public void AnAttachmentNameIsReducedToTheFileName(string fileName, string expected)
     {
         var attachment = new ContractAttachment(
             0,
             1,
-            @"C:\contratos\..\..\secreto.pdf",
+            fileName,
             "application/pdf",
             new byte[] { 1 },
             5,
             Now);
 
-        Assert.Equal("secreto.pdf", attachment.FileName);
+        Assert.Equal(expected, attachment.FileName);
+    }
+
+    [Theory]
+    [InlineData("..")]
+    [InlineData(".")]
+    [InlineData(@"C:\contratos\..")]
+    [InlineData("/contratos/")]
+    [InlineData("   ")]
+    public void AttachmentsRejectNamesWithoutAFinalFileName(string fileName)
+    {
+        Assert.Throws<InvalidContractAttachmentException>(() => new ContractAttachment(
+            0,
+            1,
+            fileName,
+            "application/pdf",
+            new byte[] { 1 },
+            5,
+            Now));
     }
 
     [Theory]
