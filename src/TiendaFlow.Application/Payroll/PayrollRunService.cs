@@ -48,19 +48,22 @@ public sealed class PayrollRunService
     private readonly IAccessControl _accessControl;
     private readonly IAuditLog _auditLog;
     private readonly ICurrentUser _currentUser;
+    private readonly AdministratorVisibility? _visibility;
 
     public PayrollRunService(
         IEmployeeRepository employees,
         IPayrollEngine engine,
         IAccessControl accessControl,
         IAuditLog auditLog,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        AdministratorVisibility? visibility = null)
     {
         _employees = employees;
         _engine = engine;
         _accessControl = accessControl;
         _auditLog = auditLog;
         _currentUser = currentUser;
+        _visibility = visibility;
     }
 
     /// <summary>
@@ -80,8 +83,11 @@ public sealed class PayrollRunService
         if (riskClass is < 1 or > 5)
             throw new InvalidPayrollInputException("La clase de riesgo ARL debe estar entre 1 y 5.");
 
+        var hidden = _visibility?.HiddenEmployeeIds() ?? new HashSet<int>();
+
         var employees = _employees.List()
             .Where(employee => employee.Active)
+            .Where(employee => !hidden.Contains(employee.Id))
             .OrderBy(employee => employee.Name)
             .ToList();
 

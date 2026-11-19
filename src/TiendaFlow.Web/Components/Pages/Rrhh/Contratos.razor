@@ -4,6 +4,7 @@
 @using TiendaFlow.Application.Payroll
 @inject HumanResourcesRecordsService Records
 @inject IEmployeeRepository Employees
+@inject AdministratorVisibility Visibility
 @inject NavigationManager Navigation
 
 <PageTitle>Contratos · TiendaFlow</PageTitle>
@@ -163,7 +164,7 @@
     {
         try
         {
-            _employees = Employees.List().Where(employee => employee.Active).OrderBy(employee => employee.Name).ToList();
+            _employees = Visibility.Filter(Employees.List()).Where(employee => employee.Active).OrderBy(employee => employee.Name).ToList();
             _contracts = Records.Contracts();
             _expiring = Records.ExpiringContracts(DateOnly.FromDateTime(DateTime.Today), 30);
             foreach (var row in _contracts)

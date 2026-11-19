@@ -105,6 +105,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SalesInvoiceService>();
         services.AddScoped<CustomerService>();
         services.AddScoped<EmployeeService>();
+        services.AddScoped<AdministratorVisibility>();
 
         return services;
     }
