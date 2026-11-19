@@ -16,8 +16,9 @@ public static class TiendaFlowClaims
 
 /// <summary>
 /// Reads the signed-in user from the Blazor authentication state, falling back
-/// to the current HTTP request during static rendering. The result is cached
-/// because a Blazor circuit does not change user while it is connected.
+/// to the current HTTP request during static rendering and plain endpoints
+/// (CSV/XML downloads), where the Blazor provider is not available. The result
+/// is cached because a Blazor circuit does not change user while it is connected.
 /// </summary>
 public sealed class ClaimsCurrentUser : ICurrentUser
 {
@@ -40,11 +41,20 @@ public sealed class ClaimsCurrentUser : ICurrentUser
             if (_cachedPrincipal is not null)
                 return _cachedPrincipal;
 
-            var principal = _authenticationStateProvider
-                .GetAuthenticationStateAsync()
-                .GetAwaiter()
-                .GetResult()
-                .User;
+            ClaimsPrincipal principal;
+            try
+            {
+                principal = _authenticationStateProvider
+                    .GetAuthenticationStateAsync()
+                    .GetAwaiter()
+                    .GetResult()
+                    .User;
+            }
+            catch (InvalidOperationException)
+            {
+                // Plain HTTP endpoint (no Razor component scope): use the request user.
+                principal = new ClaimsPrincipal(new ClaimsIdentity());
+            }
 
             if (principal.Identity?.IsAuthenticated != true
                 && _httpContextAccessor.HttpContext?.User is { Identity.IsAuthenticated: true } httpUser)
