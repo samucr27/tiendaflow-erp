@@ -1,0 +1,43 @@
+# TiendaFlow con SQL Server en contenedores, para desarrollo y pruebas locales.
+#
+#   1. Copia .env.example a .env y escribe contraseñas propias.
+#   2. docker compose up --build
+#   3. Abre http://localhost:8080
+#
+# La aplicación lee la cadena de conexión de DB_CONNECTION_STRING, igual que en
+# Azure App Service y AWS Elastic Beanstalk.
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:?Define SQL_SA_PASSWORD en .env}
+    ports:
+      - "14333:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  web:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      DB_CONNECTION_STRING: "Server=db,1433;Database=TiendaFlow;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+      Database__MigrateOnStartup: "true"
+      Seed__Enabled: "true"
+      Seed__AdminPassword: ${SEED_ADMIN_PASSWORD:?Define SEED_ADMIN_PASSWORD en .env}
+      Seed__DemoPassword: ${SEED_DEMO_PASSWORD:?Define SEED_DEMO_PASSWORD en .env}
+
+volumes:
+  sqldata:
