@@ -36,6 +36,12 @@ public sealed class EfEntityStore<T> : IEntityStore<T> where T : class
         _context.SaveChanges();
     }
 
+    public void Remove(T entity)
+    {
+        _context.Set<T>().Remove(entity);
+        _context.SaveChanges();
+    }
+
     private int IdOf(T entity) => (int)_context.Entry(entity).Property("Id").CurrentValue!;
 }
 

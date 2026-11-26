@@ -582,6 +582,14 @@ h1:focus {
     white-space: nowrap;
 }
 
+.quote-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+    min-width: 160px;
+}
+
 .table-action:hover {
     text-decoration: underline;
 }

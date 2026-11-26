@@ -1,0 +1,344 @@
+@page "/compras/cotizaciones"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Permissions.PurchasingOrdersView)]
+@inject QuotationService Quotations
+@inject SupplierService SupplierService
+@inject IProductCatalogQuery ProductQuery
+@inject IAccessControl AccessControl
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Cotizaciones · TiendaFlow</PageTitle>
+
+<PageHeader Eyebrow="Compras"
+            Title="Solicitudes de cotización"
+            Subtitle="Precio pedido a un proveedor por un producto. Una cotización aprobada se convierte en orden de compra." />
+
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-error" role="alert">@_error</div>
+}
+
+<div class="kpi-grid">
+    <KpiCard Label="Pendientes" Value="@Formatters.Number(_rows.Count(row => row.Status == QuotationStatus.Pending))" Hint="Esperan aprobación" Tone="alert" />
+    <KpiCard Label="Aprobadas" Value="@Formatters.Number(_rows.Count(row => row.Status == QuotationStatus.Approved))" Hint="Listas para generar orden" Tone="info" />
+    <KpiCard Label="Con orden" Value="@Formatters.Number(_rows.Count(row => row.Status == QuotationStatus.Ordered))" Hint="Convertidas en orden de compra" Tone="ok" />
+    <KpiCard Label="Valor pendiente" Value="@Formatters.Money(_rows.Where(row => row.Status == QuotationStatus.Pending).Sum(row => row.EstimatedAmount))" Hint="Monto estimado por aprobar" Tone="info" />
+</div>
+
+@if (_canCreate)
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>@(_editingId is null ? "Nueva solicitud de cotización" : $"Editar {QuotationService.CodeOf(_editingId.Value)}")</h2>
+                <p class="card-subtitle">El monto estimado es la cantidad por el precio unitario cotizado.</p>
+            </div>
+        </div>
+        <div class="form-grid">
+            <div class="field">
+                <label for="quote-supplier">Proveedor</label>
+                <select id="quote-supplier" class="input" @bind="_supplierId">
+                    <option value="0">Elige un proveedor</option>
+                    @foreach (var supplier in _suppliers)
+                    {
+                        <option value="@supplier.Id">@supplier.BusinessName</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label for="quote-product">Producto</label>
+                <select id="quote-product" class="input" @bind="_sku">
+                    <option value="">Elige un producto</option>
+                    @foreach (var product in _products)
+                    {
+                        <option value="@product.Sku">@product.Name · @product.Sku</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label for="quote-quantity">Cantidad</label>
+                <input id="quote-quantity" class="input" type="number" min="1" @bind="_quantity" />
+            </div>
+            <div class="field">
+                <label for="quote-price">Precio unitario cotizado</label>
+                <input id="quote-price" class="input" type="number" min="1" step="50" @bind="_unitPrice" />
+            </div>
+            <div class="field">
+                <label for="quote-valid">Válida hasta</label>
+                <input id="quote-valid" class="input" type="date" @bind="_validUntil" />
+            </div>
+            <div class="field">
+                <label>Monto estimado</label>
+                <p class="field-hint">@Formatters.Money(_quantity * _unitPrice)</p>
+            </div>
+            <div class="field field-wide">
+                <label for="quote-notes">Observaciones</label>
+                <textarea id="quote-notes" class="input" rows="2" @bind="_notes"></textarea>
+            </div>
+        </div>
+        <div class="form-actions">
+            @if (_editingId is not null)
+            {
+                <button type="button" class="button button-secondary" @onclick="ClearForm">Cancelar edición</button>
+            }
+            <button type="button" class="button button-primary" @onclick="Save">
+                @(_editingId is null ? "Registrar solicitud" : "Guardar cambios")
+            </button>
+        </div>
+    </section>
+}
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2>Solicitudes</h2>
+            <p class="card-subtitle">Pendientes primero, después aprobadas y el historial</p>
+        </div>
+    </div>
+    @if (_rows.Count == 0)
+    {
+        <EmptyState Title="Sin cotizaciones" Message="Las solicitudes registradas aparecen aquí." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Proveedor</th>
+                        <th>Producto</th>
+                        <th class="num">Cantidad</th>
+                        <th class="num">Precio unitario</th>
+                        <th class="num">Monto estimado</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>
+                                @row.Code
+                                <span class="table-meta">@Formatters.ShortDateTime(row.RequestedAt)</span>
+                            </td>
+                            <td>@row.SupplierName</td>
+                            <td>
+                                @row.ProductName
+                                <span class="table-meta">@row.ProductSku</span>
+                            </td>
+                            <td class="num">@Formatters.Number(row.Quantity)</td>
+                            <td class="num">@Formatters.Money(row.UnitPrice)</td>
+                            <td class="num">@Formatters.Money(row.EstimatedAmount)</td>
+                            <td>
+                                <StatusBadge Text="@StatusText(row.Status)" Tone="@StatusTone(row.Status)" />
+                                @if (row.DecidedByName is not null)
+                                {
+                                    <span class="table-meta">@(row.Status == QuotationStatus.Rejected ? "Rechazó" : "Aprobó"): @row.DecidedByName</span>
+                                }
+                                @if (row.RejectionReason is not null)
+                                {
+                                    <span class="table-meta">Motivo: @row.RejectionReason</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="quote-actions">
+                                    @if (row.CanChange && _canCreate)
+                                    {
+                                        <button type="button" class="button button-secondary button-small" @onclick="() => Edit(row)">Editar</button>
+                                    }
+                                    @if (row.Status == QuotationStatus.Pending && _canApprove)
+                                    {
+                                        <button type="button" class="button button-primary button-small" @onclick="() => Approve(row.Id)">Aprobar</button>
+                                        <button type="button" class="button button-secondary button-small" @onclick="() => StartReject(row.Id)">Rechazar</button>
+                                    }
+                                    @if (row.Status == QuotationStatus.Approved && _canCreate)
+                                    {
+                                        <button type="button" class="button button-primary button-small" @onclick="() => GenerateOrder(row.Id)">Generar orden</button>
+                                    }
+                                    @if (row.PurchaseOrderId is int orderId)
+                                    {
+                                        <a class="button button-secondary button-small" href="compras/ordenes/@orderId">Ver orden</a>
+                                    }
+                                    @if (row.CanDelete && _canCreate)
+                                    {
+                                        <button type="button" class="button button-secondary button-small" @onclick="() => Delete(row.Id)">Eliminar</button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@if (_rejectingId is not null)
+{
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2>Rechazar @QuotationService.CodeOf(_rejectingId.Value)</h2>
+                <p class="card-subtitle">El motivo queda registrado en la solicitud y en la auditoría.</p>
+            </div>
+        </div>
+        <div class="form-grid">
+            <div class="field field-wide">
+                <label for="quote-reason">Motivo</label>
+                <textarea id="quote-reason" class="input" rows="2" @bind="_reason"></textarea>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="button button-secondary" @onclick="() => _rejectingId = null">Cancelar</button>
+            <button type="button" class="button button-primary" @onclick="Reject">Confirmar rechazo</button>
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<QuotationRow> _rows = [];
+    private IReadOnlyList<SupplierRow> _suppliers = [];
+    private IReadOnlyList<ProductListItem> _products = [];
+    private bool _canCreate;
+    private bool _canApprove;
+    private int? _editingId;
+    private int? _rejectingId;
+    private int _supplierId;
+    private string _sku = "";
+    private int _quantity = 1;
+    private decimal _unitPrice;
+    private DateOnly? _validUntil;
+    private string? _notes;
+    private string? _reason;
+    private string? _error;
+    private string? _message;
+
+    protected override void OnInitialized()
+    {
+        _canCreate = AccessControl.Has(Permissions.PurchasingOrdersCreate);
+        _canApprove = AccessControl.Has(Permissions.PurchasingOrdersApprove);
+        Load();
+    }
+
+    private void Load()
+    {
+        try
+        {
+            _rows = Quotations.List();
+            if (_canCreate)
+            {
+                _suppliers = SupplierService.List().Where(supplier => supplier.Active).OrderBy(supplier => supplier.BusinessName).ToList();
+                _products = ProductQuery.Search(null).OrderBy(product => product.Name).ToList();
+            }
+        }
+        catch (AccessDeniedException)
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private void Run(Action action, string message)
+    {
+        _error = null;
+        _message = null;
+        try
+        {
+            action();
+            _message = message;
+            Load();
+        }
+        catch (Exception exception)
+        {
+            _error = DomainErrorTranslator.ToSpanish(exception);
+        }
+    }
+
+    private QuotationInput Input() => new(_supplierId, _sku, _quantity, _unitPrice, _validUntil, _notes);
+
+    private void Save()
+    {
+        if (_editingId is int id)
+            Run(() => { Quotations.Update(id, Input()); ClearForm(); }, $"{QuotationService.CodeOf(id)} actualizada.");
+        else
+            Run(() => { Quotations.Create(Input()); ClearForm(); }, "Solicitud de cotización registrada.");
+    }
+
+    private void Edit(QuotationRow row)
+    {
+        _message = _error = null;
+        _editingId = row.Id;
+        _supplierId = row.SupplierId;
+        _sku = row.ProductSku;
+        _quantity = row.Quantity;
+        _unitPrice = row.UnitPrice;
+        _validUntil = row.ValidUntil;
+        _notes = row.Notes;
+    }
+
+    private void ClearForm()
+    {
+        _editingId = null;
+        _supplierId = 0;
+        _sku = "";
+        _quantity = 1;
+        _unitPrice = 0;
+        _validUntil = null;
+        _notes = null;
+    }
+
+    private void Approve(int id) =>
+        Run(() => Quotations.Approve(id), $"{QuotationService.CodeOf(id)} aprobada.");
+
+    private void StartReject(int id)
+    {
+        _message = _error = null;
+        _rejectingId = id;
+        _reason = null;
+    }
+
+    private void Reject()
+    {
+        if (_rejectingId is int id)
+            Run(() => { Quotations.Reject(id, _reason ?? ""); _rejectingId = null; }, $"{QuotationService.CodeOf(id)} rechazada.");
+    }
+
+    private void GenerateOrder(int id) =>
+        Run(() => Quotations.GenerateOrder(id, CurrentUser.StoreId ?? 0),
+            $"{QuotationService.CodeOf(id)} generó una orden de compra en borrador.");
+
+    private void Delete(int id)
+    {
+        if (_editingId == id)
+            ClearForm();
+        Run(() => Quotations.Delete(id), $"{QuotationService.CodeOf(id)} eliminada.");
+    }
+
+    private static string StatusText(QuotationStatus status) => status switch
+    {
+        QuotationStatus.Pending => "Pendiente",
+        QuotationStatus.Approved => "Aprobada",
+        QuotationStatus.Rejected => "Rechazada",
+        QuotationStatus.Ordered => "Con orden de compra",
+        _ => status.ToString()
+    };
+
+    private static string StatusTone(QuotationStatus status) => status switch
+    {
+        QuotationStatus.Pending => "warning",
+        QuotationStatus.Approved => "info",
+        QuotationStatus.Rejected => "danger",
+        QuotationStatus.Ordered => "ok",
+        _ => "neutral"
+    };
+}

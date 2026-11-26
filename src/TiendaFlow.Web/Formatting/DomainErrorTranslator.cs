@@ -85,6 +85,10 @@ public static class DomainErrorTranslator
         HrRecordNotFoundException =>
             "No encontramos el registro de talento humano solicitado.",
         InvalidCrmRecordException invalidCrm => CrmMessage(invalidCrm),
+        InvalidQuotationException invalidQuotation =>
+            RuleMessages.GetValueOrDefault(invalidQuotation.Message, "Revisa los datos de la cotización."),
+        QuotationNotFoundException =>
+            "No encontramos la cotización solicitada.",
         CrmRecordNotFoundException =>
             "No encontramos el registro de CRM solicitado.",
         InvalidPosSaleException =>
@@ -147,6 +151,18 @@ public static class DomainErrorTranslator
         ["The invoice predates stock movements; cancel it instead."] = "La factura es anterior al control de inventario; anúlala en lugar de registrar una devolución.",
         ["Select at least one unit to return."] = "Indica al menos una unidad a devolver.",
         ["The reason is required."] = "El motivo es obligatorio.",
+        ["A supplier is required."] = "Elige un proveedor.",
+        ["A product is required."] = "Elige un producto del catálogo.",
+        ["The quantity must be greater than zero."] = "La cantidad debe ser mayor que cero.",
+        ["The quoted unit price must be greater than zero."] = "El precio unitario cotizado debe ser mayor que cero.",
+        ["The supplier is inactive."] = "El proveedor está inactivo.",
+        ["Only a pending quotation can be edited."] = "Solo se puede editar una cotización pendiente.",
+        ["Only a pending quotation can be approved."] = "Solo se puede aprobar una cotización pendiente.",
+        ["Only a pending quotation can be rejected."] = "Solo se puede rechazar una cotización pendiente.",
+        ["The rejection reason is required."] = "Escribe el motivo del rechazo.",
+        ["Only an approved quotation becomes a purchase order."] = "Solo una cotización aprobada genera orden de compra.",
+        ["Only a pending or rejected quotation can be deleted."] = "Solo se puede eliminar una cotización pendiente o rechazada.",
+        ["A store is required to create the order."] = "Tu usuario necesita una tienda asignada para generar la orden.",
         ["The employee already has an active contract; end it first."] = "El empleado ya tiene un contrato activo; termínalo antes de registrar otro.",
         ["A fixed-term contract needs an end date."] = "Un contrato a término fijo necesita fecha de terminación.",
         ["The end date cannot be before the start date."] = "La fecha de terminación no puede ser anterior a la de inicio.",
