@@ -12,8 +12,8 @@
             Title="Ranking de proveedores"
             Subtitle="Calificación, historial de órdenes y volumen comprado">
     <Actions>
-        <a class="button button-secondary" href="proveedores/ranking/export.csv">Exportar CSV</a>
-        <a class="button button-secondary" href="proveedores">Volver a proveedores</a>
+        <a class="button button-secondary" href="/proveedores/ranking/export.csv" data-enhance-nav="false" download>Exportar CSV</a>
+        <a class="button button-secondary" href="/proveedores">Volver a proveedores</a>
     </Actions>
 </PageHeader>
 
@@ -123,6 +123,7 @@ else
                                                min="0"
                                                max="100"
                                                step="1"
+                                               placeholder="0 - 100 %"
                                                aria-label="@($"Calificación de {supplier.BusinessName}")"
                                                value="@RatingFor(supplier.Id)"
                                                @onchange="args => SetRating(supplier.Id, args)" />

@@ -45,19 +45,22 @@ public sealed class EmployeeService
     private readonly IAccessControl _accessControl;
     private readonly IAuditLog _auditLog;
     private readonly ICurrentUser _currentUser;
+    private readonly AdministratorVisibility? _visibility;
 
     public EmployeeService(
         IEmployeeRepository employees,
         IStoreRepository stores,
         IAccessControl accessControl,
         IAuditLog auditLog,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        AdministratorVisibility? visibility = null)
     {
         _employees = employees;
         _stores = stores;
         _accessControl = accessControl;
         _auditLog = auditLog;
         _currentUser = currentUser;
+        _visibility = visibility;
     }
 
     public IReadOnlyList<EmployeeRow> List()
@@ -66,8 +69,10 @@ public sealed class EmployeeService
 
         var storeNames = _stores.List().ToDictionary(store => store.Id, store => store.Name);
         var showSalary = _accessControl.Has(Permissions.HrEmployeesManage);
+        var hidden = _visibility?.HiddenEmployeeIds() ?? new HashSet<int>();
 
         return _employees.List()
+            .Where(employee => !hidden.Contains(employee.Id))
             .OrderBy(employee => employee.Name)
             .Select(employee => ToRow(employee, storeNames, showSalary))
             .ToList();
@@ -78,6 +83,9 @@ public sealed class EmployeeService
         _accessControl.Demand(Permissions.HrEmployeesView);
 
         var employee = _employees.GetById(id) ?? throw new EmployeeNotFoundException(id);
+        if (_visibility?.HiddenEmployeeIds().Contains(employee.Id) == true)
+            throw new EmployeeNotFoundException(id);
+
         var store = _stores.GetById(employee.StoreId);
         var showSalary = _accessControl.Has(Permissions.HrEmployeesManage);
 
@@ -129,6 +137,8 @@ public sealed class EmployeeService
         _accessControl.Demand(Permissions.HrEmployeesManage);
 
         var employee = _employees.GetById(id) ?? throw new EmployeeNotFoundException(id);
+        if (_visibility?.HiddenEmployeeIds().Contains(employee.Id) == true)
+            throw new EmployeeNotFoundException(id);
 
         var data = Validate(
             request.IdNumber,
@@ -256,4 +266,4 @@ public sealed class EmployeeService
         int StoreId,
         string ContractLabel,
         decimal Salary);
-}
+}   

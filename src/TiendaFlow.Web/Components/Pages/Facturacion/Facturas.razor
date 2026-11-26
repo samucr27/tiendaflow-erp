@@ -97,7 +97,8 @@ else
                                 @if (invoice.Status == InvoiceStatus.Issued)
                                 {
                                     <a class="button button-secondary button-small"
-                                       href="@($"facturacion/{invoice.Id}/xml")">
+                                       href="@($"/facturacion/{invoice.Id}/xml")"
+                                       data-enhance-nav="false" download>
                                         XML simulado
                                     </a>
                                 }

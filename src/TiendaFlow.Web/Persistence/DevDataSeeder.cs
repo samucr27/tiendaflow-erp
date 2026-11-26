@@ -127,6 +127,7 @@ public sealed class DevDataSeeder : IHostedService
         await SeedInventoryTransfersAsync(context, cancellationToken);
         await SeedHumanResourcesRecordsAsync(context, cancellationToken);
         await SeedCrmRecordsAsync(context, cancellationToken);
+        await SeedQuotationsAsync(context, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -472,6 +473,46 @@ public sealed class DevDataSeeder : IHostedService
                     morning ? new TimeOnly(14, 0) : new TimeOnly(22, 0)));
             }
         }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    // Three requests for quotation in different states, so the quotations
+    // screen shows the pending, approved and rejected cases.
+    private static async Task SeedQuotationsAsync(
+        TiendaFlowDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.QuotationRequests.AnyAsync(cancellationToken))
+            return;
+
+        var suppliers = await context.Suppliers
+            .Where(supplier => supplier.Active)
+            .OrderBy(supplier => supplier.Id)
+            .Select(supplier => supplier.Id)
+            .ToListAsync(cancellationToken);
+        var skus = await context.Products
+            .Select(product => product.Sku)
+            .ToListAsync(cancellationToken);
+        if (suppliers.Count == 0 || !skus.Contains("SKU-1003") || !skus.Contains("SKU-1005"))
+            return;
+
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
+        context.QuotationRequests.Add(new QuotationRequest(
+            suppliers[0], "SKU-1005", 48, 3900m, now.AddDays(-1), today.AddDays(10),
+            "Leche para reponer refrigerados antes del fin de semana."));
+
+        var approved = new QuotationRequest(
+            suppliers[0], "SKU-1003", 60, 2600m, now.AddDays(-4), today.AddDays(6), null);
+        approved.Approve(null, "Carlos Ramírez", now.AddDays(-3));
+        context.QuotationRequests.Add(approved);
+
+        var rejected = new QuotationRequest(
+            suppliers[^1], "SKU-1003", 60, 3100m, now.AddDays(-4), today.AddDays(6),
+            "Segunda cotización para comparar.");
+        rejected.Reject(null, "Carlos Ramírez", "Precio por encima de la otra cotización.", now.AddDays(-3));
+        context.QuotationRequests.Add(rejected);
 
         await context.SaveChangesAsync(cancellationToken);
     }

@@ -1,0 +1,6 @@
+# Archivos que se ejecutan o leen en Linux (Elastic Beanstalk y Docker): siempre LF.
+deploy/aws/Procfile text eol=lf
+deploy/aws/.ebextensions/*.config text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+*.sh text eol=lf

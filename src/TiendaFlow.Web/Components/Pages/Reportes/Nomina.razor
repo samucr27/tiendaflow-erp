@@ -14,7 +14,8 @@
         @if (_run is not null)
         {
             <a class="button button-primary"
-               href="@($"/reportes/nomina/export.csv?days={_daysWorked}&risk={_riskClass}")">
+               href="@($"/reportes/nomina/export.csv?days={_daysWorked}&risk={_riskClass}")"
+               data-enhance-nav="false" download>
                 Exportar CSV
             </a>
         }

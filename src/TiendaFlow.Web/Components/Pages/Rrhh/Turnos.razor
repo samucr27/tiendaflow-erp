@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = Permissions.HrShiftsManage)]
 @inject HumanResourcesRecordsService Records
 @inject IEmployeeRepository Employees
+@inject AdministratorVisibility Visibility
 @inject ICurrentUser CurrentUser
 @inject NavigationManager Navigation
 
@@ -123,7 +124,7 @@
     {
         try
         {
-            _employees = Employees.List()
+            _employees = Visibility.Filter(Employees.List())
                 .Where(employee => employee.Active)
                 .Where(employee => CurrentUser.Role == RoleNames.HumanResourcesOfficer || employee.StoreId == CurrentUser.StoreId)
                 .OrderBy(employee => employee.Name)

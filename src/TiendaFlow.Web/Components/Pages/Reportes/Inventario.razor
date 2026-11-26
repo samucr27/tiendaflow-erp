@@ -11,8 +11,7 @@
             Title="Reporte de inventario"
             Subtitle="@($"Existencias y valor del inventario de {CurrentUser.StoreName}")">
     <Actions>
-        <a class="button button-primary" href="/reportes/inventario/export.csv">Exportar CSV</a>
-    </Actions>
+        <a class="button button-primary" href="/reportes/inventario/export.csv" data-enhance-nav="false" download>Exportar CSV</a>    </Actions>
 </PageHeader>
 
 @if (_error is not null)

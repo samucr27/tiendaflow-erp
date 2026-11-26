@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = Permissions.HrAttendanceManage)]
 @inject HumanResourcesRecordsService Records
 @inject IEmployeeRepository Employees
+@inject AdministratorVisibility Visibility
 @inject NavigationManager Navigation
 
 <PageTitle>Asistencia · TiendaFlow</PageTitle>
@@ -141,7 +142,7 @@
     {
         try
         {
-            _employees = Employees.List().Where(employee => employee.Active).OrderBy(employee => employee.Name).ToList();
+            _employees = Visibility.Filter(Employees.List()).Where(employee => employee.Active).OrderBy(employee => employee.Name).ToList();
             var from = DateOnly.FromDateTime(_month);
             _rows = Records.Attendance(from, from.AddMonths(1).AddDays(-1));
         }
