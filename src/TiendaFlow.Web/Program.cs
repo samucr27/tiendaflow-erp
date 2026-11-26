@@ -43,12 +43,13 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+var connectionString = DatabaseConnection.Resolve(
+        builder.Configuration[DatabaseConnection.EnvironmentVariable],
+        builder.Configuration.GetConnectionString("DefaultConnection"))
     ?? throw new InvalidOperationException(
-        "Connection string 'ConnectionStrings:DefaultConnection' is not configured. " +
-        "Set it with dotnet user-secrets on the Web project, with " +
-        "ConnectionStrings__DefaultConnection in App Service, or with " +
-        "`terraform` app settings.");
+        "No database connection string is configured. Set the DB_CONNECTION_STRING " +
+        "environment variable (Azure App Service, AWS Elastic Beanstalk or Docker), " +
+        "ConnectionStrings__DefaultConnection, or dotnet user-secrets on the Web project.");
 
 // Azure SQL requires encryption. The Terraform connection string already sets
 // Encrypt=True; forcing it for every non-development environment keeps a
@@ -100,9 +101,14 @@ builder.Services
         options.Cookie.Name = "TiendaFlow.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
+        // Outside Development the cookie travels only over HTTPS. A test
+        // environment served over plain HTTP (an Elastic Beanstalk single
+        // instance without a certificate) opts out explicitly with
+        // Authentication:RequireHttps=false.
+        options.Cookie.SecurePolicy = builder.Configuration.GetValue(
+                "Authentication:RequireHttps", !builder.Environment.IsDevelopment())
+            ? CookieSecurePolicy.Always
+            : CookieSecurePolicy.SameAsRequest;
         // Pages redirect to the login or access-denied screens; API clients
         // under /api get a plain 401 or 403 instead of an HTML redirect.
         options.Events = new CookieAuthenticationEvents
