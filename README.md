@@ -13,7 +13,7 @@ y en la etiqueta `sprint-2`.
 |---|---|
 | Inventario | CRUD de productos, stock por tienda, recepción, conteos, traslados, alertas de stock crítico (HU-05) |
 | Ventas y facturación | Punto de venta con varios productos, facturas que mueven inventario, devoluciones (notas crédito), XML simulado de factura electrónica |
-| Proveedores y compras | CRUD de proveedores, órdenes de compra, ranking de proveedores, reposición automática ante stock crítico |
+| Proveedores y compras | CRUD de proveedores, solicitudes de cotización con aprobación, órdenes de compra, ranking de proveedores, reposición automática ante stock crítico |
 | Talento humano | CRUD de empleados, nómina mensual (HU-04) con corridas guardadas, contratos, asistencia, turnos |
 | CRM | CRUD de clientes, segmentación A/B/C, puntos de fidelización, PQRS, campañas por segmento |
 | Seguridad y reportes | Usuarios y roles (HU-06), matriz de roles editable, tiendas, parámetros, auditoría, reportes de inventario, ventas, nómina y seguridad |
@@ -89,6 +89,10 @@ dotnet user-secrets set "Seed:DemoPassword" "<contraseña-demo>" --project src\T
 
 No escribas estos valores en archivos del repo ni en `appsettings*.json`.
 
+La aplicación también lee la cadena de conexión de la variable de entorno
+`DB_CONNECTION_STRING`, que tiene prioridad sobre `ConnectionStrings:DefaultConnection`.
+Es la que se usa en Docker, Azure App Service y AWS Elastic Beanstalk.
+
 ### 3. Ejecutar la aplicación
 
 ```powershell
@@ -119,7 +123,7 @@ Todos usan el dominio `@tiendaflow.local`. Las contraseñas no se documentan aqu
 | Punto de venta | `/inventario/ventas` | `sales.pos.use` | `sales.pos.use` |
 | Facturación | `/facturacion`, `/facturacion/nueva`, `/facturacion/{id}` (con devoluciones), `/facturacion/{id}/xml` | `sales.invoices.view` | `sales.invoices.manage`, `sales.returns.authorize` |
 | Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/{id}`, `/proveedores/ranking` | `purchasing.suppliers.view`, `purchasing.reports.view` | `purchasing.suppliers.manage`, `purchasing.evaluations.manage` |
-| Compras | `/compras/ordenes`, `/compras/ordenes/nueva`, `/compras/ordenes/{id}`, `/compras/reposicion` | `purchasing.orders.view` | `purchasing.orders.*` |
+| Compras | `/compras/cotizaciones`, `/compras/ordenes`, `/compras/ordenes/nueva`, `/compras/ordenes/{id}`, `/compras/reposicion` | `purchasing.orders.view` | `purchasing.orders.*` (aprobar cotizaciones: `purchasing.orders.approve`) |
 | Talento humano | `/rrhh/empleados`, `/rrhh/nomina`, `/rrhh/contratos`, `/rrhh/asistencia`, `/rrhh/turnos` | `hr.employees.view` | `hr.employees.manage`, `hr.payroll.manage`, `hr.contracts.manage`, `hr.attendance.manage`, `hr.shifts.manage` |
 | CRM | `/crm/clientes`, `/crm/clientes/nuevo`, `/crm/clientes/{id}`, `/crm/segmentacion`, `/crm/puntos`, `/crm/pqrs`, `/crm/campanas` | `crm.customers.view`, `crm.reports.view` | `crm.customers.manage`, `crm.points.manage`, `crm.pqrs.manage`, `crm.campaigns.manage` |
 | Seguridad | `/seguridad/usuarios`, `/seguridad/roles`, `/seguridad/tiendas`, `/seguridad/parametros`, `/seguridad/auditoria` | `security.*.view` | `security.*.manage` |
@@ -149,7 +153,7 @@ dotnet ef database update `
   --startup-project src\TiendaFlow.Web
 ```
 
-Las migraciones van de `InitialCreate` a `Phase12CloseoutModules`:
+Las migraciones van de `InitialCreate` a `Phase13Quotations`:
 
 | Migración | Contenido |
 |---|---|
@@ -165,6 +169,7 @@ Las migraciones van de `InitialCreate` a `Phase12CloseoutModules`:
 | `20261116144218_Phase10StockConcurrency` | Columna `rowversion` en `stock` |
 | `20261116154129_Phase11PosSalesAndInvoiceStock` | Ventas del punto de venta y tienda de la factura |
 | `20261117024530_Phase12CloseoutModules` | Devoluciones, roles editables, contratos, asistencia, turnos, corridas de nómina, puntos, PQRS y campañas |
+| `20261126051045_Phase13Quotations` | Solicitudes de cotización |
 
 Antes de publicar una versión nueva en Azure hay que aplicar las migraciones pendientes en Azure SQL
 (ver [docs/final/deploy-azure.md](docs/final/deploy-azure.md)).
@@ -203,6 +208,27 @@ con `dotnet publish`, zip y `az webapp deploy` está descrito en
 [docs/final/deploy-azure.md](docs/final/deploy-azure.md). La vía secundaria de
 GitHub usa el perfil de publicación como secreto `AZURE_WEBAPP_PUBLISH_PROFILE`.
 
+## Docker
+
+El `Dockerfile` construye la imagen en dos etapas (SDK de .NET 9 para publicar,
+runtime de ASP.NET Core para ejecutar) y la aplicación escucha en el puerto 8080.
+`docker-compose.yml` levanta la aplicación junto con SQL Server 2022:
+
+```powershell
+Copy-Item .env.example .env   # y escribe contraseñas propias en .env
+docker compose up --build
+```
+
+Abre `http://localhost:8080`. La primera vez se crean el esquema y los datos de
+demostración. Para detenerlo: `docker compose down` (con `-v` borra también la base).
+
+## AWS Elastic Beanstalk
+
+`deploy/aws/build-beanstalk-package.ps1` genera `artifacts/tiendaflow-beanstalk.zip`
+(publicación self-contained para Linux, `Procfile` y `.ebextensions`). La guía
+completa, con la base en Amazon RDS for SQL Server, está en
+[docs/final/deploy-aws.md](docs/final/deploy-aws.md).
+
 ## Estructura del repositorio
 
 ```text
@@ -217,6 +243,7 @@ tests/
   TiendaFlow.AcceptanceTests/ Pruebas de aceptación con Reqnroll
 docs/                         Documentación del proyecto
 infra/                        Infraestructura como código (Terraform)
+deploy/aws/                   Paquete y configuración de AWS Elastic Beanstalk
 .github/workflows/            Integración continua
 ```
 

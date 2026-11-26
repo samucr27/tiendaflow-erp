@@ -142,6 +142,37 @@ public class PqrsCaseConfiguration : IEntityTypeConfiguration<PqrsCase>
     }
 }
 
+public class QuotationRequestConfiguration : IEntityTypeConfiguration<QuotationRequest>
+{
+    public void Configure(EntityTypeBuilder<QuotationRequest> builder)
+    {
+        builder.ToTable("quotation_request");
+        builder.HasKey(item => item.Id);
+        builder.Property(item => item.Id).HasColumnName("id").ValueGeneratedOnAdd();
+        builder.Property(item => item.SupplierId).HasColumnName("supplier_id");
+        builder.Property(item => item.ProductSku).HasColumnName("product_sku").HasMaxLength(50).IsRequired();
+        builder.Property(item => item.Quantity).HasColumnName("quantity");
+        builder.Property(item => item.UnitPrice).HasColumnName("unit_price").HasPrecision(14, 2);
+        builder.Property(item => item.RequestedAt).HasColumnName("requested_at").HasColumnType("datetime2");
+        builder.Property(item => item.ValidUntil).HasColumnName("valid_until");
+        builder.Property(item => item.Notes).HasColumnName("notes").HasMaxLength(500);
+        builder.Property(item => item.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20);
+        builder.Property(item => item.DecidedByUserId).HasColumnName("decided_by_user_id");
+        builder.Property(item => item.DecidedByName).HasColumnName("decided_by_name").HasMaxLength(200);
+        builder.Property(item => item.DecidedAt).HasColumnName("decided_at").HasColumnType("datetime2");
+        builder.Property(item => item.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
+        builder.Property(item => item.PurchaseOrderId).HasColumnName("purchase_order_id");
+        builder.Ignore(item => item.EstimatedAmount);
+        builder.Ignore(item => item.CanChange);
+        builder.Ignore(item => item.CanDelete);
+        builder.HasOne<Supplier>().WithMany().HasForeignKey(item => item.SupplierId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Product>().WithMany().HasForeignKey(item => item.ProductSku).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<PurchaseOrder>().WithMany().HasForeignKey(item => item.PurchaseOrderId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<AppUser>().WithMany().HasForeignKey(item => item.DecidedByUserId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(item => new { item.Status, item.RequestedAt });
+    }
+}
+
 public class MarketingCampaignConfiguration : IEntityTypeConfiguration<MarketingCampaign>
 {
     public void Configure(EntityTypeBuilder<MarketingCampaign> builder)

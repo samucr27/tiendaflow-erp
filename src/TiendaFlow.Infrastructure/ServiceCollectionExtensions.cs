@@ -84,6 +84,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<LoyaltyService>();
         services.AddScoped<ILoyaltyProgram>(provider => provider.GetRequiredService<LoyaltyService>());
         services.AddScoped<PqrsService>();
+        services.AddScoped<QuotationService>();
         services.AddScoped<CampaignService>();
         services.AddScoped<SecurityReportService>();
         services.AddScoped<InventoryCountService>();

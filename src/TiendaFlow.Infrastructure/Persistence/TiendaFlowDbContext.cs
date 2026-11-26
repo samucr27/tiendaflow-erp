@@ -51,6 +51,8 @@ public class TiendaFlowDbContext : DbContext
 
     public DbSet<PqrsCase> PqrsCases => Set<PqrsCase>();
 
+    public DbSet<QuotationRequest> QuotationRequests => Set<QuotationRequest>();
+
     public DbSet<MarketingCampaign> MarketingCampaigns => Set<MarketingCampaign>();
 
     public DbSet<RolePermissionGrant> RolePermissionGrants => Set<RolePermissionGrant>();

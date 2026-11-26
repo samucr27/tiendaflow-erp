@@ -1017,6 +1017,90 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("purchase_order_line", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaFlow.Domain.QuotationRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("decided_at");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("decided_by_name");
+
+                    b.Property<int?>("DecidedByUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("decided_by_user_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("ProductSku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("product_sku");
+
+                    b.Property<int?>("PurchaseOrderId")
+                        .HasColumnType("int")
+                        .HasColumnName("purchase_order_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("requested_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("SupplierId")
+                        .HasColumnType("int")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("decimal(14,2)")
+                        .HasColumnName("unit_price");
+
+                    b.Property<DateOnly?>("ValidUntil")
+                        .HasColumnType("date")
+                        .HasColumnName("valid_until");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DecidedByUserId");
+
+                    b.HasIndex("ProductSku");
+
+                    b.HasIndex("PurchaseOrderId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("Status", "RequestedAt");
+
+                    b.ToTable("quotation_request", (string)null);
+                });
+
             modelBuilder.Entity("TiendaFlow.Domain.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -1608,6 +1692,31 @@ namespace TiendaFlow.Infrastructure.Persistence.Migrations
                     b.HasOne("TiendaFlow.Domain.Product", null)
                         .WithMany()
                         .HasForeignKey("ProductSku")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TiendaFlow.Domain.QuotationRequest", b =>
+                {
+                    b.HasOne("TiendaFlow.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TiendaFlow.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductSku")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TiendaFlow.Domain.PurchaseOrder", null)
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TiendaFlow.Domain.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

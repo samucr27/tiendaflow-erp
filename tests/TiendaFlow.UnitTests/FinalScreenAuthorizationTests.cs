@@ -17,6 +17,7 @@ public class FinalScreenAuthorizationTests
     [InlineData("Compras/OrdenForm.razor", "/compras/ordenes/nueva", "PurchasingOrdersCreate")]
     [InlineData("Compras/OrdenDetalle.razor", "/compras/ordenes/{Id:int}", "PurchasingOrdersView")]
     [InlineData("Compras/Reposicion.razor", "/compras/reposicion", "PurchasingOrdersCreate")]
+    [InlineData("Compras/Cotizaciones.razor", "/compras/cotizaciones", "PurchasingOrdersView")]
     [InlineData("Proveedores/Ranking.razor", "/proveedores/ranking", "PurchasingReportsView")]
     [InlineData("Crm/Segmentacion.razor", "/crm/segmentacion", "CrmReportsView")]
     public void PurchasingRoutesDeclareThePolicyOfTheMatrix(
@@ -116,6 +117,7 @@ public class FinalScreenAuthorizationTests
         Assert.Contains("href=\"compras/ordenes\"", menu);
         Assert.Contains("AccessControl.Has(Permissions.PurchasingOrdersView)", menu);
         Assert.Contains("href=\"compras/reposicion\"", menu);
+        Assert.Contains("href=\"compras/cotizaciones\"", menu);
         Assert.Contains("AccessControl.Has(Permissions.PurchasingOrdersCreate)", menu);
         Assert.Contains("href=\"proveedores/ranking\"", menu);
         Assert.Contains("AccessControl.Has(Permissions.PurchasingReportsView)", menu);

@@ -247,7 +247,18 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
         var invoiceId = await context.SalesInvoices.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var customerId = await context.Customers.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var userId = await context.AppUsers.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
-        var employeeId = await context.Employees.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
+        // Employees linked to an Administrator account are hidden from the other
+        // roles (AdministratorVisibility), so the detail route uses another one.
+        var administratorRoleId = SystemRoles.IdFor(RoleNames.Administrator);
+        var administratorEmployees = await context.AppUsers
+            .Where(row => row.RoleId == administratorRoleId && row.EmployeeId != null)
+            .Select(row => row.EmployeeId!.Value)
+            .ToListAsync();
+        var employeeId = await context.Employees
+            .Where(row => !administratorEmployees.Contains(row.Id))
+            .OrderBy(row => row.Id)
+            .Select(row => row.Id)
+            .FirstAsync();
         var storeId = await context.Stores.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var countId = await context.InventoryCounts.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
         var transferId = await context.InventoryTransfers.OrderBy(row => row.Id).Select(row => row.Id).FirstAsync();
@@ -295,6 +306,7 @@ public class WebSmokeTests : IClassFixture<ErpWebApplicationFactory>
             new SmokeRoute($"/compras/ordenes/{orderId}", Permissions.PurchasingOrdersView),
             new SmokeRoute("/compras/ordenes/nueva", Permissions.PurchasingOrdersCreate),
             new SmokeRoute("/compras/reposicion", Permissions.PurchasingOrdersCreate),
+            new SmokeRoute("/compras/cotizaciones", Permissions.PurchasingOrdersView),
             new SmokeRoute("/facturacion", Permissions.SalesInvoicesView),
             new SmokeRoute($"/facturacion/{invoiceId}", Permissions.SalesInvoicesView),
             new SmokeRoute("/facturacion/nueva", Permissions.SalesInvoicesManage),

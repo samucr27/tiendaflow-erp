@@ -21,13 +21,15 @@ internal sealed class InMemoryEntityStore<T> : IEntityStore<T> where T : class
 
     public void Add(T entity)
     {
-        TestIds.Assign(entity, _items.Count + 1);
+        TestIds.Assign(entity, _items.Count == 0 ? 1 : _items.Max(IdOf) + 1);
         _items.Add(entity);
     }
 
     public void Update(T entity)
     {
     }
+
+    public void Remove(T entity) => _items.Remove(entity);
 
     private static int IdOf(T entity) => (int)typeof(T).GetProperty("Id")!.GetValue(entity)!;
 }
